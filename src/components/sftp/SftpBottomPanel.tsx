@@ -12,7 +12,7 @@ interface SftpBottomPanelProps {
 export default function SftpBottomPanel({ show, onToggle, height, onResizeStart }: SftpBottomPanelProps) {
   const { tabs, activeTabId } = useTerminalTabs();
   const activeTab = tabs.find((t) => t.id === activeTabId);
-  const config = activeTab?.connectConfig;
+  const config = activeTab?.type === 'terminal' ? activeTab.connectConfig : undefined;
 
   return (
     <>

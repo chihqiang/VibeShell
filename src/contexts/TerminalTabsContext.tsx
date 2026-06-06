@@ -1,12 +1,12 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useCallback, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sshDisconnect } from '@/api/ssh';
-import type { HostConfig } from '@/api/hosts';
+import { sshDisconnect } from '@/apis/api/ssh';
+import type { HostConfig } from '@/apis/types/hosts';
 import { useNotify } from '@/hooks/use-notify';
 import ConfirmDialog from '@/components/sftp/dialogs/ConfirmDialog';
+import type { TabType, ConnectionStatus } from '@/lib/types';
 
-export type TabType = 'quick' | 'terminal';
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
+export type { TabType, ConnectionStatus };
 
 export interface ConnectConfig {
   hostname: string;
@@ -16,14 +16,23 @@ export interface ConnectConfig {
   private_key_path: string | null;
 }
 
-export interface TerminalTab {
+interface BaseTab {
   id: string;
-  type: TabType;
-  host?: HostConfig;
   status: ConnectionStatus;
   title: string;
-  connectConfig?: ConnectConfig;
 }
+
+export interface QuickTab extends BaseTab {
+  type: 'quick';
+}
+
+export interface TerminalTabData extends BaseTab {
+  type: 'terminal';
+  host?: HostConfig;
+  connectConfig: ConnectConfig;
+}
+
+export type TerminalTab = QuickTab | TerminalTabData;
 
 interface TerminalTabsContextValue {
   tabs: TerminalTab[];
@@ -37,119 +46,178 @@ interface TerminalTabsContextValue {
   updateStatus: (tabId: string, status: ConnectionStatus) => void;
 }
 
-const TerminalTabsContext = createContext<TerminalTabsContextValue | null>(null);
-
-function createInitialTab(): TerminalTab {
+function createInitialTab(): QuickTab {
   return {
     id: crypto.randomUUID(),
-    type: 'quick',
+    type: 'quick' as const,
     status: 'disconnected',
     title: 'Quick Connect',
   };
 }
 
-function createInitialState() {
+const TerminalTabsContext = createContext<TerminalTabsContextValue | null>(null);
+
+interface TabsState {
+  tabs: TerminalTab[];
+  activeTabId: string | null;
+  pendingCloseTabId: string | null;
+  terminalTabVersion: number;
+}
+
+type TabsAction =
+  | { type: 'ADD_QUICK_TAB'; id: string }
+  | { type: 'ADD_TERMINAL_TAB'; id: string; config: ConnectConfig; host?: HostConfig }
+  | { type: 'CONVERT_TO_TERMINAL'; tabId: string; config: ConnectConfig; host?: HostConfig }
+  | { type: 'SET_ACTIVE_TAB'; tabId: string }
+  | { type: 'UPDATE_STATUS'; tabId: string; status: ConnectionStatus }
+  | { type: 'SET_PENDING_CLOSE'; tabId: string | null }
+  | { type: 'REPLACE_ALL'; tabs: TerminalTab[]; activeTabId: string }
+  | { type: 'REMOVE_TAB'; tabId: string };
+
+function createInitialState(): TabsState {
   const tab = createInitialTab();
-  return { tabs: [tab], activeTabId: tab.id };
+  return { tabs: [tab], activeTabId: tab.id, pendingCloseTabId: null, terminalTabVersion: 0 };
+}
+
+function reducer(state: TabsState, action: TabsAction): TabsState {
+  switch (action.type) {
+    case 'ADD_QUICK_TAB':
+      return {
+        ...state,
+        tabs: [
+          ...state.tabs,
+          { id: action.id, type: 'quick' as const, status: 'disconnected' as const, title: 'Quick Connect' },
+        ],
+        activeTabId: action.id,
+      };
+
+    case 'ADD_TERMINAL_TAB': {
+      const title = action.host?.name || action.host?.hostname || action.config.hostname;
+      return {
+        ...state,
+        tabs: [
+          ...state.tabs,
+          {
+            id: action.id,
+            type: 'terminal' as const,
+            host: action.host,
+            status: 'disconnected' as const,
+            title,
+            connectConfig: action.config,
+          },
+        ],
+        activeTabId: action.id,
+        terminalTabVersion: state.terminalTabVersion + 1,
+      };
+    }
+
+    case 'CONVERT_TO_TERMINAL': {
+      const title = action.host?.name || action.host?.hostname || action.config.hostname;
+      return {
+        ...state,
+        tabs: state.tabs.map((t) =>
+          t.id === action.tabId
+            ? {
+                id: t.id,
+                type: 'terminal' as const,
+                host: action.host,
+                status: 'disconnected' as const,
+                title,
+                connectConfig: action.config,
+              }
+            : t,
+        ),
+        activeTabId: action.tabId,
+        terminalTabVersion: state.terminalTabVersion + 1,
+      };
+    }
+
+    case 'SET_ACTIVE_TAB':
+      return { ...state, activeTabId: action.tabId };
+
+    case 'UPDATE_STATUS':
+      return {
+        ...state,
+        tabs: state.tabs.map((t) => (t.id === action.tabId ? { ...t, status: action.status } : t)),
+      };
+
+    case 'SET_PENDING_CLOSE':
+      return { ...state, pendingCloseTabId: action.tabId };
+
+    case 'REPLACE_ALL':
+      return { ...state, tabs: action.tabs, activeTabId: action.activeTabId };
+
+    case 'REMOVE_TAB': {
+      const remaining = state.tabs.filter((t) => t.id !== action.tabId);
+      let nextActiveTabId = state.activeTabId;
+      if (state.activeTabId === action.tabId) {
+        const idx = state.tabs.findIndex((t) => t.id === action.tabId);
+        const newIdx = Math.min(idx, remaining.length - 1);
+        nextActiveTabId = remaining[Math.max(0, newIdx)]?.id ?? null;
+      }
+      return { ...state, tabs: remaining, activeTabId: nextActiveTabId };
+    }
+
+    default:
+      return state;
+  }
 }
 
 export function TerminalTabsProvider({ children }: { children: ReactNode }) {
-  const [{ tabs: initialTabs, activeTabId: initialActiveTabId }] = useState(createInitialState);
-  const [tabs, setTabs] = useState<TerminalTab[]>(initialTabs);
-  const [activeTabId, setActiveTabId] = useState<string | null>(initialActiveTabId);
-  const tabsRef = useRef(tabs);
-  tabsRef.current = tabs;
-  const activeTabIdRef = useRef(activeTabId);
-  activeTabIdRef.current = activeTabId;
+  const [state, dispatch] = useReducer(reducer, null, createInitialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const { notifyError } = useNotify();
   const { t } = useTranslation();
-  const [pendingCloseTabId, setPendingCloseTabId] = useState<string | null>(null);
-  const [terminalTabVersion, setTerminalTabVersion] = useState(0);
 
   const performClose = useCallback(
     (tabId: string) => {
-      const tab = tabsRef.current.find((t) => t.id === tabId);
+      const s = stateRef.current;
+      const tab = s.tabs.find((t) => t.id === tabId);
       if (tab?.status === 'connected') {
         sshDisconnect({ tabId: tab.id }).catch((e) => notifyError(e));
       }
 
-      if (tabsRef.current.length <= 1) {
+      if (s.tabs.length <= 1) {
         const newTab = createInitialTab();
-        setTabs([newTab]);
-        setActiveTabId(newTab.id);
+        dispatch({ type: 'REPLACE_ALL', tabs: [newTab], activeTabId: newTab.id });
         return;
       }
 
-      setTabs((prev) => prev.filter((t) => t.id !== tabId));
-
-      if (activeTabIdRef.current === tabId) {
-        const remaining = tabsRef.current.filter((t) => t.id !== tabId);
-        const idx = tabsRef.current.findIndex((t) => t.id === tabId);
-        const newIdx = Math.min(idx, remaining.length - 1);
-        setActiveTabId(remaining[Math.max(0, newIdx)]?.id ?? remaining[0]?.id ?? null);
-      }
+      dispatch({ type: 'REMOVE_TAB', tabId });
     },
     [notifyError],
   );
 
   const confirmCloseTab = useCallback(() => {
-    if (pendingCloseTabId) {
-      performClose(pendingCloseTabId);
-      setPendingCloseTabId(null);
+    const tabId = stateRef.current.pendingCloseTabId;
+    if (tabId) {
+      performClose(tabId);
+      dispatch({ type: 'SET_PENDING_CLOSE', tabId: null });
     }
-  }, [pendingCloseTabId, performClose]);
+  }, [performClose]);
 
   const addQuickTab = useCallback(() => {
     const id = crypto.randomUUID();
-    setTabs((prev) => [...prev, { id, type: 'quick', status: 'disconnected', title: 'Quick Connect' }]);
-    setActiveTabId(id);
+    dispatch({ type: 'ADD_QUICK_TAB', id });
     return id;
   }, []);
 
   const addTerminalTab = useCallback((config: ConnectConfig, host?: HostConfig) => {
     const id = crypto.randomUUID();
-    const title = host?.name || host?.hostname || config.hostname;
-    setTabs((prev) => [
-      ...prev,
-      {
-        id,
-        type: 'terminal',
-        host,
-        status: 'disconnected',
-        title,
-        connectConfig: config,
-      },
-    ]);
-    setActiveTabId(id);
-    setTerminalTabVersion((v) => v + 1);
+    dispatch({ type: 'ADD_TERMINAL_TAB', id, config, host });
     return id;
   }, []);
 
   const convertTabToTerminal = useCallback((tabId: string, config: ConnectConfig, host?: HostConfig) => {
-    const title = host?.name || host?.hostname || config.hostname;
-    setTabs((prev) =>
-      prev.map((t) =>
-        t.id === tabId
-          ? {
-              ...t,
-              type: 'terminal' as const,
-              host,
-              title,
-              status: 'disconnected',
-              connectConfig: config,
-            }
-          : t,
-      ),
-    );
-    setActiveTabId(tabId);
-    setTerminalTabVersion((v) => v + 1);
+    dispatch({ type: 'CONVERT_TO_TERMINAL', tabId, config, host });
   }, []);
 
   const closeTab = useCallback(
     (tabId: string) => {
-      const tab = tabsRef.current.find((t) => t.id === tabId);
+      const tab = stateRef.current.tabs.find((t) => t.id === tabId);
       if (tab?.status === 'connected') {
-        setPendingCloseTabId(tabId);
+        dispatch({ type: 'SET_PENDING_CLOSE', tabId });
       } else {
         performClose(tabId);
       }
@@ -158,17 +226,17 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
   );
 
   const setActiveTab = useCallback((tabId: string) => {
-    setActiveTabId(tabId);
+    dispatch({ type: 'SET_ACTIVE_TAB', tabId });
   }, []);
 
   const updateStatus = useCallback((tabId: string, status: ConnectionStatus) => {
-    setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, status } : t)));
+    dispatch({ type: 'UPDATE_STATUS', tabId, status });
   }, []);
 
-  const contextValue = {
-    tabs,
-    activeTabId,
-    terminalTabVersion,
+  const contextValue: TerminalTabsContextValue = {
+    tabs: state.tabs,
+    activeTabId: state.activeTabId,
+    terminalTabVersion: state.terminalTabVersion,
     addQuickTab,
     addTerminalTab,
     convertTabToTerminal,
@@ -181,9 +249,9 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
     <>
       <TerminalTabsContext.Provider value={contextValue}>{children}</TerminalTabsContext.Provider>
       <ConfirmDialog
-        open={!!pendingCloseTabId}
+        open={!!state.pendingCloseTabId}
         onOpenChange={(v) => {
-          if (!v) setPendingCloseTabId(null);
+          if (!v) dispatch({ type: 'SET_PENDING_CLOSE', tabId: null });
         }}
         title={t('tab.closeConfirmTitle')}
         message={t('tab.closeConfirmMessage')}

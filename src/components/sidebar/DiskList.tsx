@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { listen } from '@tauri-apps/api/event';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useNotify } from '@/hooks/use-notify';
-import type { DiskInfo, MonitorEvent, UnlistenFn } from './types';
+import type { DiskInfo, MonitorEvent } from '@/lib/types';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 
 export default function DiskList() {
   const { t } = useTranslation();

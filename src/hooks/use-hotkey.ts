@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { loadHotkeys, saveHotkeys, type HotkeyAction, type HotkeyConfig } from '@/api/config';
+import { loadHotkeys, saveHotkeys } from '@/apis/api/config';
+import type { HotkeyAction, HotkeyConfig } from '@/apis/types/config';
 import { getHotkeyDefaults } from '@/storage/config';
 import { useNotify } from '@/hooks/use-notify';
 

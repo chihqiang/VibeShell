@@ -1,17 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Plus, Pencil, Trash2, Terminal } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import HostDialog from '@/components/host/dialogs/HostDialog';
+import DeleteHostDialog from '@/components/host/dialogs/DeleteHostDialog';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
-import type { HostConfig } from '@/api/hosts';
-import type { KeyEntry } from '@/api/keys';
+import type { HostConfig } from '@/apis/types/hosts';
+import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
-import { listHosts, listGroups, deleteHost } from '@/api/hosts';
-import { listKeys } from '@/api/keys';
-import { sshTestConnect } from '@/api/ssh';
+import { listHosts, listGroups, deleteHost } from '@/apis/api/hosts';
+import { listKeys } from '@/apis/api/keys';
+import { sshTestConnect } from '@/apis/api/ssh';
+import { resolvePrivateKeyPath } from '@/apis/utils/keys';
+import { buildSshConfig } from '@/lib/utils';
+import type { AuthMethod } from '@/lib/types';
 
 interface Props {
   open: boolean;
@@ -78,21 +82,16 @@ export default function HostManagementDialog({ open, onClose }: Props) {
     if (connecting) return;
     setConnecting(true);
     try {
-      let privateKeyPath = host.private_key_path || null;
-      if (host.auth_method === 'key' && !privateKeyPath && keys.length > 0) {
-        const { getKeysPath } = await import('@/storage/config');
-        const keysPath = await getKeysPath();
-        const matchingKey = host.password ? keys.find((k) => k.password === host.password) : null;
-        privateKeyPath = matchingKey ? `${keysPath}/${matchingKey.file_name}` : `${keysPath}/${keys[0].file_name}`;
-      }
-      const config = {
+      const privateKeyPath = await resolvePrivateKeyPath(host, keys);
+      const config = buildSshConfig({
+        authMethod: host.auth_method as AuthMethod,
         hostname: host.hostname,
         port: host.port,
         username: host.username,
-        password:
-          host.auth_method === 'password' ? host.password || null : privateKeyPath ? host.password || null : null,
-        private_key_path: host.auth_method === 'key' ? privateKeyPath : null,
-      };
+        password: host.auth_method === 'password' ? host.password || null : null,
+        keyPassphrase: host.auth_method === 'key' ? host.password || null : null,
+        privateKeyPath,
+      });
       await sshTestConnect({
         hostname: config.hostname,
         port: config.port,
@@ -199,28 +198,11 @@ export default function HostManagementDialog({ open, onClose }: Props) {
 
       <HostDialog open={dialogOpen} onClose={handleDialogClose} host={editingHost} groups={groups} keys={keys} />
 
-      <Dialog
+      <DeleteHostDialog
         open={confirmDeleteId !== null}
-        onOpenChange={(next) => {
-          if (!next) setConfirmDeleteId(null);
-        }}
-      >
-        <DialogContent className="w-[360px] sm:max-w-[360px] p-0">
-          <DialogHeader>
-            <DialogTitle>{t('sidebar.confirmDeleteHost')}</DialogTitle>
-          </DialogHeader>
-          <DialogFooter className="px-5 pb-4 pt-0">
-            <div className="flex gap-2 ml-auto">
-              <Button variant="outline" size="sm" onClick={() => setConfirmDeleteId(null)}>
-                {t('connection.cancel')}
-              </Button>
-              <Button size="sm" variant="destructive" onClick={confirmDelete}>
-                {t('connection.delete')}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { logMessage } from '@/api/logging';
+import { logMessage } from '@/apis/api/logging';
 
 export async function trace(message: string) {
   await logMessage({ level: 'trace', message });

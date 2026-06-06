@@ -1,6 +1,6 @@
 import { FileKey, Lock, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { KeyEntry } from '@/api/keys';
+import type { KeyEntry } from '@/apis/types/keys';
 
 interface KeyRowProps {
   keyEntry: KeyEntry;

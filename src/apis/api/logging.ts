@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@/lib/api';
 
 export function logMessage(params: {
   level: 'trace' | 'debug' | 'info' | 'warn' | 'error';

@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Folder, File, Home, Upload, LoaderCircle, RefreshCw, ListTodo } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Button } from '@/components/ui/button';
-import { FileType } from '@/components/sftp/types';
-import type { FileEntry } from '@/components/sftp/types';
 import { formatSize } from '@/lib/utils';
+import { FileType } from '@/apis/types/sftp';
+import type { FileEntry } from '@/apis/types/sftp';
 
 interface SftpPaneProps {
   title: string;

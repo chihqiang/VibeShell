@@ -1,18 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-
-export interface HostConfig {
-  id: string;
-  name: string;
-  hostname: string;
-  port: number;
-  username: string;
-  auth_method: string;
-  password?: string | null;
-  private_key_path?: string | null;
-  group?: string | null;
-  created_at: number;
-  updated_at: number;
-}
+import { invoke } from '@/lib/api';
+import type { HostConfig } from '@/apis/types/hosts';
 
 export function listHosts(): Promise<HostConfig[]> {
   return invoke('list_hosts');

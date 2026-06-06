@@ -1,20 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-
-export interface SshConnectResult {
-  id: string;
-  banner: string;
-}
-
-export type SshConnectParams = Record<string, unknown> & {
-  tabId: string;
-  hostname: string;
-  port: number;
-  username: string;
-  password: string | null;
-  privateKeyPath: string | null;
-  monitorIntervalSecs?: number;
-  heartbeatIntervalSecs?: number;
-};
+import { invoke } from '@/lib/api';
+import type { SshConnectResult, SshConnectParams } from '@/apis/types/ssh';
 
 export function sshConnect(params: SshConnectParams): Promise<SshConnectResult> {
   return invoke('ssh_connect', params);

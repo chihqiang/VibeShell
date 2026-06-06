@@ -3,13 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import Autocomplete from '@/components/ui/autocomplete';
-
-interface ChmodFormData {
-  mode: string;
-  uid: string;
-  gid: string;
-  recursive: boolean;
-}
+import type { ChmodFormData } from '@/lib/types';
+import { permToFlags, flagsToPerm, type FlagKey } from '@/lib/utils';
 
 interface ChmodDialogProps {
   open: boolean;
@@ -22,49 +17,6 @@ interface ChmodDialogProps {
   groups: string[];
   error?: string;
 }
-
-function permToFlags(perm: string) {
-  const num = parseInt(perm, 8);
-  if (isNaN(num))
-    return {
-      ur: false,
-      uw: false,
-      ux: false,
-      gr: false,
-      gw: false,
-      gx: false,
-      or: false,
-      ow: false,
-      ox: false,
-    };
-  return {
-    ur: !!(num & 0o400),
-    uw: !!(num & 0o200),
-    ux: !!(num & 0o100),
-    gr: !!(num & 0o040),
-    gw: !!(num & 0o020),
-    gx: !!(num & 0o010),
-    or: !!(num & 0o004),
-    ow: !!(num & 0o002),
-    ox: !!(num & 0o001),
-  };
-}
-
-function flagsToPerm(flags: ReturnType<typeof permToFlags>): string {
-  const num =
-    (flags.ur ? 0o400 : 0) |
-    (flags.uw ? 0o200 : 0) |
-    (flags.ux ? 0o100 : 0) |
-    (flags.gr ? 0o040 : 0) |
-    (flags.gw ? 0o020 : 0) |
-    (flags.gx ? 0o010 : 0) |
-    (flags.or ? 0o004 : 0) |
-    (flags.ow ? 0o002 : 0) |
-    (flags.ox ? 0o001 : 0);
-  return num.toString(8).padStart(3, '0');
-}
-
-type FlagKey = keyof ReturnType<typeof permToFlags>;
 
 const flagMeta: {
   key: FlagKey;

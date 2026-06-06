@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { sshConnect, sshDisconnect } from '@/api/ssh';
+import { sshConnect, sshDisconnect } from '@/apis/api/ssh';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import type { ConnectConfig } from '@/contexts/TerminalTabsContext';
 import TerminalComp from '@/components/terminal';
@@ -90,7 +90,7 @@ export default function HomePage() {
     }
 
     for (const tab of tabs) {
-      if (tab.type !== 'terminal' || !tab.connectConfig) continue;
+      if (tab.type !== 'terminal') continue;
       if (tab.status !== 'disconnected' || connectedTabs.current.has(tab.id)) continue;
       connectTab(tab.id, tab.connectConfig);
     }
@@ -108,7 +108,7 @@ export default function HomePage() {
         if (!cfg.enabled) return;
 
         const tab = tabsRef.current.find((t) => t.id === tab_id);
-        if (!tab?.connectConfig) return;
+        if (!tab || tab.type !== 'terminal') return;
 
         const retries = retryCount.current.get(tab_id) || 0;
         if (retries >= cfg.maxRetries) return;
@@ -121,7 +121,7 @@ export default function HomePage() {
           reconnectTimer.current.delete(tab_id);
           if (!tabsRef.current.find((t) => t.id === tab_id)) return;
           retryCount.current.set(tab_id, retries + 1);
-          connectTab(tab_id, tab.connectConfig!);
+          connectTab(tab_id, tab.connectConfig);
         }, delay);
 
         reconnectTimer.current.set(tab_id, timer);
@@ -161,7 +161,7 @@ export default function HomePage() {
   useHotkey('duplicateTab', () => {
     const current = tabsRef.current.find((t) => t.id === activeTabIdRef.current);
     if (!current) return;
-    if (current.type === 'terminal' && current.connectConfig) {
+    if (current.type === 'terminal') {
       addTerminalTab(current.connectConfig, current.host);
     } else {
       addQuickTab();
@@ -170,7 +170,7 @@ export default function HomePage() {
 
   useHotkey('reconnectTab', async () => {
     const current = tabsRef.current.find((t) => t.id === activeTabIdRef.current);
-    if (!current?.connectConfig) return;
+    if (!current || current.type !== 'terminal') return;
     if (current.status === 'connected') {
       await sshDisconnect({ tabId: current.id }).catch(() => {});
     }

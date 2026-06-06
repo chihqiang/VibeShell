@@ -6,7 +6,7 @@ import Layout from '@/App';
 import { TerminalTabsProvider } from '@/contexts/TerminalTabsContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import '@/i18n';
+import '@/hooks/use-lang';
 import { initAppConfig } from '@/storage/config';
 import '@/index.css';
 import '@xterm/xterm/css/xterm.css';

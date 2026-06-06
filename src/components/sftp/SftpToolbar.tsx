@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sftpCreateFile, sftpCreateDir } from '@/api/sftp';
+import { sftpCreateFile, sftpCreateDir } from '@/apis/api/sftp';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Upload, FilePlus, FolderPlus, ListTodo } from 'lucide-react';
 import { Button } from '@/components/ui/button';

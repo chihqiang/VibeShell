@@ -4,12 +4,14 @@ import { Trash2, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import HostForm from '@/components/host/HostForm';
-import type { HostFormData } from '@/components/host/HostForm';
-import type { HostConfig } from '@/api/hosts';
-import type { KeyEntry } from '@/api/keys';
-import { listHosts } from '@/api/hosts';
-import { listKeys } from '@/api/keys';
-import { sshTestConnect } from '@/api/ssh';
+import type { HostFormData, AuthMethod } from '@/lib/types';
+import type { HostConfig } from '@/apis/types/hosts';
+import type { KeyEntry } from '@/apis/types/keys';
+import { listHosts } from '@/apis/api/hosts';
+import { buildSshConfig } from '@/lib/utils';
+import { listKeys } from '@/apis/api/keys';
+import { sshTestConnect } from '@/apis/api/ssh';
+import { resolvePrivateKeyPath } from '@/apis/utils/keys';
 import { getSshDefaults } from '@/storage/config';
 import { useNotify } from '@/hooks/use-notify';
 
@@ -70,35 +72,19 @@ export default function QuickConnect() {
     loadData();
   }, [loadData]);
 
-  function buildConfig(
-    authMethod: string,
-    hostname: string,
-    port: number,
-    username: string,
-    password: string | null,
-    privateKeyPath: string | null,
-  ) {
-    return {
-      hostname,
-      port: port || 22,
-      username,
-      password: authMethod === 'password' ? password : privateKeyPath ? password : null,
-      private_key_path: authMethod === 'key' ? privateKeyPath : null,
-    };
-  }
-
   const handleConnect = async () => {
     if (!form.hostname || !form.username) return;
     setConnecting(true);
     try {
-      const config = buildConfig(
-        form.authMethod,
-        form.hostname,
-        form.port,
-        form.username,
-        form.authMethod === 'password' ? form.password || null : form.keyPassphrase || null,
-        form.authMethod === 'key' ? form.privateKeyPath || null : null,
-      );
+      const config = buildSshConfig({
+        authMethod: form.authMethod,
+        hostname: form.hostname,
+        port: form.port,
+        username: form.username,
+        password: form.password || null,
+        keyPassphrase: form.keyPassphrase || null,
+        privateKeyPath: form.privateKeyPath || null,
+      });
       await sshTestConnect({
         hostname: config.hostname,
         port: config.port,
@@ -119,21 +105,16 @@ export default function QuickConnect() {
   const handleDoubleClick = async (host: HostConfig) => {
     setConnecting(true);
     try {
-      let privateKeyPath = host.private_key_path || null;
-      if (host.auth_method === 'key' && !privateKeyPath && keys.length > 0) {
-        const { getKeysPath } = await import('@/storage/config');
-        const keysPath = await getKeysPath();
-        const matchingKey = host.password ? keys.find((k) => k.password === host.password) : null;
-        privateKeyPath = matchingKey ? `${keysPath}/${matchingKey.file_name}` : `${keysPath}/${keys[0].file_name}`;
-      }
-      const config = buildConfig(
-        host.auth_method,
-        host.hostname,
-        host.port,
-        host.username,
-        host.password || null,
+      const privateKeyPath = await resolvePrivateKeyPath(host, keys);
+      const config = buildSshConfig({
+        authMethod: host.auth_method as AuthMethod,
+        hostname: host.hostname,
+        port: host.port,
+        username: host.username,
+        password: host.auth_method === 'password' ? host.password || null : null,
+        keyPassphrase: host.auth_method === 'key' ? host.password || null : null,
         privateKeyPath,
-      );
+      });
       await sshTestConnect({
         hostname: config.hostname,
         port: config.port,

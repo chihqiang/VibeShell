@@ -62,10 +62,10 @@ export function AboutSettings() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-xs text-muted-foreground">vibeshell v{info.appVersion || '...'}</span>
+            <span className="text-xs text-muted-foreground">VibeShell v{info.appVersion || '...'}</span>
             <div className="flex items-center gap-2">
               <a
-                href="https://github.com/chihqiang/vibeshell"
+                href="https://github.com/chihqiang/VibeShell"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 h-7 px-3 text-xs rounded-md border border-input bg-background text-foreground hover:bg-muted transition-colors"

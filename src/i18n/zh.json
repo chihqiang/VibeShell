@@ -205,6 +205,9 @@
     "loading": "加载中...",
     "error": "错误",
     "quit": "退出应用",
-    "quitConfirm": "确定要退出 vibeshell 吗？"
+    "quitConfirm": "确定要退出 VibeShell 吗？",
+    "day": "天",
+    "hour": "小时",
+    "minute": "分钟"
   }
 }

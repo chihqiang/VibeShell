@@ -5,15 +5,15 @@ import { Search, LayoutGrid, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import HostDialog from '@/components/host/dialogs/HostDialog';
+import DeleteHostDialog from '@/components/host/dialogs/DeleteHostDialog';
 import HostRow from '@/components/host/HostRow';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
-import type { HostConfig } from '@/api/hosts';
-import type { KeyEntry } from '@/api/keys';
+import type { HostConfig } from '@/apis/types/hosts';
+import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
-import { listHosts, listGroups, deleteHost, deleteGroup } from '@/api/hosts';
-import { listKeys } from '@/api/keys';
+import { listHosts, listGroups, deleteHost, deleteGroup } from '@/apis/api/hosts';
+import { listKeys } from '@/apis/api/keys';
 
 export default function HostsPage() {
   const { t } = useTranslation();
@@ -217,28 +217,11 @@ export default function HostsPage() {
 
       <HostDialog open={dialogOpen} onClose={handleDialogClose} host={editingHost} groups={groups} keys={keys} />
 
-      <Dialog
+      <DeleteHostDialog
         open={confirmDeleteId !== null}
-        onOpenChange={(next) => {
-          if (!next) setConfirmDeleteId(null);
-        }}
-      >
-        <DialogContent className="w-[360px] sm:max-w-[360px] p-0">
-          <DialogHeader>
-            <DialogTitle>{t('sidebar.confirmDeleteHost')}</DialogTitle>
-          </DialogHeader>
-          <DialogFooter className="px-5 pb-4 pt-0">
-            <div className="flex gap-2 ml-auto">
-              <Button variant="outline" size="sm" onClick={() => setConfirmDeleteId(null)}>
-                {t('connection.cancel')}
-              </Button>
-              <Button size="sm" variant="destructive" onClick={confirmDelete}>
-                {t('connection.delete')}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

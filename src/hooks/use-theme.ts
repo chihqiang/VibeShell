@@ -1,6 +1,14 @@
 import { useCallback, useEffect } from 'react';
-import type { Theme } from '@/constants/theme';
 import { useStorage } from '@/lib/storage';
+
+export type Theme = 'dark' | 'light';
+
+export const themeDisplayName: Record<Theme, string> = {
+  dark: 'Dark',
+  light: 'Light',
+};
+
+export const themeOptions: Theme[] = ['dark', 'light'];
 
 const STORAGE_KEY = 'vibeshell-theme';
 const DEFAULT_THEME: Theme = 'light';

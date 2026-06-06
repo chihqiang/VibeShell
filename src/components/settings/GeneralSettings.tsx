@@ -1,9 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { Language, languageDisplayName, languageOptions } from '@/constants/language';
-import { type Theme, themeOptions } from '@/constants/theme';
-import { changeLanguage } from '@/i18n';
-import { useTheme } from '@/hooks/use-theme';
+import { Language, languageDisplayName, languageOptions, changeLanguage } from '@/hooks/use-lang';
+import { type Theme, themeOptions, useTheme } from '@/hooks/use-theme';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {

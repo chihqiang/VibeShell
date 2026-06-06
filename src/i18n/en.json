@@ -205,6 +205,9 @@
     "loading": "Loading...",
     "error": "Error",
     "quit": "Quit",
-    "quitConfirm": "Are you sure you want to quit vibeshell?"
+    "quitConfirm": "Are you sure you want to quit VibeShell?",
+    "day": "d",
+    "hour": "h",
+    "minute": "m"
   }
 }

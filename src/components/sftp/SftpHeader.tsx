@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import type { ConnectionConfig } from '@/components/host/dialogs/ConnectionDialog';
+import type { ConnectionConfig } from '@/lib/types';
 
 interface SftpHeaderProps {
   conn: ConnectionConfig;

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { saveHost, saveGroup } from '@/api/hosts';
+import { saveHost, saveGroup } from '@/apis/api/hosts';
 import { ChevronDown, Plus, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -8,11 +8,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import HostForm from '@/components/host/HostForm';
-import type { HostFormData } from '@/components/host/HostForm';
-import type { HostConfig } from '@/api/hosts';
-import type { KeyEntry } from '@/api/keys';
+import type { AuthMethod, HostFormData, HostFormState } from '@/lib/types';
+import type { HostConfig } from '@/apis/types/hosts';
+import type { KeyEntry } from '@/apis/types/keys';
 import { getSshDefaults } from '@/storage/config';
 import { useNotify } from '@/hooks/use-notify';
+function formFromHost(host: HostConfig): HostFormState {
+  return {
+    name: host.name,
+    hostname: host.hostname,
+    port: host.port,
+    username: host.username,
+    authMethod: (host.auth_method as AuthMethod) || 'password',
+    password: host.password || '',
+    privateKeyPath: host.private_key_path || '',
+    keyPassphrase: host.auth_method === 'key' ? host.password || '' : '',
+    group: host.group || null,
+  };
+}
 
 interface HostDialogProps {
   open: boolean;
@@ -22,25 +35,13 @@ interface HostDialogProps {
   keys: KeyEntry[];
 }
 
-interface LocalForm {
-  name: string;
-  hostname: string;
-  port: number;
-  username: string;
-  authMethod: 'password' | 'key';
-  password: string;
-  privateKeyPath: string;
-  keyPassphrase: string;
-  group: string | null;
-}
-
 export { type HostConfig };
 
 export default function HostDialog({ open, onClose, host, groups, keys }: HostDialogProps) {
   const { t } = useTranslation();
   const { notifyError } = useNotify();
   const editing = !!host;
-  const [form, setForm] = useState<LocalForm>(() =>
+  const [form, setForm] = useState<HostFormState>(() =>
     host
       ? formFromHost(host)
       : {
@@ -105,21 +106,7 @@ export default function HostDialog({ open, onClose, host, groups, keys }: HostDi
     }
   }, [groupOpen]);
 
-  function formFromHost(host: HostConfig): LocalForm {
-    return {
-      name: host.name,
-      hostname: host.hostname,
-      port: host.port,
-      username: host.username,
-      authMethod: (host.auth_method as 'password' | 'key') || 'password',
-      password: host.password || '',
-      privateKeyPath: host.private_key_path || '',
-      keyPassphrase: host.auth_method === 'key' ? host.password || '' : '',
-      group: host.group || null,
-    };
-  }
-
-  function updateField<K extends keyof LocalForm>(key: K, v: LocalForm[K]) {
+  function updateField<K extends keyof HostFormState>(key: K, v: HostFormState[K]) {
     setForm((prev) => ({ ...prev, [key]: v }));
   }
 

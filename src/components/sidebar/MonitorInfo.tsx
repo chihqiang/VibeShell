@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { listen } from '@tauri-apps/api/event';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useNotify } from '@/hooks/use-notify';
-import type { MonitorData, MonitorEvent, UnlistenFn } from './types';
-import { formatUptime, parsePercent } from './utils';
+import type { MonitorData, MonitorEvent } from '@/lib/types';
+import type { UnlistenFn } from '@tauri-apps/api/event';
+import { formatUptime, parsePercent } from '@/lib/utils';
 
 function Bar({ label, value, text }: { label: string; value: number; text: string }) {
   const color = value > 80 ? '#ef4444' : value > 50 ? '#f59e0b' : '#22c55e';
@@ -83,6 +84,8 @@ export default function MonitorInfo() {
     };
   }, [tabId, notifyError]);
 
+  const uptimeLabels = { day: t('common.day'), hour: t('common.hour'), minute: t('common.minute') };
+
   return (
     <div className="p-4 space-y-3 text-xs">
       <div className="flex justify-between">
@@ -91,7 +94,9 @@ export default function MonitorInfo() {
       </div>
       <div className="flex justify-between">
         <span className="text-muted-foreground">{t('monitor.uptime')}</span>
-        <span className="text-foreground font-mono ml-2 text-right">{formatUptime(data.uptime) || '—'}</span>
+        <span className="text-foreground font-mono ml-2 text-right">
+          {formatUptime(data.uptime, uptimeLabels) || '—'}
+        </span>
       </div>
       <div className="flex justify-between">
         <span className="text-muted-foreground">{t('monitor.load')}</span>

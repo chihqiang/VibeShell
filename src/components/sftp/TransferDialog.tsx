@@ -3,7 +3,7 @@ import { X, RotateCw, Square, LoaderCircle, CheckCircle2, AlertCircle, Upload, D
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { TransferItem } from '@/components/sftp/types';
+import { TransferItem } from '@/lib/types';
 
 interface TransferDialogProps {
   open: boolean;

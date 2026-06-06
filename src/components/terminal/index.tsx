@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from 'react';
-import { sshWrite, sshRead } from '@/api/ssh';
+import { sshWrite, sshRead } from '@/apis/api/ssh';
 import { listen } from '@tauri-apps/api/event';
 import type { Terminal as XtermTerminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';

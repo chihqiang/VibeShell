@@ -7,22 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getSshDefaults } from '@/storage/config';
+import type { ConnectionConfig } from '@/lib/types';
 
 interface ConnectionDialogProps {
   open: boolean;
   onClose: () => void;
   onConnect: (config: ConnectionConfig) => void;
-}
-
-export interface ConnectionConfig {
-  name: string;
-  hostname: string;
-  port: number;
-  username: string;
-  authMethod: 'password' | 'key';
-  password: string;
-  privateKeyPath: string;
-  keyPassphrase: string;
 }
 
 export default function ConnectionDialog({ open, onClose, onConnect }: ConnectionDialogProps) {

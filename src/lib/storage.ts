@@ -4,6 +4,10 @@ function isSameType(a: unknown, b: unknown): boolean {
   if (a === null || b === null) return a === null && b === null;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
   if (typeof a !== typeof b) return false;
+  if (typeof a === 'object' && typeof b === 'object') {
+    const bKeys = Object.keys(b as Record<string, unknown>);
+    return bKeys.every((k) => k in (a as Record<string, unknown>));
+  }
   return true;
 }
 

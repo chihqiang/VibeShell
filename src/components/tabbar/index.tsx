@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Plus, Menu, Server, Key } from 'lucide-react';
 import { useTerminalTabs, type TerminalTab } from '@/contexts/TerminalTabsContext';
 import HostManagementDialog from '@/components/host/dialogs/HostManagementDialog';
-import KeyManagementDialog from '@/components/host/dialogs/KeyManagementDialog';
+import KeyManagementDialog from '@/components/keys/dialogs/KeyManagementDialog';
 
 export default function TabBar() {
   const { t } = useTranslation();

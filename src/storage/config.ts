@@ -1,12 +1,12 @@
-import {
-  getAppConfig,
-  saveSshDefaults as saveSshDefaultsRaw,
-  type AppConfig,
-  type SshDefaultsData,
-  type HotkeyAction,
-  type HotkeyActionDef,
-} from '@/api/config';
-import type { KeyBinding, HotkeyConfig } from '@/api/config';
+import { getAppConfig, saveSshDefaults as saveSshDefaultsRaw } from '@/apis/api/config';
+import type {
+  AppConfig,
+  SshDefaultsData,
+  HotkeyAction,
+  HotkeyActionDef,
+  KeyBinding,
+  HotkeyConfig,
+} from '@/apis/types/config';
 import { getStorage, setStorage } from '@/lib/storage';
 
 export type { HotkeyAction, HotkeyActionDef, HotkeyConfig, SshDefaultsData, KeyBinding };
@@ -49,6 +49,29 @@ function getCachedFullConfig(): AppConfig | null {
   return getStorage<AppConfig | null>(APP_KEY, null);
 }
 
+async function getFromConfig<T>(dedicatedKey: string | null, extract: (cfg: AppConfig) => T, fallback: T): Promise<T> {
+  if (dedicatedKey) {
+    const cached = getStorage<T | null>(dedicatedKey, null);
+    if (cached) return cached;
+  }
+
+  const full = getCachedFullConfig();
+  if (full) {
+    const val = extract(full);
+    if (dedicatedKey) setStorage(dedicatedKey, val);
+    return val;
+  }
+
+  const fresh = await fetchAndCacheAppConfig();
+  if (fresh) {
+    const val = extract(fresh);
+    if (dedicatedKey) setStorage(dedicatedKey, val);
+    return val;
+  }
+
+  return fallback;
+}
+
 // ── Init + data path ──
 
 export async function initAppConfig(): Promise<void> {
@@ -57,40 +80,17 @@ export async function initAppConfig(): Promise<void> {
 }
 
 export async function getDataPath(): Promise<string> {
-  const cached = getCachedFullConfig();
-  if (cached) return cached.data_path;
-  const cfg = await fetchAndCacheAppConfig();
-  return cfg?.data_path ?? '';
+  return getFromConfig(null, (cfg) => cfg.data_path, '');
 }
 
 export async function getKeysPath(): Promise<string> {
-  const cached = getCachedFullConfig();
-  if (cached) return cached.keys_path;
-  const cfg = await fetchAndCacheAppConfig();
-  return cfg?.keys_path ?? '';
+  return getFromConfig(null, (cfg) => cfg.keys_path, '');
 }
 
 // ── SSH defaults ──
 
 export async function getSshDefaults(): Promise<SshDefaultsData> {
-  const cached = getStorage<SshDefaultsData | null>(SSH_KEY, null);
-  if (cached) return cached;
-
-  // Try extracting from the full config already in localStorage
-  const full = getCachedFullConfig();
-  if (full) {
-    setStorage(SSH_KEY, full.ssh_defaults);
-    return full.ssh_defaults;
-  }
-
-  // Fetch from API
-  const fresh = await fetchAndCacheAppConfig();
-  if (fresh) {
-    setStorage(SSH_KEY, fresh.ssh_defaults);
-    return fresh.ssh_defaults;
-  }
-
-  return SSH_FALLBACK;
+  return getFromConfig(SSH_KEY, (cfg) => cfg.ssh_defaults, SSH_FALLBACK);
 }
 
 export async function saveSshDefaults(values: SshDefaultsData): Promise<void> {
@@ -105,22 +105,7 @@ export async function saveSshDefaults(values: SshDefaultsData): Promise<void> {
 // ── Hotkey defaults ──
 
 export async function getHotkeyDefaults(): Promise<Record<string, KeyBinding>> {
-  const cached = getStorage<Record<string, KeyBinding> | null>(HOTKEY_KEY, null);
-  if (cached) return cached;
-
-  const full = getCachedFullConfig();
-  if (full) {
-    setStorage(HOTKEY_KEY, full.hotkey_defaults);
-    return full.hotkey_defaults;
-  }
-
-  const fresh = await fetchAndCacheAppConfig();
-  if (fresh) {
-    setStorage(HOTKEY_KEY, fresh.hotkey_defaults);
-    return fresh.hotkey_defaults;
-  }
-
-  return HOTKEY_FALLBACK;
+  return getFromConfig(HOTKEY_KEY, (cfg) => cfg.hotkey_defaults, HOTKEY_FALLBACK);
 }
 
 // ── Cache invalidation ──

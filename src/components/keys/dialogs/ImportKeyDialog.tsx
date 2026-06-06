@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { importKey, importKeyContent } from '@/api/keys';
+import { importKey, importKeyContent } from '@/apis/api/keys';
 import { FolderOpen, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { KeyEntry } from '@/api/keys';
+import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
-
-type ImportMode = 'file' | 'paste';
+import type { ImportMode } from '@/lib/types';
 
 interface Props {
   open: boolean;

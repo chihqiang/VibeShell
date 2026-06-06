@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@/lib/api';
 
 export function backupData(params: { destination: string }): Promise<void> {
   return invoke('backup_data', params);

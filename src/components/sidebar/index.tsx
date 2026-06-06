@@ -4,21 +4,18 @@ import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import MonitorInfo from './MonitorInfo';
 import ProcessList from './ProcessList';
 import DiskList from './DiskList';
-
-const MIN_WIDTH = 180;
-const MAX_WIDTH = 500;
-const COLLAPSED_WIDTH = 28;
+import { useStorage } from '@/lib/storage';
+import { COLLAPSED_WIDTH, MAX_WIDTH, MIN_WIDTH, STORAGE_KEY_COLLAPSED, STORAGE_KEY_WIDTH } from '@/lib/types';
 
 export default function Sidebar() {
   const { t } = useTranslation();
-  const [collapsed, setCollapsed] = useState(() => {
-    const saved = localStorage.getItem('vibeshell-sidebar-collapsed');
-    return saved === 'true';
-  });
-  const [width, setWidth] = useState(() => {
-    const saved = localStorage.getItem('vibeshell-sidebar-width');
-    return saved ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, parseInt(saved, 10))) : 256;
-  });
+  const [collapsed, setCollapsed] = useStorage(STORAGE_KEY_COLLAPSED, false);
+  const [storedWidth, setStoredWidth] = useStorage(STORAGE_KEY_WIDTH, 256);
+  const width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, storedWidth));
+  const setWidth = useCallback(
+    (w: number) => setStoredWidth(Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w))),
+    [setStoredWidth],
+  );
   const dragging = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const startX = useRef(0);
@@ -55,17 +52,9 @@ export default function Sidebar() {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-  }, []);
+  }, [setWidth]);
 
-  useEffect(() => {
-    localStorage.setItem('vibeshell-sidebar-width', String(width));
-  }, [width]);
-
-  useEffect(() => {
-    localStorage.setItem('vibeshell-sidebar-collapsed', String(collapsed));
-  }, [collapsed]);
-
-  const toggle = () => setCollapsed((c) => !c);
+  const toggle = () => setCollapsed(!collapsed);
 
   return (
     <aside

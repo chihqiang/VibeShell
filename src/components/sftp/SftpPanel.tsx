@@ -19,14 +19,15 @@ import {
   FolderPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FileType } from '@/components/sftp/types';
-import type { FileEntry, TransferItem } from '@/components/sftp/types';
+import { FileType } from '@/apis/types/sftp';
+import { expandLocalFiles } from '@/apis/utils/sftp';
+import type { FileEntry } from '@/apis/types/sftp';
+import type { TransferItem } from '@/lib/types';
 import { TransferDialog } from '@/components/sftp/TransferDialog';
 import ContextMenu from '@/components/sftp/ContextMenu';
 import NewFileDialog from '@/components/sftp/dialogs/NewFileDialog';
 import NewFolderDialog from '@/components/sftp/dialogs/NewFolderDialog';
 import { formatSize } from '@/lib/utils';
-import { expandLocalFiles } from '@/utils/sftp';
 import { useNotify } from '@/hooks/use-notify';
 import {
   sftpListFiles,
@@ -36,7 +37,7 @@ import {
   sftpUploadFileProgress,
   sftpDownloadFileProgress,
   sftpCancelTransfer,
-} from '@/api/sftp';
+} from '@/apis/api/sftp';
 
 export default function SftpPanel() {
   const { t } = useTranslation();
@@ -45,7 +46,7 @@ export default function SftpPanel() {
   const { activeTabId, tabs } = useTerminalTabs();
   const tabId = activeTabId;
   const activeTab = tabs.find((t) => t.id === activeTabId);
-  const conn = activeTab?.connectConfig;
+  const conn = activeTab?.type === 'terminal' ? activeTab.connectConfig : undefined;
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [currentPath, setCurrentPath] = useState('.');
   const [loading, setLoading] = useState(false);

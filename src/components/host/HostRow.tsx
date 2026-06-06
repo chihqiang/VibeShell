@@ -1,6 +1,6 @@
 import { Pencil, Terminal, Trash2, MoreHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { HostConfig } from '@/api/hosts';
+import type { HostConfig } from '@/apis/types/hosts';
 
 interface HostRowProps {
   host: HostConfig;

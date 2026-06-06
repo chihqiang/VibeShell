@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { listKeys, deleteKey } from '@/api/keys';
+import { listKeys, deleteKey } from '@/apis/api/keys';
 import { Search, Upload, Trash2, FileKey } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import ImportKeyDialog from '@/components/host/dialogs/ImportKeyDialog';
-import type { KeyEntry } from '@/api/keys';
+import ImportKeyDialog from '@/components/keys/dialogs/ImportKeyDialog';
+import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
 
 interface Props {

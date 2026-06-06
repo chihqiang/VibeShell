@@ -1,10 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import type { FileEntry } from '@/components/sftp/types';
-
-export interface SftpListFilesResult {
-  path: string;
-  files: FileEntry[];
-}
+import { invoke } from '@/lib/api';
+import type { SftpListFilesResult, SftpChmodParams } from '@/apis/types/sftp';
 
 export function sftpListFiles(params: { tabId: string; path: string }): Promise<SftpListFilesResult> {
   return invoke('sftp_list_files', params);
@@ -30,18 +25,8 @@ export function sftpDeleteFile(params: { tabId: string; path: string; isDirector
   return invoke('sftp_delete_file', params);
 }
 
-export interface SftpChmodParams {
-  tabId: string;
-  path: string;
-  mode: string;
-  user: string | null;
-  group: string | null;
-  recursive: boolean;
-  isDirectory: boolean;
-}
-
 export function sftpChmod(params: SftpChmodParams): Promise<void> {
-  return invoke('sftp_chmod', params as unknown as Record<string, unknown>);
+  return invoke('sftp_chmod', params);
 }
 
 export function sftpReadFile(params: { tabId: string; path: string }): Promise<number[]> {

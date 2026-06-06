@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Code, Pencil, Trash2, Settings2, Download } from 'lucide-react';
-import { FileType } from '@/components/sftp/types';
-import type { FileEntry } from '@/components/sftp/types';
-import { useFileActions } from '@/hooks/use-file-actions';
+import { useFileActions } from '@/hooks/use-tab';
 import RenameDialog from '@/components/sftp/dialogs/RenameDialog';
 import EditDialog from '@/components/sftp/dialogs/EditDialog';
 import ChmodDialog from '@/components/sftp/dialogs/ChmodDialog';
 import ConfirmDialog from '@/components/sftp/dialogs/ConfirmDialog';
+import { FileType } from '@/apis/types/sftp';
+import type { FileEntry } from '@/apis/types/sftp';
 
 interface ContextMenuProps {
   ctxMenu: { x: number; y: number; entry: FileEntry } | null;
