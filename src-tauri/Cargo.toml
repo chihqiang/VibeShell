@@ -1,8 +1,8 @@
 [package]
 name = "vibeshell"
 version = "0.0.1"
-description = "A Tauri App"
-authors = ["you"]
+description = "VibeShell 是基于 Rust + Tauri 构建的跨平台一体化 SSH 桌面客户端，一站式整合远程 SSH 终端会话、服务器资源实时监控、SFTP 远程文件管理三大核心能力，完美兼容 Windows/macOS/Linux 全平台。"
+authors = ["chihqiang"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -19,7 +19,22 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-updater = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-process = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+ssh2 = "0.9"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+log = "0.4"
+fern = "0.7"
+tempfile = "3"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+tauri-plugin-os = "2.3.2"
+tauri-plugin-global-shortcut = "2.3.2"
+sha2 = "0.10"
+base64 = "0.22"
 
