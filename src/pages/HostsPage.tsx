@@ -12,8 +12,8 @@ import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import type { HostConfig } from '@/apis/types/hosts';
 import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
-import { listHosts, listGroups, deleteHost, deleteGroup } from '@/apis/api/hosts';
-import { listKeys } from '@/apis/api/keys';
+import { deleteHost, deleteGroup } from '@/apis/api/hosts';
+import { fetchAllHostData } from '@/apis/utils/hosts';
 
 export default function HostsPage() {
   const { t } = useTranslation();
@@ -31,7 +31,7 @@ export default function HostsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [h, g, k] = await Promise.all([listHosts(), listGroups(), listKeys()]);
+      const { hosts: h, groups: g, keys: k } = await fetchAllHostData();
       setHosts(h);
       setGroups(g);
       setKeys(k);

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { saveHost, saveGroup } from '@/apis/api/hosts';
+import { hostConfigToFormState, formStateToHostPayload } from '@/apis/utils/hosts';
 import { ChevronDown, Plus, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -8,25 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import HostForm from '@/components/host/HostForm';
-import type { AuthMethod, HostFormData, HostFormState } from '@/lib/types';
+import type { HostFormData, HostFormState } from '@/lib/types';
 import type { HostConfig } from '@/apis/types/hosts';
 import type { KeyEntry } from '@/apis/types/keys';
 import { getSshDefaults } from '@/storage/config';
 import { useNotify } from '@/hooks/use-notify';
-function formFromHost(host: HostConfig): HostFormState {
-  return {
-    name: host.name,
-    hostname: host.hostname,
-    port: host.port,
-    username: host.username,
-    authMethod: (host.auth_method as AuthMethod) || 'password',
-    password: host.password || '',
-    privateKeyPath: host.private_key_path || '',
-    keyPassphrase: host.auth_method === 'key' ? host.password || '' : '',
-    group: host.group || null,
-  };
-}
-
 interface HostDialogProps {
   open: boolean;
   onClose: () => void;
@@ -43,7 +30,7 @@ export default function HostDialog({ open, onClose, host, groups, keys }: HostDi
   const editing = !!host;
   const [form, setForm] = useState<HostFormState>(() =>
     host
-      ? formFromHost(host)
+      ? hostConfigToFormState(host)
       : {
           name: '',
           hostname: '',
@@ -83,7 +70,7 @@ export default function HostDialog({ open, onClose, host, groups, keys }: HostDi
 
   useEffect(() => {
     if (host) {
-      setForm(formFromHost(host));
+      setForm(hostConfigToFormState(host));
     }
   }, [host, open]);
 
@@ -117,20 +104,7 @@ export default function HostDialog({ open, onClose, host, groups, keys }: HostDi
   async function handleSave() {
     setSaving(true);
     try {
-      const payload = {
-        id: host?.id || '',
-        name: form.name,
-        hostname: form.hostname,
-        port: form.port || 22,
-        username: form.username,
-        auth_method: form.authMethod,
-        password: form.authMethod === 'password' ? form.password : form.keyPassphrase || null,
-        private_key_path: form.authMethod === 'key' ? form.privateKeyPath || null : null,
-        group: form.group,
-        created_at: host?.created_at || 0,
-        updated_at: Date.now(),
-      };
-      await saveHost({ host: payload });
+      await saveHost({ host: formStateToHostPayload(form, host) });
       onClose();
     } catch (e) {
       notifyError(e);

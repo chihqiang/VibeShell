@@ -7,9 +7,8 @@ import HostForm from '@/components/host/HostForm';
 import type { HostFormData, AuthMethod } from '@/lib/types';
 import type { HostConfig } from '@/apis/types/hosts';
 import type { KeyEntry } from '@/apis/types/keys';
-import { listHosts } from '@/apis/api/hosts';
 import { buildSshConfig } from '@/lib/utils';
-import { listKeys } from '@/apis/api/keys';
+import { fetchHostsAndKeys } from '@/apis/utils/hosts';
 import { sshTestConnect } from '@/apis/api/ssh';
 import { resolvePrivateKeyPath } from '@/apis/utils/keys';
 import { getSshDefaults } from '@/storage/config';
@@ -60,7 +59,7 @@ export default function QuickConnect() {
 
   const loadData = useCallback(async () => {
     try {
-      const [h, k] = await Promise.all([listHosts(), listKeys()]);
+      const { hosts: h, keys: k } = await fetchHostsAndKeys();
       setHosts(h);
       setKeys(k);
     } catch (e) {
