@@ -1,0 +1,51 @@
+name: releases
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: install frontend dependencies
+        run: npm install 
+        
+      - name: Build & upload
+        uses: chihqiang/tauri-action@main
+        with:
+          command: build
+          target: ${{ matrix.target }}
+          privateKey: ${{ secrets.TAURI_PRIVATE_KEY }}
+
+  finalize:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate updater.json
+        uses: chihqiang/tauri-action@main
+        with:
+          command: generate-updater
