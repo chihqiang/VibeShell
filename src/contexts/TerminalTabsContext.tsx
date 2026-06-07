@@ -2,7 +2,6 @@ import { createContext, useContext, useReducer, useCallback, useRef, type ReactN
 import { useTranslation } from 'react-i18next';
 import { sshDisconnect } from '@/apis/api/ssh';
 import type { HostConfig } from '@/apis/types/hosts';
-import { useNotify } from '@/hooks/use-notify';
 import ConfirmDialog from '@/components/sftp/dialogs/ConfirmDialog';
 import type { TabType, ConnectionStatus } from '@/lib/types';
 
@@ -167,27 +166,23 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, null, createInitialState);
   const stateRef = useRef(state);
   stateRef.current = state;
-  const { notifyError } = useNotify();
   const { t } = useTranslation();
 
-  const performClose = useCallback(
-    (tabId: string) => {
-      const s = stateRef.current;
-      const tab = s.tabs.find((t) => t.id === tabId);
-      if (tab?.status === 'connected') {
-        sshDisconnect({ tabId: tab.id }).catch((e) => notifyError(e));
-      }
+  const performClose = useCallback((tabId: string) => {
+    const s = stateRef.current;
+    const tab = s.tabs.find((t) => t.id === tabId);
+    if (tab?.type === 'terminal') {
+      sshDisconnect({ tabId: tab.id }).catch(() => {});
+    }
 
-      if (s.tabs.length <= 1) {
-        const newTab = createInitialTab();
-        dispatch({ type: 'REPLACE_ALL', tabs: [newTab], activeTabId: newTab.id });
-        return;
-      }
+    if (s.tabs.length <= 1) {
+      const newTab = createInitialTab();
+      dispatch({ type: 'REPLACE_ALL', tabs: [newTab], activeTabId: newTab.id });
+      return;
+    }
 
-      dispatch({ type: 'REMOVE_TAB', tabId });
-    },
-    [notifyError],
-  );
+    dispatch({ type: 'REMOVE_TAB', tabId });
+  }, []);
 
   const confirmCloseTab = useCallback(() => {
     const tabId = stateRef.current.pendingCloseTabId;

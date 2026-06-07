@@ -337,10 +337,17 @@ pub fn connect(
         heartbeat_interval_secs,
     );
 
-    SESSIONS
-        .write()
-        .map_err(|e| e.to_string())?
-        .insert(tab_id.to_string(), handle);
+    // Cancel any existing session with this tabId (e.g. stale reconnect session)
+    {
+        let mut sessions = SESSIONS.write().map_err(|e| e.to_string())?;
+        if let Some(old) = sessions.remove(tab_id) {
+            if let Ok(inner) = old.lock() {
+                inner.cancel.store(true, Ordering::Relaxed);
+                inner.wake_cvar.notify_all();
+            }
+        }
+        sessions.insert(tab_id.to_string(), handle);
+    }
 
     log::info!(
         "[connect] tab={} ready (active sessions: {})",

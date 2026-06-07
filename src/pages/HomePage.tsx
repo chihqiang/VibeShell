@@ -220,7 +220,8 @@ export default function HomePage() {
             <TerminalComp
               key={tab.id}
               terminalId={`xterm-${tab.id}`}
-              tabId={tab.status === 'connected' ? tab.id : undefined}
+              tabId={tab.id}
+              status={tab.status}
               visible={tab.id === activeTabId}
             />
           ))}

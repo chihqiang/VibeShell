@@ -1,14 +1,17 @@
 import { memo, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { sshWrite, sshRead } from '@/apis/api/ssh';
 import { listen } from '@tauri-apps/api/event';
 import type { Terminal as XtermTerminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
+import type { ConnectionStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useNotify } from '@/hooks/use-notify';
 
 interface TerminalProps {
   terminalId: string;
   tabId?: string;
+  status?: ConnectionStatus;
   className?: string;
   visible?: boolean;
 }
@@ -18,15 +21,18 @@ interface SshOutputEvent {
   data: string;
 }
 
-const Terminal = memo(function Terminal({ terminalId, tabId, className, visible = true }: TerminalProps) {
+const Terminal = memo(function Terminal({ terminalId, tabId, status, className, visible = true }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
   const termRef = useRef<XtermTerminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const tabIdRef = useRef(tabId);
   tabIdRef.current = tabId;
+  const prevStatusRef = useRef<ConnectionStatus | undefined>(undefined);
+  const hadConnectionRef = useRef(false);
   const pendingRef = useRef<string[]>([]);
   const { notifyError } = useNotify();
+  const { t } = useTranslation();
 
   // Initialize xterm — runs once per terminalId, independent of visibility
   useEffect(() => {
@@ -128,6 +134,57 @@ const Terminal = memo(function Terminal({ terminalId, tabId, className, visible 
     };
   }, [visible, terminalId, notifyError]);
 
+  // Connection status messages — show connecting/connected/disconnected feedback
+  useEffect(() => {
+    if (!tabId) return;
+
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (status === 'connecting' && prev !== 'connecting') {
+      const isReconnect = hadConnectionRef.current;
+      const text = isReconnect ? t('terminal.reconnecting') : t('terminal.connectingToHost');
+      const msg = `\x1b[33m${text}\x1b[0m\r\n`;
+      if (termRef.current) {
+        termRef.current.write(msg);
+      } else {
+        pendingRef.current.push(msg);
+      }
+    } else if (status === 'connected' && prev !== 'connected') {
+      hadConnectionRef.current = true;
+      const msg = `\x1b[32m${t('terminal.connectedSuccess')}\x1b[0m\r\n`;
+      if (termRef.current) {
+        termRef.current.write(msg);
+      } else {
+        pendingRef.current.push(msg);
+      }
+
+      // Drain buffered SSH output that arrived before/during connection
+      sshRead({ tabId })
+        .then((buf) => {
+          if (buf && termRef.current) {
+            termRef.current.write(buf);
+          }
+        })
+        .catch(() => {});
+    } else if (status === 'disconnected' && prev === 'connected') {
+      // SSH prompt doesn't end with newline, so break to a new line first
+      const msg = `\r\n\x1b[31m${t('terminal.disconnected')}\x1b[0m\r\n`;
+      if (termRef.current) {
+        termRef.current.write(msg);
+      } else {
+        pendingRef.current.push(msg);
+      }
+    } else if (status === 'disconnected' && prev === 'connecting') {
+      const msg = `\x1b[31m${t('terminal.connectFailed')}\x1b[0m\r\n`;
+      if (termRef.current) {
+        termRef.current.write(msg);
+      } else {
+        pendingRef.current.push(msg);
+      }
+    }
+  }, [tabId, status, t]);
+
   // SSH output listener — requestAnimationFrame-batched writes to avoid jank
   useEffect(() => {
     if (!tabId) return;
@@ -161,20 +218,6 @@ const Terminal = memo(function Terminal({ terminalId, tabId, className, visible 
       if (cancelled) {
         unlisten();
         return unlisten;
-      }
-
-      // Drain initial output — also starts the background reader thread
-      try {
-        const buf = await sshRead({ tabId });
-        if (!cancelled && buf) {
-          if (termRef.current) {
-            termRef.current.write(buf);
-          } else {
-            pendingRef.current.push(buf);
-          }
-        }
-      } catch (e) {
-        notifyError(e);
       }
 
       return unlisten;

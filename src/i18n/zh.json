@@ -113,7 +113,12 @@
   },
   "terminal": {
     "closeTab": "关闭标签页",
-    "closeTabConfirm": "确定要关闭标签页 \"{{name}}\" 吗？未保存的数据可能会丢失。"
+    "closeTabConfirm": "确定要关闭标签页 \"{{name}}\" 吗？未保存的数据可能会丢失。",
+    "connectingToHost": "连接主机...",
+    "connectedSuccess": "连接主机成功",
+    "disconnected": "连接断开",
+    "reconnecting": "重新连接...",
+    "connectFailed": "连接失败"
   },
   "tab": {
     "closeConfirmTitle": "关闭标签页",

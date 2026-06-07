@@ -113,7 +113,12 @@
   },
   "terminal": {
     "closeTab": "Close Tab",
-    "closeTabConfirm": "Close tab \"{{name}}\"? Unsaved data may be lost."
+    "closeTabConfirm": "Close tab \"{{name}}\"? Unsaved data may be lost.",
+    "connectingToHost": "Connecting to host...",
+    "connectedSuccess": "Connected successfully",
+    "disconnected": "Connection disconnected",
+    "reconnecting": "Reconnecting...",
+    "connectFailed": "Connection failed"
   },
   "tab": {
     "closeConfirmTitle": "Close Tab",
