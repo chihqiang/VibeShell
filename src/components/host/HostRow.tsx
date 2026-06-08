@@ -12,7 +12,15 @@ interface HostRowProps {
   onDelete: () => void;
 }
 
-export default function HostRow({ host, connecting = false, menuOpen, onMenuToggle, onOpenTerminal, onEdit, onDelete }: HostRowProps) {
+export default function HostRow({
+  host,
+  connecting = false,
+  menuOpen,
+  onMenuToggle,
+  onOpenTerminal,
+  onEdit,
+  onDelete,
+}: HostRowProps) {
   const { t } = useTranslation();
 
   function handleOpenTerminal() {

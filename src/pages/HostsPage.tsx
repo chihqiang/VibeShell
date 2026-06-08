@@ -117,18 +117,14 @@ export default function HostsPage() {
 
   const filtered = useMemo(
     () =>
-      hosts.filter(
-        (h) => h.name.toLowerCase().includes(searchQuery.toLowerCase()) || h.hostname.includes(searchQuery),
-      ),
+      hosts.filter((h) => h.name.toLowerCase().includes(searchQuery.toLowerCase()) || h.hostname.includes(searchQuery)),
     [hosts, searchQuery],
   );
 
   const ungrouped = useMemo(() => filtered.filter((h) => !h.group), [filtered]);
   const groupedGroups = useMemo(
     () =>
-      groups
-        .map((g) => ({ group: g, hosts: filtered.filter((h) => h.group === g) }))
-        .filter((g) => g.hosts.length > 0),
+      groups.map((g) => ({ group: g, hosts: filtered.filter((h) => h.group === g) })).filter((g) => g.hosts.length > 0),
     [filtered, groups],
   );
 

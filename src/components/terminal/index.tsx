@@ -156,8 +156,6 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, className }
       } else {
         pendingRef.current.push(msg);
       }
-
-
     } else if (status === 'disconnected' && prev === 'connected') {
       // SSH prompt doesn't end with newline, so break to a new line first
       const msg = `\r\n\x1b[31m${t('terminal.disconnected')}\x1b[0m\r\n`;
@@ -222,12 +220,7 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, className }
     };
   }, [tabId, notifyError]);
 
-  return (
-    <div
-      ref={containerRef}
-      className={cn('bg-[#02040a] h-full w-full overflow-hidden', className)}
-    />
-  );
+  return <div ref={containerRef} className={cn('bg-[#02040a] h-full w-full overflow-hidden', className)} />;
 });
 
 export default Terminal;

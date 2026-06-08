@@ -260,31 +260,34 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_STATUS', tabId, status });
   }, []);
 
-  const contextValue = useMemo<TerminalTabsContextValue>(() => ({
-    tabs,
-    activeTabId: state.activeTabId,
-    terminalTabVersion: state.terminalTabVersion,
-    addQuickTab,
-    addTerminalTab,
-    convertTabToTerminal,
-    closeTab,
-    closeAllOtherTabs,
-    closeAllTabs,
-    setActiveTab,
-    updateStatus,
-  }), [
-    tabs,
-    state.activeTabId,
-    state.terminalTabVersion,
-    addQuickTab,
-    addTerminalTab,
-    convertTabToTerminal,
-    closeTab,
-    closeAllOtherTabs,
-    closeAllTabs,
-    setActiveTab,
-    updateStatus,
-  ]);
+  const contextValue = useMemo<TerminalTabsContextValue>(
+    () => ({
+      tabs,
+      activeTabId: state.activeTabId,
+      terminalTabVersion: state.terminalTabVersion,
+      addQuickTab,
+      addTerminalTab,
+      convertTabToTerminal,
+      closeTab,
+      closeAllOtherTabs,
+      closeAllTabs,
+      setActiveTab,
+      updateStatus,
+    }),
+    [
+      tabs,
+      state.activeTabId,
+      state.terminalTabVersion,
+      addQuickTab,
+      addTerminalTab,
+      convertTabToTerminal,
+      closeTab,
+      closeAllOtherTabs,
+      closeAllTabs,
+      setActiveTab,
+      updateStatus,
+    ],
+  );
 
   return (
     <>

@@ -95,47 +95,50 @@ export default function TabBar({ onReconnect }: { onReconnect?: (tabId: string) 
   );
 }
 
-const TabBarItem = memo(function TabBarItem({
-  tab,
-  active,
-  onSelect,
-  onClose,
-  onContextMenu,
-}: {
-  tab: TerminalTab;
-  active: boolean;
-  onSelect: () => void;
-  onClose: () => void;
-  onContextMenu: (e: React.MouseEvent) => void;
-}) {
-  const statusColor =
-    tab.type === 'terminal'
-      ? tab.status === 'connected'
-        ? 'bg-green-500'
-        : tab.status === 'connecting'
-          ? 'bg-yellow-500'
-          : 'bg-red-500'
-      : 'bg-transparent';
+const TabBarItem = memo(
+  function TabBarItem({
+    tab,
+    active,
+    onSelect,
+    onClose,
+    onContextMenu,
+  }: {
+    tab: TerminalTab;
+    active: boolean;
+    onSelect: () => void;
+    onClose: () => void;
+    onContextMenu: (e: React.MouseEvent) => void;
+  }) {
+    const statusColor =
+      tab.type === 'terminal'
+        ? tab.status === 'connected'
+          ? 'bg-green-500'
+          : tab.status === 'connecting'
+            ? 'bg-yellow-500'
+            : 'bg-red-500'
+        : 'bg-transparent';
 
-  return (
-    <div
-      className={`group flex items-center gap-1.5 h-full px-3 text-xs border-r border-border cursor-pointer select-none shrink-0 transition-colors ${
-        active ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-      }`}
-      onClick={onSelect}
-      onContextMenu={onContextMenu}
-    >
-      {tab.type === 'terminal' && <span className={`w-2 h-2 rounded-full ${statusColor}`} />}
-      <span className="truncate max-w-28">{tab.title}</span>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        className="p-0.5 rounded hover:bg-muted-foreground/20 transition-colors cursor-pointer ml-0.5 opacity-0 group-hover:opacity-100"
+    return (
+      <div
+        className={`group flex items-center gap-1.5 h-full px-3 text-xs border-r border-border cursor-pointer select-none shrink-0 transition-colors ${
+          active ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        }`}
+        onClick={onSelect}
+        onContextMenu={onContextMenu}
       >
-        <X size={12} />
-      </button>
-    </div>
-  );
-}, (prev, next) => prev.tab === next.tab && prev.active === next.active);
+        {tab.type === 'terminal' && <span className={`w-2 h-2 rounded-full ${statusColor}`} />}
+        <span className="truncate max-w-28">{tab.title}</span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="p-0.5 rounded hover:bg-muted-foreground/20 transition-colors cursor-pointer ml-0.5 opacity-0 group-hover:opacity-100"
+        >
+          <X size={12} />
+        </button>
+      </div>
+    );
+  },
+  (prev, next) => prev.tab === next.tab && prev.active === next.active,
+);
