@@ -68,9 +68,7 @@ pub fn run() {
             storage::save_host,
             storage::delete_host,
             storage::get_app_config,
-            storage::list_groups,
-            storage::save_group,
-            storage::delete_group,
+            storage::list_tags,
             // SSH commands
             ssh::ssh_connect,
             ssh::ssh_test_connect,

@@ -444,7 +444,7 @@ pub fn list_files_recursive_with_session(
     Ok(result)
 }
 
-/// Resolve UID→username / GID→groupname with per-session caching.
+/// Resolve UID→username / GID→tagName with per-session caching.
 ///
 /// On the first call the cache is empty, so we query `/etc/passwd` and
 /// `/etc/group` once and store every entry.  Subsequent calls only hit the

@@ -26,7 +26,7 @@ export interface ConnectionConfig extends HostFormData {
 
 export interface HostFormState extends HostFormData {
   name: string;
-  group: string | null;
+  tags: string[];
 }
 
 // -- sftp / transfer --

@@ -1,13 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { saveHost, saveGroup } from '@/apis/api/hosts';
+import { saveHost } from '@/apis/api/hosts';
 import { hostConfigToFormState, formStateToHostPayload } from '@/apis/utils/hosts';
-import { ChevronDown, Plus, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import TagSelect from '@/components/ui/tag-select';
 import HostForm from '@/components/host/HostForm';
 import type { HostFormData, HostFormState } from '@/lib/types';
 import type { HostConfig } from '@/apis/types/hosts';
@@ -18,13 +18,13 @@ interface HostDialogProps {
   open: boolean;
   onClose: () => void;
   host?: HostConfig | null;
-  groups: string[];
+  tags: string[];
   keys: KeyEntry[];
 }
 
 export { type HostConfig };
 
-export default function HostDialog({ open, onClose, host, groups, keys }: HostDialogProps) {
+export default function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDialogProps) {
   const { t } = useTranslation();
   const { notifyError } = useNotify();
   const editing = !!host;
@@ -40,14 +40,11 @@ export default function HostDialog({ open, onClose, host, groups, keys }: HostDi
           password: '',
           privateKeyPath: '',
           keyPassphrase: '',
-          group: null,
+          tags: [],
         },
   );
   const [saving, setSaving] = useState(false);
-  const [groupOpen, setGroupOpen] = useState(false);
-  const [addingGroup, setAddingGroup] = useState(false);
-  const [newGroup, setNewGroup] = useState('');
-  const groupRef = useRef<HTMLDivElement>(null);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
 
   // Fetch SSH defaults and fill form when opening for new host
   useEffect(() => {
@@ -62,7 +59,7 @@ export default function HostDialog({ open, onClose, host, groups, keys }: HostDi
           password: '',
           privateKeyPath: '',
           keyPassphrase: '',
-          group: null,
+          tags: [],
         });
       });
     }
@@ -73,25 +70,6 @@ export default function HostDialog({ open, onClose, host, groups, keys }: HostDi
       setForm(hostConfigToFormState(host));
     }
   }, [host, open]);
-
-  useEffect(() => {
-    if (!groupOpen) {
-      setAddingGroup(false);
-      setNewGroup('');
-    }
-  }, [groupOpen]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (groupRef.current && !groupRef.current.contains(e.target as Node)) {
-        setGroupOpen(false);
-      }
-    }
-    if (groupOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [groupOpen]);
 
   function updateField<K extends keyof HostFormState>(key: K, v: HostFormState[K]) {
     setForm((prev) => ({ ...prev, [key]: v }));
@@ -113,151 +91,101 @@ export default function HostDialog({ open, onClose, host, groups, keys }: HostDi
     }
   }
 
-  async function handleAddGroup() {
-    const name = newGroup.trim();
-    if (!name) return;
-    try {
-      await saveGroup({ group: name });
-      updateField('group', name);
-      setAddingGroup(false);
-      setNewGroup('');
-    } catch (e) {
-      notifyError(e);
-    }
+  function openTagDialog() {
+    setTagDialogOpen(true);
   }
 
-  const selectedGroupLabel = form.group || t('sidebar.noGroup');
+  function handleConfirmTags(tags: string[]) {
+    setForm((prev) => ({ ...prev, tags }));
+  }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
-    >
-      <DialogContent className="w-[460px] sm:max-w-[460px] p-0">
-        <DialogHeader>
-          <DialogTitle>{editing ? t('sidebar.editHost') : t('sidebar.addHost')}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) onClose();
+        }}
+      >
+        <DialogContent className="w-[460px] sm:max-w-[460px] p-0">
+          <DialogHeader>
+            <DialogTitle>{editing ? t('sidebar.editHost') : t('sidebar.addHost')}</DialogTitle>
+          </DialogHeader>
 
-        <div className="px-5 py-4 space-y-4">
-          <div>
-            <Label>{t('connection.name')}</Label>
-            <Input
-              type="text"
-              value={form.name}
-              onChange={(e) => updateField('name', e.target.value)}
-              placeholder="My Server"
+          <div className="px-5 py-4 space-y-4">
+            <div>
+              <Label>{t('connection.name')}</Label>
+              <Input
+                type="text"
+                value={form.name}
+                onChange={(e) => updateField('name', e.target.value)}
+                placeholder="My Server"
+              />
+            </div>
+
+            <HostForm
+              value={{
+                hostname: form.hostname,
+                port: form.port,
+                username: form.username,
+                authMethod: form.authMethod,
+                password: form.password,
+                privateKeyPath: form.privateKeyPath,
+                keyPassphrase: form.keyPassphrase,
+              }}
+              onChange={handleFormChange}
+              keys={keys}
             />
-          </div>
 
-          <HostForm
-            value={{
-              hostname: form.hostname,
-              port: form.port,
-              username: form.username,
-              authMethod: form.authMethod,
-              password: form.password,
-              privateKeyPath: form.privateKeyPath,
-              keyPassphrase: form.keyPassphrase,
-            }}
-            onChange={handleFormChange}
-            keys={keys}
-          />
-
-          <div ref={groupRef} className="relative">
-            <Label>{t('sidebar.selectGroup')}</Label>
-            <button
-              type="button"
-              onClick={() => setGroupOpen(!groupOpen)}
-              className={cn(
-                'flex items-center justify-between w-full h-8 rounded-lg border border-input bg-background px-2.5 py-1 text-sm transition-colors',
-                'hover:border-muted-foreground cursor-pointer',
-              )}
-            >
-              <span className={form.group ? 'text-foreground' : 'text-muted-foreground'}>{selectedGroupLabel}</span>
-              <ChevronDown size={14} className="text-muted-foreground" />
-            </button>
-
-            {groupOpen && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
-                {addingGroup ? (
-                  <div className="flex items-center gap-1 p-2 border-b border-border">
-                    <Input
-                      type="text"
-                      value={newGroup}
-                      onChange={(e) => setNewGroup(e.target.value)}
-                      placeholder={t('sidebar.groupName')}
-                      className="h-7 text-xs flex-1"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddGroup();
-                      }}
-                    />
-                    <Button size="xs" onClick={handleAddGroup} disabled={!newGroup.trim()}>
-                      <Check size={12} />
-                    </Button>
-                  </div>
-                ) : null}
-
-                <button
-                  onClick={() => {
-                    updateField('group', null);
-                    setGroupOpen(false);
-                  }}
-                  className={cn(
-                    'flex items-center w-full h-8 px-3 text-sm text-left transition-colors hover:bg-muted cursor-pointer',
-                    !form.group ? 'bg-primary/5 text-primary' : 'text-muted-foreground',
-                  )}
-                >
-                  {t('sidebar.noGroup')}
-                </button>
-
-                {groups.length > 0 && <div className="h-px bg-border mx-2" />}
-
-                {groups.map((g) => (
-                  <button
-                    key={g}
-                    onClick={() => {
-                      updateField('group', g);
-                      setGroupOpen(false);
-                    }}
-                    className={cn(
-                      'flex items-center w-full h-8 px-3 text-sm text-left transition-colors hover:bg-muted cursor-pointer',
-                      form.group === g ? 'bg-primary/5 text-primary' : 'text-foreground',
-                    )}
-                  >
-                    {g}
-                  </button>
-                ))}
-
-                <div className="h-px bg-border mx-2" />
-
-                {addingGroup ? null : (
-                  <button
-                    onClick={() => setAddingGroup(true)}
-                    className="flex items-center gap-1.5 w-full h-8 px-3 text-sm text-left text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    <Plus size={13} />
-                    {t('sidebar.addGroup')}
-                  </button>
+            <div>
+              <Label>{t('sidebar.selectTag')}</Label>
+              <button
+                type="button"
+                onClick={openTagDialog}
+                className="flex items-center gap-1 flex-wrap w-full min-h-8 rounded-lg border border-input bg-background px-2.5 py-1 text-sm transition-colors hover:border-muted-foreground cursor-pointer"
+              >
+                {form.tags.length > 0 ? (
+                  form.tags.map((t) => (
+                    <Badge key={t} variant="secondary" className="h-5 text-[11px]">
+                      {t}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-muted-foreground">{t('sidebar.noTag')}</span>
                 )}
-              </div>
-            )}
+              </button>
+            </div>
           </div>
-        </div>
 
-        <DialogFooter>
-          <div className="flex gap-2 ml-auto">
-            <Button variant="outline" size="sm" onClick={onClose}>
-              {t('connection.cancel')}
-            </Button>
-            <Button size="sm" disabled={!form.name || !form.hostname || !form.username || saving} onClick={handleSave}>
-              {saving ? t('common.loading') : t('connection.save')}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" size="sm" onClick={onClose}>
+                {t('connection.cancel')}
+              </Button>
+              <Button
+                size="sm"
+                disabled={!form.name || !form.hostname || !form.username || saving}
+                onClick={handleSave}
+              >
+                {saving ? t('common.loading') : t('connection.save')}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <TagSelect
+        open={tagDialogOpen}
+        onClose={() => setTagDialogOpen(false)}
+        availableTags={allTags}
+        selectedTags={form.tags}
+        onConfirm={handleConfirmTags}
+        title={t('sidebar.selectTag')}
+        placeholder={t('sidebar.tagName')}
+        cancelLabel={t('connection.cancel')}
+        confirmLabel={t('common.confirm')}
+        emptyLabel={t('sidebar.noTag')}
+      />
+    </>
   );
 }

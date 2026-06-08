@@ -20,10 +20,9 @@
     "keyPassphrase": "Passphrase (optional)",
     "keyPassphrasePlaceholder": "Enter passphrase",
     "confirmDeleteKey": "Delete this key?",
-    "noGroup": "Ungrouped",
-    "selectGroup": "Select group",
-    "addGroup": "Add group",
-    "groupName": "Group name",
+    "noTag": "No tags",
+    "selectTag": "Select tags",
+    "tagName": "Tag name",
     "selectKey": "Select key",
     "hostManagement": "Host Management",
     "keyManagement": "Key Management"

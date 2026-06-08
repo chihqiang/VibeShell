@@ -134,17 +134,6 @@ pub fn restore_data(source: &str, data_dir: &Path) -> Result<(), String> {
             store::import_hosts(&parsed)?;
         }
 
-        // ── Merge groups ──
-        let groups_path = tmp_dir.join("groups.json");
-        if groups_path.exists() {
-            let raw = fs::read_to_string(&groups_path)
-                .map_err(|e| format!("Failed to read groups.json: {}", e))?;
-            let parsed: Vec<String> = serde_json::from_str(&raw)
-                .map_err(|e| format!("Failed to parse groups.json: {}", e))?;
-            log::info!("[restore] merging {} groups", parsed.len());
-            store::import_groups(&parsed)?;
-        }
-
         // ── Merge keys ──
         let keys_path = tmp_dir.join("keys.json");
         if keys_path.exists() {

@@ -1,5 +1,23 @@
 use serde::{Deserialize, Serialize};
 
+fn deserialize_tags<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany {
+        Single(String),
+        Many(Vec<String>),
+    }
+    Ok(match OneOrMany::deserialize(deserializer)? {
+        OneOrMany::Single(s) => {
+            if s.is_empty() { vec![] } else { vec![s] }
+        }
+        OneOrMany::Many(v) => v,
+    })
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub data_path: String,
@@ -17,7 +35,8 @@ pub struct HostConfig {
     pub auth_method: String,
     pub password: Option<String>,
     pub private_key_path: Option<String>,
-    pub group: Option<String>,
+    #[serde(default, alias = "group", alias = "groups", deserialize_with = "deserialize_tags")]
+    pub tags: Vec<String>,
     pub created_at: i64,
     pub updated_at: i64,
     #[serde(default)]

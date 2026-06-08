@@ -35,7 +35,7 @@ pub struct TabSession {
     /// Wake condvar — notified by `cleanup_session`/`disconnect` so threads
     /// blocked on long-interval sleeps can respond immediately.
     pub wake_cvar: Arc<Condvar>,
-    /// Cached UID→username and GID→groupname mappings, populated on first SFTP
+    /// Cached UID→username and GID→tagName mappings, populated on first SFTP
     /// directory listing so subsequent listings need 0 remote queries.
     pub uid_cache: Arc<Mutex<HashMap<i64, String>>>,
     pub gid_cache: Arc<Mutex<HashMap<i64, String>>>,

@@ -20,8 +20,8 @@ interface Props {
   onClose: () => void;
 }
 
-const ALL_GROUP = '__all__';
-const UNGROUPED = '__ungrouped__';
+const ALL_TAG = '__all__';
+const UNTAGGED = '__untagged__';
 
 export default function HostManagementDialog({ open, onClose }: Props) {
   const { t } = useTranslation();
@@ -34,7 +34,7 @@ export default function HostManagementDialog({ open, onClose }: Props) {
   const [editingHost, setEditingHost] = useState<HostConfig | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState(ALL_GROUP);
+  const [selectedTag, setSelectedTag] = useState(ALL_TAG);
 
   const loadData = useCallback(async () => {
     try {
@@ -111,49 +111,55 @@ export default function HostManagementDialog({ open, onClose }: Props) {
     }
   }
 
-  const groupKeys = useMemo(() => {
+  const sectionKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const h of hosts) {
-      keys.add(h.group || UNGROUPED);
+      if (h.tags && h.tags.length > 0) {
+        for (const t of h.tags) keys.add(t);
+      } else {
+        keys.add(UNTAGGED);
+      }
     }
     return [
-      ALL_GROUP,
+      ALL_TAG,
       ...Array.from(keys).sort((a, b) => {
-        if (a === UNGROUPED) return 1;
-        if (b === UNGROUPED) return -1;
+        if (a === UNTAGGED) return 1;
+        if (b === UNTAGGED) return -1;
         return a.localeCompare(b);
       }),
     ];
   }, [hosts]);
 
-  const groupLabel = (key: string) => {
-    if (key === ALL_GROUP) return t('sidebar.hostManagement');
-    if (key === UNGROUPED) return t('sidebar.noGroup');
+  const sectionLabel = (key: string) => {
+    if (key === ALL_TAG) return t('sidebar.hostManagement');
+    if (key === UNTAGGED) return t('sidebar.noTag');
     return key;
   };
 
-  const groupIcon = (key: string) => {
-    if (key === ALL_GROUP) return <Globe size={13} />;
+  const sectionIcon = (key: string) => {
+    if (key === ALL_TAG) return <Globe size={13} />;
     return <Folder size={13} />;
   };
 
-  const groupCount = (key: string) => {
-    if (key === ALL_GROUP) return hosts.length;
-    if (key === UNGROUPED) return hosts.filter((h) => !h.group).length;
-    return hosts.filter((h) => h.group === key).length;
+  const sectionCount = (key: string) => {
+    if (key === ALL_TAG) return hosts.length;
+    if (key === UNTAGGED) return hosts.filter((h) => !h.tags || h.tags.length === 0).length;
+    return hosts.filter((h) => h.tags?.includes(key)).length;
   };
 
   const displayedHosts = useMemo(() => {
     let list = hosts;
-    if (selectedGroup !== ALL_GROUP) {
-      list = list.filter((h) => (h.group || UNGROUPED) === selectedGroup);
+    if (selectedTag === UNTAGGED) {
+      list = list.filter((h) => !h.tags || h.tags.length === 0);
+    } else if (selectedTag !== ALL_TAG) {
+      list = list.filter((h) => h.tags?.includes(selectedTag));
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter((h) => h.name.toLowerCase().includes(q) || h.hostname.includes(q));
     }
     return list;
-  }, [hosts, selectedGroup, searchQuery]);
+  }, [hosts, selectedTag, searchQuery]);
 
   return (
     <>
@@ -170,19 +176,19 @@ export default function HostManagementDialog({ open, onClose }: Props) {
 
           <div className="flex max-h-[460px] min-h-[300px]">
             <div className="w-44 border-r border-border overflow-y-auto shrink-0">
-              {groupKeys.map((key) => (
+              {sectionKeys.map((key) => (
                 <button
                   key={key}
-                  onClick={() => setSelectedGroup(key)}
+                  onClick={() => setSelectedTag(key)}
                   className={`flex items-center gap-2 w-full h-8 px-3 text-xs text-left transition-colors cursor-pointer ${
-                    selectedGroup === key
+                    selectedTag === key
                       ? 'bg-muted text-foreground font-medium'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   }`}
                 >
-                  {groupIcon(key)}
-                  <span className="truncate flex-1">{groupLabel(key)}</span>
-                  <span className="text-[10px] text-muted-foreground">{groupCount(key)}</span>
+                  {sectionIcon(key)}
+                  <span className="truncate flex-1">{sectionLabel(key)}</span>
+                  <span className="text-[10px] text-muted-foreground">{sectionCount(key)}</span>
                 </button>
               ))}
             </div>
@@ -281,7 +287,7 @@ export default function HostManagementDialog({ open, onClose }: Props) {
         open={dialogOpen}
         onClose={handleDialogClose}
         host={editingHost}
-        groups={Array.from(new Set(hosts.map((h) => h.group).filter((g): g is string => !!g)))}
+        tags={Array.from(new Set(hosts.flatMap((h) => h.tags || [])))}
         keys={keys}
       />
 

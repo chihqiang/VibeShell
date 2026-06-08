@@ -41,18 +41,6 @@ pub fn get_app_config() -> core::models::AppConfig {
 }
 
 #[tauri::command]
-pub fn list_groups() -> Result<Vec<String>, String> {
-    core::store::list_groups()
-}
-
-#[tauri::command]
-pub fn save_group(group: String) -> Result<(), String> {
-    log::info!("[group] save group: {}", group);
-    core::store::save_group(group)
-}
-
-#[tauri::command]
-pub fn delete_group(group: String) -> Result<(), String> {
-    log::info!("[group] delete group: {}", group);
-    core::store::delete_group(group)
+pub fn list_tags() -> Result<Vec<String>, String> {
+    core::store::list_tags()
 }

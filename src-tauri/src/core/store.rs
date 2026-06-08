@@ -8,7 +8,6 @@ use super::models::{AppConfig, HostConfig, KeyEntry, SshDefaults};
 #[derive(Default)]
 struct DirtyFlags {
     hosts: bool,
-    groups: bool,
     keys: bool,
     config: bool,
 }
@@ -16,7 +15,6 @@ struct DirtyFlags {
 #[derive(serde::Serialize, serde::Deserialize)]
 struct Store {
     hosts: Vec<HostConfig>,
-    groups: Vec<String>,
     keys: Vec<KeyEntry>,
     config: HashMap<String, String>,
     #[serde(skip)]
@@ -62,13 +60,6 @@ fn write<T>(f: impl FnOnce(&mut Store) -> T) -> Result<T, String> {
                 "hosts.json",
                 serde_json::to_string_pretty(&guard.hosts)
                     .map_err(|e| format!("serialize hosts.json: {}", e))?,
-            ));
-        }
-        if guard.dirty.groups {
-            pending.push((
-                "groups.json",
-                serde_json::to_string_pretty(&guard.groups)
-                    .map_err(|e| format!("serialize groups.json: {}", e))?,
             ));
         }
         if guard.dirty.keys {
@@ -126,7 +117,6 @@ fn load_all(dir: &Path) -> Store {
     }
     Store {
         hosts: load_json(dir, "hosts.json").unwrap_or_default(),
-        groups: load_json(dir, "groups.json").unwrap_or_default(),
         keys: load_json(dir, "keys.json").unwrap_or_default(),
         config: load_json(dir, "config.json").unwrap_or_else(default_config),
         dirty: DirtyFlags::default(),
@@ -209,31 +199,18 @@ pub fn delete_host(id: String) -> Result<(), String> {
     })
 }
 
-// ── Groups ──
+// ── Tags ──
 
-pub fn list_groups() -> Result<Vec<String>, String> {
-    read(|s| s.groups.clone())
-}
-
-pub fn save_group(group: String) -> Result<(), String> {
-    write(|s| {
-        if !s.groups.contains(&group) {
-            s.dirty.groups = true;
-            s.groups.push(group);
-        }
-    })
-}
-
-pub fn delete_group(group: String) -> Result<(), String> {
-    write(|s| {
-        s.dirty.groups = true;
-        s.dirty.hosts = true;
-        s.groups.retain(|g| g != &group);
-        for host in &mut s.hosts {
-            if host.group.as_deref() == Some(&group) {
-                host.group = None;
-            }
-        }
+pub fn list_tags() -> Result<Vec<String>, String> {
+    read(|s| {
+        let mut tags: Vec<String> = s
+            .hosts
+            .iter()
+            .flat_map(|h| h.tags.iter().cloned())
+            .collect();
+        tags.sort();
+        tags.dedup();
+        tags
     })
 }
 
@@ -297,26 +274,6 @@ pub fn import_hosts(hosts: &[HostConfig]) -> Result<(), String> {
                 }
             } else {
                 s.hosts.push(host.clone());
-            }
-            if let Some(ref g) = host.group {
-                if !s.groups.contains(g) {
-                    s.dirty.groups = true;
-                    s.groups.push(g.clone());
-                }
-            }
-        }
-    })
-}
-
-pub fn import_groups(groups: &[String]) -> Result<(), String> {
-    if groups.is_empty() {
-        return Ok(());
-    }
-    write(|s| {
-        s.dirty.groups = true;
-        for g in groups {
-            if !s.groups.contains(g) {
-                s.groups.push(g.clone());
             }
         }
     })

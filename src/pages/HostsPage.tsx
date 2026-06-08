@@ -12,7 +12,7 @@ import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import type { HostConfig } from '@/apis/types/hosts';
 import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
-import { deleteHost, deleteGroup } from '@/apis/api/hosts';
+import { deleteHost, saveHost } from '@/apis/api/hosts';
 import { fetchAllHostData } from '@/apis/utils/hosts';
 
 export default function HostsPage() {
@@ -21,7 +21,7 @@ export default function HostsPage() {
   const { addTerminalTab } = useTerminalTabs();
   const { notifyError } = useNotify();
   const [hosts, setHosts] = useState<HostConfig[]>([]);
-  const [groups, setGroups] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [keys, setKeys] = useState<KeyEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -33,9 +33,9 @@ export default function HostsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const { hosts: h, groups: g, keys: k } = await fetchAllHostData();
+      const { hosts: h, tags: t, keys: k } = await fetchAllHostData();
       setHosts(h);
-      setGroups(g);
+      setTags(t);
       setKeys(k);
     } catch (e) {
       notifyError(e);
@@ -67,11 +67,23 @@ export default function HostsPage() {
     }
   }
 
-  async function handleDeleteGroup(group: string) {
+  async function handleDeleteTag(tag: string) {
     try {
-      await deleteGroup({ group });
-      setGroups((prev) => prev.filter((g) => g !== group));
-      setHosts((prev) => prev.map((h) => (h.group === group ? { ...h, group: null } : h)));
+      const affected = hosts.filter((h) => h.tags?.includes(tag));
+      await Promise.all(
+        affected.map((h) =>
+          saveHost({
+            host: { ...h, tags: h.tags ? h.tags.filter((t) => t !== tag) : [] },
+          }),
+        ),
+      );
+      setTags((prev) => prev.filter((t) => t !== tag));
+      setHosts((prev) =>
+        prev.map((h) => ({
+          ...h,
+          tags: h.tags ? h.tags.filter((t) => t !== tag) : [],
+        })),
+      );
     } catch (e) {
       notifyError(e);
     }
@@ -121,14 +133,16 @@ export default function HostsPage() {
     [hosts, searchQuery],
   );
 
-  const ungrouped = useMemo(() => filtered.filter((h) => !h.group), [filtered]);
-  const groupedGroups = useMemo(
+  const ungrouped = useMemo(() => filtered.filter((h) => !h.tags || h.tags.length === 0), [filtered]);
+  const taggedSections = useMemo(
     () =>
-      groups.map((g) => ({ group: g, hosts: filtered.filter((h) => h.group === g) })).filter((g) => g.hosts.length > 0),
-    [filtered, groups],
+      tags
+        .map((t) => ({ tag: t, hosts: filtered.filter((h) => h.tags?.includes(t)) }))
+        .filter((s) => s.hosts.length > 0),
+    [filtered, tags],
   );
 
-  const hasContent = groupedGroups.length > 0 || ungrouped.length > 0;
+  const hasContent = taggedSections.length > 0 || ungrouped.length > 0;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">
@@ -150,22 +164,22 @@ export default function HostsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
-        {groupedGroups.map(({ group, hosts: gh }) => (
-          <div key={group}>
+        {taggedSections.map(({ tag, hosts: th }) => (
+          <div key={tag}>
             <div className="flex items-center gap-2 mb-2 group">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{group}</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{tag}</span>
               <Badge variant="ghost" className="h-4 px-1.5 text-[10px]">
-                {gh.length}
+                {th.length}
               </Badge>
               <button
-                onClick={() => handleDeleteGroup(group)}
+                onClick={() => handleDeleteTag(tag)}
                 className="ml-auto opacity-0 group-hover:opacity-100 p-0.5 text-muted-foreground hover:text-destructive transition-all cursor-pointer"
               >
                 <Trash2 size={12} />
               </button>
             </div>
             <div className="space-y-1">
-              {gh.map((h) => (
+              {th.map((h) => (
                 <HostRow
                   key={h.id}
                   host={h}
@@ -188,7 +202,7 @@ export default function HostsPage() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {t('sidebar.noGroup')}
+                {t('sidebar.noTag')}
               </span>
               <Badge variant="ghost" className="h-4 px-1.5 text-[10px]">
                 {ungrouped.length}
@@ -226,7 +240,7 @@ export default function HostsPage() {
         )}
       </div>
 
-      <HostDialog open={dialogOpen} onClose={handleDialogClose} host={editingHost} groups={groups} keys={keys} />
+      <HostDialog open={dialogOpen} onClose={handleDialogClose} host={editingHost} tags={tags} keys={keys} />
 
       <DeleteHostDialog
         open={confirmDeleteId !== null}

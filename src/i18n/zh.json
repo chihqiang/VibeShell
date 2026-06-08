@@ -20,10 +20,9 @@
     "keyPassphrase": "密码短语（可选）",
     "keyPassphrasePlaceholder": "输入密码短语",
     "confirmDeleteKey": "确认删除此密钥？",
-    "noGroup": "未分组",
-    "selectGroup": "选择分组",
-    "addGroup": "添加分组",
-    "groupName": "分组名称",
+    "noTag": "无标签",
+    "selectTag": "选择标签",
+    "tagName": "标签名称",
     "selectKey": "选择密钥",
     "hostManagement": "主机管理",
     "keyManagement": "密钥管理"

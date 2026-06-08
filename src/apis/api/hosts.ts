@@ -13,14 +13,6 @@ export function deleteHost(params: { id: string }): Promise<void> {
   return invoke('delete_host', params);
 }
 
-export function listGroups(): Promise<string[]> {
-  return invoke('list_groups');
-}
-
-export function saveGroup(params: { group: string }): Promise<void> {
-  return invoke('save_group', params);
-}
-
-export function deleteGroup(params: { group: string }): Promise<void> {
-  return invoke('delete_group', params);
+export function listTags(): Promise<string[]> {
+  return invoke('list_tags');
 }
