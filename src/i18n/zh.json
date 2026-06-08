@@ -44,7 +44,8 @@
     "delete": "删除",
     "edit": "编辑",
     "name": "连接名称",
-    "connecting": "连接中..."
+    "connecting": "连接中...",
+    "testConnection": "测试连接"
   },
   "sftp": {
     "title": "SFTP 文件管理",
@@ -154,14 +155,6 @@
     "reconnectInitialDelayHint": "首次重连前的等待时间。默认 1。",
     "reconnectMaxDelay": "最大延迟（秒）",
     "reconnectMaxDelayHint": "重连退避的最大等待时间。默认 30。",
-    "keyboard": "键盘快捷键",
-    "hotkeys": {
-      "duplicateTab": "复制当前标签",
-      "reconnectTab": "重新连接 SSH",
-      "recording": "正在监听...",
-      "reset": "重置",
-      "resetAll": "恢复默认"
-    },
     "backup": "备份与恢复",
     "backupDesc": "备份当前所有主机配置、密钥（不含密码）到 ZIP 文件，或从备份中恢复数据。恢复时会将备份数据与现有数据合并，相同 ID 的条目会被覆盖。",
     "backupAction": "导出备份",

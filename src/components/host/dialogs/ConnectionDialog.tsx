@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lock, KeyRound, Info } from 'lucide-react';
+import { Lock, KeyRound, Info, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getSshDefaults } from '@/storage/config';
+import { sshTestConnect } from '@/apis/api/ssh';
+import { useNotify } from '@/hooks/use-notify';
 import type { ConnectionConfig } from '@/lib/types';
 
 interface ConnectionDialogProps {
@@ -17,6 +19,7 @@ interface ConnectionDialogProps {
 
 export default function ConnectionDialog({ open, onClose, onConnect }: ConnectionDialogProps) {
   const { t } = useTranslation();
+  const { notify, notifyError } = useNotify();
   const [config, setConfig] = useState<ConnectionConfig>({
     name: '',
     hostname: '',
@@ -27,11 +30,14 @@ export default function ConnectionDialog({ open, onClose, onConnect }: Connectio
     privateKeyPath: '',
     keyPassphrase: '',
   });
+  const [testing, setTesting] = useState(false);
+  const defaultsRef = useRef<{ hostname: string; port: number; username: string } | null>(null);
 
   // Fetch defaults from backend when dialog opens
   useEffect(() => {
     if (open) {
       getSshDefaults().then((d) => {
+        defaultsRef.current = d;
         setConfig({
           name: '',
           hostname: d.hostname,
@@ -48,7 +54,8 @@ export default function ConnectionDialog({ open, onClose, onConnect }: Connectio
 
   const handleConnect = () => {
     onConnect({ ...config, port: config.port || 22 });
-    getSshDefaults().then((d) => {
+    if (defaultsRef.current) {
+      const d = defaultsRef.current;
       setConfig({
         name: '',
         hostname: d.hostname,
@@ -59,11 +66,29 @@ export default function ConnectionDialog({ open, onClose, onConnect }: Connectio
         privateKeyPath: '',
         keyPassphrase: '',
       });
-    });
+    }
   };
 
   const updateField = <K extends keyof ConnectionConfig>(key: K, value: ConnectionConfig[K]) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      await sshTestConnect({
+        hostname: config.hostname,
+        port: config.port || 22,
+        username: config.username,
+        password: config.authMethod === 'password' ? config.password || null : null,
+        privateKeyPath: config.authMethod === 'key' ? config.privateKeyPath || null : null,
+      });
+      notify('Connection successful');
+    } catch (e) {
+      notifyError(e);
+    } finally {
+      setTesting(false);
+    }
   };
 
   return (
@@ -173,9 +198,15 @@ export default function ConnectionDialog({ open, onClose, onConnect }: Connectio
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Info size={14} />
-            Test Connection
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleTest}
+            disabled={testing || !config.hostname || !config.username}
+          >
+            {testing ? <Loader2 size={14} className="animate-spin" /> : <Info size={14} />}
+            {t('connection.testConnection')}
           </Button>
           <div className="flex gap-2">
             <DialogClose render={<Button variant="outline" size="sm" />}>{t('connection.cancel')}</DialogClose>

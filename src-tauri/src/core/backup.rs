@@ -6,7 +6,7 @@ use std::path::Path;
 
 use super::store;
 use super::CHUNK_SIZE;
-use super::models::{HostConfig, HotkeyBinding, KeyEntry};
+use super::models::{HostConfig, KeyEntry};
 
 pub fn backup_data(data_dir: &Path, destination: &str) -> Result<(), String> {
     if !data_dir.exists() {
@@ -144,17 +144,6 @@ pub fn restore_data(source: &str, data_dir: &Path) -> Result<(), String> {
                 .map_err(|e| format!("Failed to parse keys.json: {}", e))?;
             log::info!("[restore] merging {} keys", parsed.len());
             store::import_keys(&parsed)?;
-        }
-
-        // ── Merge hotkeys ──
-        let hotkeys_path = tmp_dir.join("hotkeys.json");
-        if hotkeys_path.exists() {
-            let raw = fs::read_to_string(&hotkeys_path)
-                .map_err(|e| format!("Failed to read hotkeys.json: {}", e))?;
-            let parsed: HashMap<String, HotkeyBinding> = serde_json::from_str(&raw)
-                .map_err(|e| format!("Failed to parse hotkeys.json: {}", e))?;
-            log::info!("[restore] merging {} hotkeys", parsed.len());
-            store::import_hotkeys(parsed)?;
         }
 
         // ── Merge config ──

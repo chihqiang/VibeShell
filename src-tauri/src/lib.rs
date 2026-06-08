@@ -1,7 +1,6 @@
 mod backup;
 mod core;
 mod fs;
-mod hotkey;
 mod key;
 mod logger;
 mod sftp;
@@ -57,9 +56,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .setup(|app| {
-            hotkey::register_all_global_shortcuts(app.handle());
+        .setup(|_app| {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -106,9 +103,6 @@ pub fn run() {
             key::import_key,
             key::import_key_content,
             key::delete_key,
-            // Hotkey config
-            hotkey::load_hotkeys,
-            hotkey::save_hotkeys,
             // Backup / Restore
             backup::backup_data,
             backup::restore_data,

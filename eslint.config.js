@@ -31,6 +31,7 @@ export default tseslint.config(
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/refs": "off",
       "react-hooks/immutability": "off",
+      "react-hooks/purity": "off",
     },
     settings: {
       react: { version: "detect" },

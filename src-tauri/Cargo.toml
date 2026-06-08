@@ -33,7 +33,6 @@ log = "0.4"
 fern = "0.7"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 tauri-plugin-os = "2.3.2"
-tauri-plugin-global-shortcut = "2.3.2"
 base64 = "0.22"
 sha2 = "0.10"
 ssh-key = { version = "0.6.7", features = ["encryption", "rsa", "ed25519", "ecdsa"] }

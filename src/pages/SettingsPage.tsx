@@ -9,11 +9,10 @@ import { Button } from '@/components/ui/button';
 import { GeneralSettings } from '@/components/settings/GeneralSettings';
 import { SshSettings } from '@/components/settings/SshSettings';
 
-import { HotkeySettings } from '@/components/settings/HotkeySettings';
 import { BackupSettings } from '@/components/settings/BackupSettings';
 import { AboutSettings } from '@/components/settings/AboutSettings';
 
-const settingsSections = ['general', 'keyboard', 'ssh', 'backup', 'about'] as const;
+const settingsSections = ['general', 'ssh', 'backup', 'about'] as const;
 type Section = (typeof settingsSections)[number];
 
 export default function SettingsPage() {
@@ -63,18 +62,14 @@ export default function SettingsPage() {
 
   const sectionLabel: Record<Section, string> = {
     general: t('settings.general'),
-    keyboard: t('settings.keyboard'),
     ssh: t('settings.ssh'),
     backup: t('settings.backup'),
-
     about: t('settings.about'),
   };
 
   const sectionContent: Record<Section, React.ReactNode> = {
     general: <GeneralSettings onSaved={triggerToast} />,
-    keyboard: <HotkeySettings onSaved={triggerToast} />,
     ssh: <SshSettings defaults={sshDefaults} onSave={handleSshSave} />,
-
     backup: <BackupSettings />,
     about: <AboutSettings />,
   };

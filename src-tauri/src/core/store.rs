@@ -3,14 +3,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{OnceLock, RwLock};
 
-use super::models::{AppConfig, HostConfig, HotkeyBinding, KeyEntry, SshDefaults};
+use super::models::{AppConfig, HostConfig, KeyEntry, SshDefaults};
 
 #[derive(Default)]
 struct DirtyFlags {
     hosts: bool,
     groups: bool,
     keys: bool,
-    hotkeys: bool,
     config: bool,
 }
 
@@ -19,7 +18,6 @@ struct Store {
     hosts: Vec<HostConfig>,
     groups: Vec<String>,
     keys: Vec<KeyEntry>,
-    hotkeys: HashMap<String, HotkeyBinding>,
     config: HashMap<String, String>,
     #[serde(skip)]
     dirty: DirtyFlags,
@@ -64,9 +62,6 @@ fn write<T>(f: impl FnOnce(&mut Store) -> T) -> Result<T, String> {
     if guard.dirty.keys {
         save_json(dir, "keys.json", &guard.keys)?;
     }
-    if guard.dirty.hotkeys {
-        save_json(dir, "hotkeys.json", &guard.hotkeys)?;
-    }
     if guard.dirty.config {
         save_json(dir, "config.json", &guard.config)?;
     }
@@ -107,35 +102,9 @@ fn load_all(dir: &Path) -> Store {
         hosts: load_json(dir, "hosts.json").unwrap_or_default(),
         groups: load_json(dir, "groups.json").unwrap_or_default(),
         keys: load_json(dir, "keys.json").unwrap_or_default(),
-        hotkeys: load_json(dir, "hotkeys.json").unwrap_or_else(hardcoded_hotkey_defaults),
         config: load_json(dir, "config.json").unwrap_or_else(default_config),
         dirty: DirtyFlags::default(),
     }
-}
-
-fn hardcoded_hotkey_defaults() -> HashMap<String, HotkeyBinding> {
-    let mut map = HashMap::new();
-    map.insert(
-        "duplicateTab".to_string(),
-        HotkeyBinding {
-            key: "N".to_string(),
-            ctrl: false,
-            shift: false,
-            alt: false,
-            meta: true,
-        },
-    );
-    map.insert(
-        "reconnectTab".to_string(),
-        HotkeyBinding {
-            key: "R".to_string(),
-            ctrl: false,
-            shift: false,
-            alt: false,
-            meta: true,
-        },
-    );
-    map
 }
 
 fn default_config() -> HashMap<String, String> {
@@ -166,7 +135,6 @@ pub fn get_app_config(data_dir: &Path) -> AppConfig {
         data_path: data_dir.to_string_lossy().to_string(),
         keys_path: super::keys_path().to_string_lossy().to_string(),
         ssh_defaults,
-        hotkey_defaults: load_hotkeys().unwrap_or_default(),
     }
 }
 
@@ -288,19 +256,6 @@ pub fn delete_key(id: String) -> Result<KeyEntry, String> {
     Ok(entry)
 }
 
-// ── Hotkeys ──
-
-pub fn load_hotkeys() -> Result<HashMap<String, HotkeyBinding>, String> {
-    read(|s| s.hotkeys.clone())
-}
-
-pub fn save_hotkeys(config: HashMap<String, HotkeyBinding>) -> Result<(), String> {
-    write(|s| {
-        s.dirty.hotkeys = true;
-        s.hotkeys = config;
-    })
-}
-
 // ── Bulk import (used by restore) ──
 
 pub fn import_hosts(hosts: &[HostConfig]) -> Result<(), String> {
@@ -355,15 +310,6 @@ pub fn import_keys(keys: &[KeyEntry]) -> Result<(), String> {
             } else {
                 s.keys.push(entry.clone());
             }
-        }
-    })
-}
-
-pub fn import_hotkeys(hotkeys: HashMap<String, HotkeyBinding>) -> Result<(), String> {
-    write(|s| {
-        s.dirty.hotkeys = true;
-        for (action, binding) in hotkeys {
-            s.hotkeys.insert(action, binding);
         }
     })
 }

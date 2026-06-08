@@ -6,8 +6,7 @@ export async function resolvePrivateKeyPath(host: HostConfig, keys: KeyEntry[]):
   if (host.auth_method === 'key' && !privateKeyPath && keys.length > 0) {
     const { getKeysPath } = await import('@/storage/config');
     const keysPath = await getKeysPath();
-    const matchingKey = host.password ? keys.find((k) => k.password === host.password) : null;
-    privateKeyPath = matchingKey ? `${keysPath}/${matchingKey.file_name}` : `${keysPath}/${keys[0].file_name}`;
+    privateKeyPath = `${keysPath}/${keys[0].file_name}`;
   }
   return privateKeyPath;
 }

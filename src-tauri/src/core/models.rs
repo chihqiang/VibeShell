@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub data_path: String,
     pub keys_path: String,
     pub ssh_defaults: SshDefaults,
-    pub hotkey_defaults: HashMap<String, HotkeyBinding>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -22,6 +20,8 @@ pub struct HostConfig {
     pub group: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
+    #[serde(default)]
+    pub last_connected_at: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -67,15 +67,6 @@ pub struct SshConnectResult {
 pub struct UsersGroups {
     pub users: Vec<String>,
     pub groups: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HotkeyBinding {
-    pub key: String,
-    pub ctrl: bool,
-    pub shift: bool,
-    pub alt: bool,
-    pub meta: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

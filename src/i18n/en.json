@@ -44,7 +44,8 @@
     "delete": "Delete",
     "edit": "Edit",
     "name": "Connection Name",
-    "connecting": "Connecting..."
+    "connecting": "Connecting...",
+    "testConnection": "Test Connection"
   },
   "sftp": {
     "title": "SFTP File Manager",
@@ -154,14 +155,6 @@
     "reconnectInitialDelayHint": "Base delay before first reconnect. Default 1.",
     "reconnectMaxDelay": "Max Delay (sec)",
     "reconnectMaxDelayHint": "Maximum backoff delay. Default 30.",
-    "keyboard": "Keyboard Shortcuts",
-    "hotkeys": {
-      "duplicateTab": "Duplicate Tab",
-      "reconnectTab": "Reconnect SSH",
-      "recording": "Recording...",
-      "reset": "Reset",
-      "resetAll": "Reset All"
-    },
     "backup": "Backup & Restore",
     "backupDesc": "Export all hosts, keys (without passwords) to a ZIP file, or restore from a backup. Restored data is merged with existing data — same-ID entries are overwritten.",
     "backupAction": "Export Backup",

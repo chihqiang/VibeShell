@@ -170,11 +170,15 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
   stateRef.current = state;
   const { t } = useTranslation();
 
-  const performClose = useCallback((tabId: string) => {
+  const performClose = useCallback(async (tabId: string) => {
     const s = stateRef.current;
     const tab = s.tabs.find((t) => t.id === tabId);
     if (tab?.type === 'terminal') {
-      sshDisconnect({ tabId: tab.id }).catch(() => {});
+      try {
+        await sshDisconnect({ tabId: tab.id });
+      } catch {
+        // ignore disconnect errors on close
+      }
     }
 
     if (s.tabs.length <= 1) {
@@ -186,10 +190,10 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'REMOVE_TAB', tabId });
   }, []);
 
-  const confirmCloseTab = useCallback(() => {
+  const confirmCloseTab = useCallback(async () => {
     const tabId = stateRef.current.pendingCloseTabId;
     if (tabId) {
-      performClose(tabId);
+      await performClose(tabId);
       dispatch({ type: 'SET_PENDING_CLOSE', tabId: null });
     }
   }, [performClose]);

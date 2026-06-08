@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Plus, Menu, Server, Key } from 'lucide-react';
+import { X, Plus, Folder, Menu } from 'lucide-react';
 import { useTerminalTabs, type TerminalTab } from '@/contexts/TerminalTabsContext';
 import HostManagementDialog from '@/components/host/dialogs/HostManagementDialog';
 import KeyManagementDialog from '@/components/keys/dialogs/KeyManagementDialog';
@@ -9,32 +9,25 @@ import TabContextMenu from './TabContextMenu';
 export default function TabBar({ onReconnect }: { onReconnect?: (tabId: string) => void }) {
   const { t } = useTranslation();
   const { tabs, activeTabId, setActiveTab, closeTab, addQuickTab } = useTerminalTabs();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [hostMgmtOpen, setHostMgmtOpen] = useState(false);
   const [keyMgmtOpen, setKeyMgmtOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
-  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
   const [ctxTabId, setCtxTabId] = useState<string | null>(null);
   const [ctxPos, setCtxPos] = useState({ top: 0, left: 0 });
-
-  const handleMenuClick = () => {
-    if (!menuOpen && menuBtnRef.current) {
-      const r = menuBtnRef.current.getBoundingClientRect();
-      setMenuPos({ top: r.bottom + 4, left: r.left });
-    }
-    setMenuOpen(!menuOpen);
-  };
 
   return (
     <>
       <div className="flex-shrink-0 flex items-center h-9 bg-secondary/50 border-b border-border overflow-x-auto">
         <button
-          ref={menuBtnRef}
-          onClick={handleMenuClick}
+          onClick={() => {
+            setHostMgmtOpen(true);
+          }}
           className="flex items-center justify-center w-8 h-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 cursor-pointer"
         >
-          <Menu size={14} />
+          <Folder size={14} />
         </button>
 
         {tabs.map((tab) => (
@@ -58,6 +51,20 @@ export default function TabBar({ onReconnect }: { onReconnect?: (tabId: string) 
         >
           <Plus size={14} />
         </button>
+
+        <button
+          ref={menuBtnRef}
+          onClick={() => {
+            if (!menuOpen && menuBtnRef.current) {
+              const r = menuBtnRef.current.getBoundingClientRect();
+              setMenuPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+            }
+            setMenuOpen(!menuOpen);
+          }}
+          className="ml-auto flex items-center justify-center w-8 h-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 cursor-pointer"
+        >
+          <Menu size={14} />
+        </button>
       </div>
 
       {menuOpen && (
@@ -65,26 +72,15 @@ export default function TabBar({ onReconnect }: { onReconnect?: (tabId: string) 
           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
           <div
             className="fixed z-50 w-44 rounded-lg border border-border bg-popover shadow-lg py-1"
-            style={{ top: menuPos.top, left: menuPos.left }}
+            style={{ top: menuPos.top, right: menuPos.right }}
           >
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                setHostMgmtOpen(true);
-              }}
-              className="flex items-center gap-2 w-full h-8 px-3 text-sm text-left hover:bg-muted transition-colors cursor-pointer"
-            >
-              <Server size={13} />
-              {t('sidebar.hostManagement')}
-            </button>
             <button
               onClick={() => {
                 setMenuOpen(false);
                 setKeyMgmtOpen(true);
               }}
-              className="flex items-center gap-2 w-full h-8 px-3 text-sm text-left hover:bg-muted transition-colors cursor-pointer"
+              className="flex items-center w-full h-8 px-3 text-sm text-left hover:bg-muted transition-colors cursor-pointer"
             >
-              <Key size={13} />
               {t('sidebar.keyManagement')}
             </button>
           </div>

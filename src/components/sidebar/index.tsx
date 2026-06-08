@@ -92,10 +92,12 @@ export default function Sidebar() {
         </>
       )}
 
-      <div
-        className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors ${collapsed ? 'hidden' : ''}`}
-        onMouseDown={onMouseDown}
-      />
+      {!collapsed && (
+        <div
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors"
+          onMouseDown={onMouseDown}
+        />
+      )}
     </aside>
   );
 }

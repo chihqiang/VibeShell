@@ -8,14 +8,13 @@ import QuickConnect from '@/components/host/QuickConnect';
 import TabBar from '@/components/tabbar';
 import SftpBottomPanel from '@/components/sftp/SftpBottomPanel';
 import { useNotify } from '@/hooks/use-notify';
-import { useHotkey } from '@/hooks/use-hotkey';
 import { getSshDefaults } from '@/storage/config';
 
 const BOTTOM_PANEL_MIN = 80;
 const BOTTOM_PANEL_DEFAULT = 260;
 
 export default function HomePage() {
-  const { tabs, activeTabId, updateStatus, addQuickTab, addTerminalTab, terminalTabVersion } = useTerminalTabs();
+  const { tabs, activeTabId, updateStatus, terminalTabVersion } = useTerminalTabs();
   const { notifyError } = useNotify();
   const connectedTabs = useRef(new Set<string>());
   const abortRef = useRef(new Map<string, AbortController>());
@@ -147,35 +146,23 @@ export default function HomePage() {
     }
   }, [tabs]);
 
-  // Cleanup timers/abort-controllers on unmount, but keep SSH sessions alive
+  // Cleanup timers/abort-controllers and disconnect SSH sessions on unmount
   useEffect(() => {
     const abortRefCurrent = abortRef.current;
     const reconnectTimerCurrent = reconnectTimer.current;
+    const currentTabs = tabsRef.current;
     return () => {
       for (const ctrl of abortRefCurrent.values()) ctrl.abort();
       for (const timer of reconnectTimerCurrent.values()) clearTimeout(timer);
       reconnectTimerCurrent.clear();
+      abortRefCurrent.clear();
+      for (const tab of currentTabs) {
+        if (tab.type === 'terminal' && tab.status !== 'disconnected') {
+          sshDisconnect({ tabId: tab.id }).catch(() => {});
+        }
+      }
     };
   }, []);
-
-  useHotkey('duplicateTab', () => {
-    const current = tabsRef.current.find((t) => t.id === activeTabIdRef.current);
-    if (!current) return;
-    if (current.type === 'terminal') {
-      addTerminalTab(current.connectConfig, current.host);
-    } else {
-      addQuickTab();
-    }
-  });
-
-  useHotkey('reconnectTab', async () => {
-    const current = tabsRef.current.find((t) => t.id === activeTabIdRef.current);
-    if (!current || current.type !== 'terminal') return;
-    if (current.status === 'connected') {
-      await sshDisconnect({ tabId: current.id }).catch(() => {});
-    }
-    connectTab(current.id, current.connectConfig);
-  });
 
   useEffect(() => {
     const onMouseMove = (ev: MouseEvent) => {
