@@ -122,7 +122,12 @@
   },
   "tab": {
     "closeConfirmTitle": "Close Tab",
-    "closeConfirmMessage": "This tab has an active SSH connection. Are you sure you want to close it?"
+    "closeConfirmMessage": "This tab has an active SSH connection. Are you sure you want to close it?",
+    "closeTab": "Close",
+    "closeOtherTabs": "Close Others",
+    "closeAllTabs": "Close All",
+    "reconnect": "Reconnect",
+    "duplicateTab": "Duplicate Tab"
   },
   "settings": {
     "title": "Settings",

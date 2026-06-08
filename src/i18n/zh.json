@@ -122,7 +122,12 @@
   },
   "tab": {
     "closeConfirmTitle": "关闭标签页",
-    "closeConfirmMessage": "该标签页存在活跃的 SSH 连接，确定要关闭吗？"
+    "closeConfirmMessage": "该标签页存在活跃的 SSH 连接，确定要关闭吗？",
+    "closeTab": "关闭",
+    "closeOtherTabs": "关闭其他",
+    "closeAllTabs": "关闭所有",
+    "reconnect": "重新连接",
+    "duplicateTab": "复制标签"
   },
   "settings": {
     "title": "设置",

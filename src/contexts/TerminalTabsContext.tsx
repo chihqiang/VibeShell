@@ -41,6 +41,8 @@ interface TerminalTabsContextValue {
   addTerminalTab: (config: ConnectConfig, host?: HostConfig) => string;
   convertTabToTerminal: (tabId: string, config: ConnectConfig, host?: HostConfig) => void;
   closeTab: (tabId: string) => void;
+  closeAllOtherTabs: (tabId: string) => void;
+  closeAllTabs: () => void;
   setActiveTab: (tabId: string) => void;
   updateStatus: (tabId: string, status: ConnectionStatus) => void;
 }
@@ -224,6 +226,23 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_ACTIVE_TAB', tabId });
   }, []);
 
+  const closeAllTabs = useCallback(() => {
+    const s = stateRef.current;
+    s.tabs.forEach((t) => performClose(t.id));
+  }, [performClose]);
+
+  const closeAllOtherTabs = useCallback(
+    (tabId: string) => {
+      const s = stateRef.current;
+      s.tabs.forEach((t) => {
+        if (t.id !== tabId) {
+          performClose(t.id);
+        }
+      });
+    },
+    [performClose],
+  );
+
   const updateStatus = useCallback((tabId: string, status: ConnectionStatus) => {
     dispatch({ type: 'UPDATE_STATUS', tabId, status });
   }, []);
@@ -236,6 +255,8 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
     addTerminalTab,
     convertTabToTerminal,
     closeTab,
+    closeAllOtherTabs,
+    closeAllTabs,
     setActiveTab,
     updateStatus,
   };

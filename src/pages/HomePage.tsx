@@ -210,7 +210,14 @@ export default function HomePage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <TabBar />
+      <TabBar
+        onReconnect={(tabId) => {
+          const tab = tabsRef.current.find((t) => t.id === tabId);
+          if (tab && tab.type === 'terminal') {
+            connectTab(tab.id, tab.connectConfig);
+          }
+        }}
+      />
 
       <div className="flex-1 min-h-0 relative">
         {activeTab?.type === 'quick' && <QuickConnect />}

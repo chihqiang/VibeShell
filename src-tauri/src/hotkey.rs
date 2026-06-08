@@ -1,6 +1,6 @@
 use crate::core;
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 fn binding_to_accelerator(b: &core::models::HotkeyBinding) -> Option<String> {
@@ -33,9 +33,13 @@ pub fn register_all_global_shortcuts(app: &AppHandle) {
         for (action, binding) in &config {
             if let Some(accel) = binding_to_accelerator(binding) {
                 let action_clone = action.clone();
-                let app = app.clone();
-                match gs.on_shortcut(accel.as_str(), move |_app, _shortcut, event| {
-                    if event.state == ShortcutState::Pressed {
+                match gs.on_shortcut(accel.as_str(), move |app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed
+                        && app
+                            .webview_windows()
+                            .values()
+                            .any(|w| w.is_focused().unwrap_or(false))
+                    {
                         let _ = app.emit("shortcut://action", &action_clone);
                     }
                 }) {

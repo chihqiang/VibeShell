@@ -4,8 +4,9 @@ import { X, Plus, Menu, Server, Key } from 'lucide-react';
 import { useTerminalTabs, type TerminalTab } from '@/contexts/TerminalTabsContext';
 import HostManagementDialog from '@/components/host/dialogs/HostManagementDialog';
 import KeyManagementDialog from '@/components/keys/dialogs/KeyManagementDialog';
+import TabContextMenu from './TabContextMenu';
 
-export default function TabBar() {
+export default function TabBar({ onReconnect }: { onReconnect?: (tabId: string) => void }) {
   const { t } = useTranslation();
   const { tabs, activeTabId, setActiveTab, closeTab, addQuickTab } = useTerminalTabs();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -13,6 +14,9 @@ export default function TabBar() {
   const [keyMgmtOpen, setKeyMgmtOpen] = useState(false);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+
+  const [ctxTabId, setCtxTabId] = useState<string | null>(null);
+  const [ctxPos, setCtxPos] = useState({ top: 0, left: 0 });
 
   const handleMenuClick = () => {
     if (!menuOpen && menuBtnRef.current) {
@@ -40,6 +44,11 @@ export default function TabBar() {
             active={tab.id === activeTabId}
             onSelect={() => setActiveTab(tab.id)}
             onClose={() => closeTab(tab.id)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setCtxTabId(tab.id);
+              setCtxPos({ top: e.clientY, left: e.clientX });
+            }}
           />
         ))}
 
@@ -82,6 +91,8 @@ export default function TabBar() {
         </>
       )}
 
+      <TabContextMenu tabId={ctxTabId} position={ctxPos} onClose={() => setCtxTabId(null)} onReconnect={onReconnect} />
+
       <HostManagementDialog open={hostMgmtOpen} onClose={() => setHostMgmtOpen(false)} />
       <KeyManagementDialog open={keyMgmtOpen} onClose={() => setKeyMgmtOpen(false)} />
     </>
@@ -93,11 +104,13 @@ function TabBarItem({
   active,
   onSelect,
   onClose,
+  onContextMenu,
 }: {
   tab: TerminalTab;
   active: boolean;
   onSelect: () => void;
   onClose: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const statusColor =
     tab.type === 'terminal'
@@ -114,6 +127,7 @@ function TabBarItem({
         active ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
       }`}
       onClick={onSelect}
+      onContextMenu={onContextMenu}
     >
       {tab.type === 'terminal' && <span className={`w-2 h-2 rounded-full ${statusColor}`} />}
       <span className="truncate max-w-28">{tab.title}</span>
