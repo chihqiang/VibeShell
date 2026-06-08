@@ -1,9 +1,10 @@
-import { Pencil, Terminal, Trash2, MoreHorizontal } from 'lucide-react';
+import { Pencil, Terminal, Trash2, MoreHorizontal, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { HostConfig } from '@/apis/types/hosts';
 
 interface HostRowProps {
   host: HostConfig;
+  connecting?: boolean;
   menuOpen: boolean;
   onMenuToggle: () => void;
   onOpenTerminal: () => void;
@@ -11,15 +12,24 @@ interface HostRowProps {
   onDelete: () => void;
 }
 
-export default function HostRow({ host, menuOpen, onMenuToggle, onOpenTerminal, onEdit, onDelete }: HostRowProps) {
+export default function HostRow({ host, connecting = false, menuOpen, onMenuToggle, onOpenTerminal, onEdit, onDelete }: HostRowProps) {
   const { t } = useTranslation();
+
+  function handleOpenTerminal() {
+    if (connecting) return;
+    onOpenTerminal();
+  }
 
   return (
     <div
-      className="group flex items-center gap-3 h-10 px-3 rounded-lg hover:bg-muted transition-colors cursor-pointer relative"
-      onDoubleClick={onOpenTerminal}
+      className={`group flex items-center gap-3 h-10 px-3 rounded-lg transition-colors relative ${connecting ? 'opacity-60 pointer-events-none' : 'hover:bg-muted cursor-pointer'}`}
+      onDoubleClick={handleOpenTerminal}
     >
-      <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
+      {connecting ? (
+        <Loader2 size={14} className="animate-spin text-primary flex-shrink-0" />
+      ) : (
+        <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
+      )}
       <span className="text-sm text-foreground flex-1 truncate">{host.name}</span>
       <span className="text-xs text-muted-foreground">{host.hostname}</span>
 
@@ -41,12 +51,13 @@ export default function HostRow({ host, menuOpen, onMenuToggle, onOpenTerminal, 
           >
             <button
               onClick={() => {
+                if (connecting) return;
                 onMenuToggle();
                 onOpenTerminal();
               }}
-              className="flex items-center gap-2 w-full h-8 px-3 text-sm text-left hover:bg-muted transition-colors cursor-pointer"
+              className={`flex items-center gap-2 w-full h-8 px-3 text-sm text-left transition-colors ${connecting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'}`}
             >
-              <Terminal size={13} />
+              {connecting ? <Loader2 size={13} className="animate-spin" /> : <Terminal size={13} />}
               {t('connection.openTerminal')}
             </button>
             <button

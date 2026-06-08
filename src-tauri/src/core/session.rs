@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Condvar, LazyLock, Mutex, RwLock};
@@ -88,7 +88,9 @@ fn expand_path(path: &str) -> PathBuf {
     }
 }
 
-pub fn do_connect(
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+
+fn do_connect_inner(
     hostname: &str,
     port: u16,
     username: &str,
@@ -96,16 +98,26 @@ pub fn do_connect(
     private_key_path: Option<&str>,
 ) -> Result<(Session, String), String> {
     let addr = format!("{}:{}", hostname, port);
-    let tcp = TcpStream::connect(&addr).map_err(|e| {
-        log::error!("TCP connection failed: {}", e);
-        format!("TCP connection failed: {}", e)
-    })?;
+    let sock_addrs: Vec<_> = addr.to_socket_addrs().map_err(|e| {
+        log::error!("DNS resolution failed: {}", e);
+        format!("DNS resolution failed: {}", e)
+    })?.collect();
+    let tcp = sock_addrs
+        .iter()
+        .find_map(|sa| TcpStream::connect_timeout(sa, CONNECT_TIMEOUT).ok())
+        .ok_or_else(|| {
+            let msg = format!("TCP connection failed to {}", addr);
+            log::error!("{}", msg);
+            msg
+        })?;
     tcp.set_read_timeout(Some(Duration::from_secs(30))).ok();
+    tcp.set_write_timeout(Some(Duration::from_secs(30))).ok();
 
     let mut session = Session::new().map_err(|e| {
         log::error!("Failed to create session: {}", e);
         format!("Failed to create session: {}", e)
     })?;
+    session.set_timeout(30_000);
     session.set_tcp_stream(tcp);
     session.handshake().map_err(|e| {
         log::error!("SSH handshake failed: {}", e);
@@ -139,6 +151,32 @@ pub fn do_connect(
 
     let banner = session.banner().unwrap_or("").to_string();
     Ok((session, banner))
+}
+
+pub fn do_connect(
+    hostname: &str,
+    port: u16,
+    username: &str,
+    password: Option<&str>,
+    private_key_path: Option<&str>,
+) -> Result<(Session, String), String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let hostname = hostname.to_string();
+    let username = username.to_string();
+    let password = password.map(|s| s.to_string());
+    let private_key_path = private_key_path.map(|s| s.to_string());
+
+    std::thread::spawn(move || {
+        let result = do_connect_inner(&hostname, port, &username, password.as_deref(), private_key_path.as_deref());
+        let _ = tx.send(result);
+    });
+
+    rx.recv_timeout(Duration::from_secs(30))
+        .map_err(|_| {
+            let msg = "Connection timed out".to_string();
+            log::error!("{}", msg);
+            msg
+        })?
 }
 
 fn monitor_script() -> String {
@@ -463,7 +501,7 @@ fn spawn_reader(
             } else {
                 let Ok(guard) = wake_mutex.lock() else { break };
                 let Ok((_guard, _timeout)) =
-                    wake_cvar.wait_timeout(guard, Duration::from_millis(50))
+                    wake_cvar.wait_timeout(guard, Duration::from_millis(500))
                 else {
                     break;
                 };
@@ -489,35 +527,28 @@ fn start_monitor(
     let tid = tab_id.to_string();
     let script = monitor_script();
     thread::spawn(move || {
-        let mut buf = [0u8; 8192];
         while !cancel.load(Ordering::Relaxed) {
-            // ── Collect monitor data under the session lock ──
-            let output = {
-                let Ok(inner) = handle.lock() else { return };
+            // ── Collect monitor data (try_lock to avoid blocking terminal I/O) ──
+            let output = (|| -> Option<String> {
+                let inner = handle.try_lock().ok()?;
                 let _guard = BlockingGuard::new(&inner.session);
                 inner.session.set_timeout(15_000);
-                let mut channel: Option<ssh2::Channel> = inner.session.channel_session().ok();
-                let output = if let Some(ref mut ch) = channel {
-                    if let Err(e) = ch.exec(&script) {
-                        log::debug!("[monitor] tab={}: exec failed: {}", tid, e);
-                        None
-                    } else {
-                        let mut out = String::new();
-                        loop {
-                            match ch.read(&mut buf) {
-                                Ok(0) => break,
-                                Ok(n) => out.push_str(&String::from_utf8_lossy(&buf[..n])),
-                                Err(_) => break,
-                            }
-                        }
-                        ch.wait_close().ok();
-                        Some(out)
+                let mut buf = [0u8; 8192];
+                let mut ch = inner.session.channel_session().ok()?;
+                if ch.exec(&script).is_err() {
+                    return None;
+                }
+                let mut out = String::new();
+                loop {
+                    match ch.read(&mut buf) {
+                        Ok(0) => break,
+                        Ok(n) => out.push_str(&String::from_utf8_lossy(&buf[..n])),
+                        Err(_) => break,
                     }
-                } else {
-                    None
-                };
-                output
-            };
+                }
+                ch.wait_close().ok();
+                Some(out)
+            })();
 
             if let Some(data) = output {
                 let event = parse_monitor_output(&data, &tid);
@@ -687,7 +718,8 @@ pub fn execute(tab_id: &str, command: &str) -> Result<core::models::SshExecuteRe
             Ok(0) => break,
             Ok(n) => output.push_str(&String::from_utf8_lossy(&buf[..n])),
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
-                thread::sleep(Duration::from_millis(10));
+                const POLL_DELAY: Duration = Duration::from_millis(10);
+                thread::sleep(POLL_DELAY);
                 continue;
             }
             Err(_) => break,

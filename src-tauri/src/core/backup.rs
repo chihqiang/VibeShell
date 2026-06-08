@@ -35,6 +35,17 @@ fn add_dir_to_zip(
     dir: &Path,
     options: &zip::write::SimpleFileOptions,
 ) -> Result<(), String> {
+    let mut buf = vec![0u8; CHUNK_SIZE];
+    add_dir_to_zip_inner(zip, base, dir, options, &mut buf)
+}
+
+fn add_dir_to_zip_inner(
+    zip: &mut zip::ZipWriter<fs::File>,
+    base: &Path,
+    dir: &Path,
+    options: &zip::write::SimpleFileOptions,
+    buf: &mut [u8],
+) -> Result<(), String> {
     for entry in fs::read_dir(dir).map_err(|e| format!("Failed to read dir: {}", e))? {
         let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
         let path = entry.path();
@@ -51,16 +62,15 @@ fn add_dir_to_zip(
         if path.is_dir() {
             zip.add_directory(&name, *options)
                 .map_err(|e| format!("Failed to add dir to zip: {}", e))?;
-            add_dir_to_zip(zip, base, &path, options)?;
+            add_dir_to_zip_inner(zip, base, &path, options, buf)?;
         } else {
             let mut file =
                 fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
             zip.start_file(&name, *options)
                 .map_err(|e| format!("Failed to add file to zip: {}", e))?;
-            let mut buf = vec![0u8; CHUNK_SIZE];
             loop {
                 let n = file
-                    .read(&mut buf)
+                    .read(buf)
                     .map_err(|e| format!("Failed to read file: {}", e))?;
                 if n == 0 {
                     break;

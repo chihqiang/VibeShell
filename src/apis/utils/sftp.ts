@@ -10,7 +10,7 @@ export async function expandLocalFiles(
   const files: ExpandedFile[] = [];
   const failures: ExpandResult['failures'] = [];
 
-  for (const p of paths) {
+  await Promise.all(paths.map(async (p) => {
     const name = p.split('/').pop() || p.split('\\').pop() || fallbackName;
     const baseRc = baseRemotePath.replace(/\/?$/, '/') + name;
     try {
@@ -33,6 +33,7 @@ export async function expandLocalFiles(
     } catch (e) {
       failures.push({ name, localPath: p, remotePath: baseRc, error: String(e) });
     }
-  }
+  }));
+
   return { files, failures };
 }

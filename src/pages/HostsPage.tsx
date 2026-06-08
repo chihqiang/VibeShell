@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Search, LayoutGrid, Plus, Trash2 } from 'lucide-react';
@@ -28,6 +28,8 @@ export default function HostsPage() {
   const [editingHost, setEditingHost] = useState<HostConfig | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const connectingRef = useRef(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -92,6 +94,9 @@ export default function HostsPage() {
   }
 
   function openTerminal(host: HostConfig) {
+    if (connectingRef.current) return;
+    connectingRef.current = true;
+    setConnectingId(host.id);
     addTerminalTab(
       {
         hostname: host.hostname,
@@ -110,14 +115,22 @@ export default function HostsPage() {
     setConfirmDeleteId(host.id);
   }
 
-  const filtered = hosts.filter(
-    (h) => h.name.toLowerCase().includes(searchQuery.toLowerCase()) || h.hostname.includes(searchQuery),
+  const filtered = useMemo(
+    () =>
+      hosts.filter(
+        (h) => h.name.toLowerCase().includes(searchQuery.toLowerCase()) || h.hostname.includes(searchQuery),
+      ),
+    [hosts, searchQuery],
   );
 
-  const ungrouped = filtered.filter((h) => !h.group);
-  const groupedGroups = groups
-    .map((g) => ({ group: g, hosts: filtered.filter((h) => h.group === g) }))
-    .filter((g) => g.hosts.length > 0);
+  const ungrouped = useMemo(() => filtered.filter((h) => !h.group), [filtered]);
+  const groupedGroups = useMemo(
+    () =>
+      groups
+        .map((g) => ({ group: g, hosts: filtered.filter((h) => h.group === g) }))
+        .filter((g) => g.hosts.length > 0),
+    [filtered, groups],
+  );
 
   const hasContent = groupedGroups.length > 0 || ungrouped.length > 0;
 
@@ -160,6 +173,7 @@ export default function HostsPage() {
                 <HostRow
                   key={h.id}
                   host={h}
+                  connecting={connectingId === h.id}
                   menuOpen={menuOpenId === h.id}
                   onMenuToggle={() => setMenuOpenId(menuOpenId === h.id ? null : h.id)}
                   onOpenTerminal={() => openTerminal(h)}
@@ -189,6 +203,7 @@ export default function HostsPage() {
                 <HostRow
                   key={h.id}
                   host={h}
+                  connecting={connectingId === h.id}
                   menuOpen={menuOpenId === h.id}
                   onMenuToggle={() => setMenuOpenId(menuOpenId === h.id ? null : h.id)}
                   onOpenTerminal={() => openTerminal(h)}

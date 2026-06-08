@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Folder, Menu } from 'lucide-react';
 import { useTerminalTabs, type TerminalTab } from '@/contexts/TerminalTabsContext';
@@ -95,7 +95,7 @@ export default function TabBar({ onReconnect }: { onReconnect?: (tabId: string) 
   );
 }
 
-function TabBarItem({
+const TabBarItem = memo(function TabBarItem({
   tab,
   active,
   onSelect,
@@ -138,4 +138,4 @@ function TabBarItem({
       </button>
     </div>
   );
-}
+}, (prev, next) => prev.tab === next.tab && prev.active === next.active);

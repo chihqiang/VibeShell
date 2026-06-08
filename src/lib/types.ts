@@ -61,6 +61,9 @@ export interface SftpProgressPayload {
 
 // -- sidebar / monitor --
 
+export const BOTTOM_PANEL_MIN = 80;
+export const BOTTOM_PANEL_DEFAULT = 260;
+
 export const MIN_WIDTH = 180;
 export const MAX_WIDTH = 500;
 export const COLLAPSED_WIDTH = 28;

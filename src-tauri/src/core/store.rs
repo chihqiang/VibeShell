@@ -50,23 +50,59 @@ fn read<T>(f: impl FnOnce(&Store) -> T) -> Result<T, String> {
 }
 
 fn write<T>(f: impl FnOnce(&mut Store) -> T) -> Result<T, String> {
-    let mut guard = store()?.write().map_err(|e| format!("lock error: {}", e))?;
-    let result = f(&mut guard);
-    let dir = data_dir()?;
-    if guard.dirty.hosts {
-        save_json(dir, "hosts.json", &guard.hosts)?;
+    let dir = data_dir()?.to_path_buf();
+
+    // Phase 1: modify + serialize under lock (fast, no I/O)
+    let (result, pending) = {
+        let mut guard = store()?.write().map_err(|e| format!("lock error: {}", e))?;
+        let result = f(&mut guard);
+        let mut pending: Vec<(&str, String)> = Vec::new();
+        if guard.dirty.hosts {
+            pending.push((
+                "hosts.json",
+                serde_json::to_string_pretty(&guard.hosts)
+                    .map_err(|e| format!("serialize hosts.json: {}", e))?,
+            ));
+        }
+        if guard.dirty.groups {
+            pending.push((
+                "groups.json",
+                serde_json::to_string_pretty(&guard.groups)
+                    .map_err(|e| format!("serialize groups.json: {}", e))?,
+            ));
+        }
+        if guard.dirty.keys {
+            pending.push((
+                "keys.json",
+                serde_json::to_string_pretty(&guard.keys)
+                    .map_err(|e| format!("serialize keys.json: {}", e))?,
+            ));
+        }
+        if guard.dirty.config {
+            pending.push((
+                "config.json",
+                serde_json::to_string_pretty(&guard.config)
+                    .map_err(|e| format!("serialize config.json: {}", e))?,
+            ));
+        }
+        guard.dirty = DirtyFlags::default();
+        (result, pending)
+    };
+
+    // Phase 2: atomic writes outside lock
+    for (name, content) in &pending {
+        atomic_write(&dir, name, content)?;
     }
-    if guard.dirty.groups {
-        save_json(dir, "groups.json", &guard.groups)?;
-    }
-    if guard.dirty.keys {
-        save_json(dir, "keys.json", &guard.keys)?;
-    }
-    if guard.dirty.config {
-        save_json(dir, "config.json", &guard.config)?;
-    }
-    guard.dirty = DirtyFlags::default();
+
     Ok(result)
+}
+
+fn atomic_write(dir: &Path, name: &str, content: &str) -> Result<(), String> {
+    let path = dir.join(name);
+    let tmp_path = dir.join(format!("{}.tmp", name));
+    fs::write(&tmp_path, content).map_err(|e| format!("write {}: {}", name, e))?;
+    fs::rename(&tmp_path, &path).map_err(|e| format!("rename {}: {}", name, e))?;
+    Ok(())
 }
 
 fn load_json<T: serde::de::DeserializeOwned>(dir: &Path, name: &str) -> Option<T> {
@@ -76,16 +112,6 @@ fn load_json<T: serde::de::DeserializeOwned>(dir: &Path, name: &str) -> Option<T
     }
     let content = fs::read_to_string(&path).ok()?;
     serde_json::from_str(&content).ok()
-}
-
-fn save_json<T: serde::Serialize>(dir: &Path, name: &str, value: &T) -> Result<(), String> {
-    let path = dir.join(name);
-    let tmp_path = dir.join(format!("{}.tmp", name));
-    let content =
-        serde_json::to_string_pretty(value).map_err(|e| format!("serialize {}: {}", name, e))?;
-    fs::write(&tmp_path, &content).map_err(|e| format!("write {}: {}", name, e))?;
-    fs::rename(&tmp_path, &path).map_err(|e| format!("rename {}: {}", name, e))?;
-    Ok(())
 }
 
 fn load_all(dir: &Path) -> Store {

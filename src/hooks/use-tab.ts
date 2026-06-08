@@ -139,13 +139,22 @@ export function useSftpTransfers(tabId: string | null, currentPath: string, load
   const [transfersOpen, setTransfersOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const processingRef = useRef(false);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Debounced localStorage persistence — avoids serializing on every progress tick
   useEffect(() => {
-    try {
-      localStorage.setItem(TRANSFER_STORAGE_KEY, JSON.stringify(transfers));
-    } catch (e) {
-      notifyError(e, false);
-    }
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      persistTimerRef.current = null;
+      try {
+        localStorage.setItem(TRANSFER_STORAGE_KEY, JSON.stringify(transfers));
+      } catch (e) {
+        notifyError(e, false);
+      }
+    }, 300);
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
   }, [transfers, notifyError]);
 
   useEffect(() => {

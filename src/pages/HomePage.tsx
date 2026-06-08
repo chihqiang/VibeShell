@@ -9,9 +9,7 @@ import TabBar from '@/components/tabbar';
 import SftpBottomPanel from '@/components/sftp/SftpBottomPanel';
 import { useNotify } from '@/hooks/use-notify';
 import { getSshDefaults } from '@/storage/config';
-
-const BOTTOM_PANEL_MIN = 80;
-const BOTTOM_PANEL_DEFAULT = 260;
+import { BOTTOM_PANEL_MIN, BOTTOM_PANEL_DEFAULT } from '@/lib/types';
 
 export default function HomePage() {
   const { tabs, activeTabId, updateStatus, terminalTabVersion } = useTerminalTabs();
@@ -208,17 +206,17 @@ export default function HomePage() {
 
       <div className="flex-1 min-h-0 relative">
         {activeTab?.type === 'quick' && <QuickConnect />}
-        {tabs
-          .filter((t) => t.type === 'terminal')
-          .map((tab) => (
+        {tabs.map((tab) =>
+          tab.type === 'terminal' ? (
             <TerminalComp
               key={tab.id}
               terminalId={`xterm-${tab.id}`}
               tabId={tab.id}
               status={tab.status}
-              visible={tab.id === activeTabId}
+              className={tab.id !== activeTabId ? 'hidden' : undefined}
             />
-          ))}
+          ) : null,
+        )}
       </div>
 
       {activeTab?.type === 'terminal' && activeTab.status === 'connected' && (

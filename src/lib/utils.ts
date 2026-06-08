@@ -129,13 +129,15 @@ export async function runWithConcurrency<T>(
   concurrency: number,
   fn: (item: T) => Promise<void>,
 ): Promise<void> {
-  const queue = [...items];
-  async function worker(): Promise<void> {
-    while (queue.length > 0) {
-      const item = queue.shift()!;
-      await fn(item);
+  if (items.length === 0) return;
+  let idx = 0;
+  const worker = async () => {
+    while (idx < items.length) {
+      const i = idx;
+      idx += 1;
+      await fn(items[i]);
     }
-  }
+  };
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
 }
 

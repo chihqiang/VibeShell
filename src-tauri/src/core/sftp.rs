@@ -460,14 +460,16 @@ fn load_passwd_group_data(
     if ch.exec(cmd).is_err() {
         return;
     }
-    let mut out = String::new();
-    if ch.read_to_string(&mut out).is_err() {
+    let mut raw = String::new();
+    if ch.read_to_string(&mut raw).is_err() {
         return;
     }
-    let mut uc = uid_cache.lock().unwrap_or_else(|e| e.into_inner());
-    let mut gc = gid_cache.lock().unwrap_or_else(|e| e.into_inner());
+
+    // Accumulate into local maps first (lock-free parsing)
+    let mut local_uid: HashMap<i64, String> = HashMap::new();
+    let mut local_gid: HashMap<i64, String> = HashMap::new();
     let mut passwd = true;
-    for line in out.lines() {
+    for line in raw.lines() {
         let trimmed = line.trim();
         if trimmed == "---GRP---" {
             passwd = false;
@@ -477,12 +479,20 @@ fn load_passwd_group_data(
         if parts.len() >= 3 {
             if passwd {
                 if let Ok(uid) = parts[2].parse::<i64>() {
-                    uc.entry(uid).or_insert_with(|| parts[0].to_string());
+                    local_uid.entry(uid).or_insert_with(|| parts[0].to_string());
                 }
             } else if let Ok(gid) = parts[2].parse::<i64>() {
-                gc.entry(gid).or_insert_with(|| parts[0].to_string());
+                local_gid.entry(gid).or_insert_with(|| parts[0].to_string());
             }
         }
+    }
+
+    // Merge into caches under lock (fast)
+    if let Ok(mut uc) = uid_cache.lock() {
+        uc.extend(local_uid);
+    }
+    if let Ok(mut gc) = gid_cache.lock() {
+        gc.extend(local_gid);
     }
 }
 
@@ -495,17 +505,29 @@ fn resolve_users_groups_cached(
     let needed_uids: HashSet<i64> = dir.iter().map(|(_, s)| s.uid.unwrap_or(0) as i64).collect();
     let needed_gids: HashSet<i64> = dir.iter().map(|(_, s)| s.gid.unwrap_or(0) as i64).collect();
 
-    let need_query = {
+    // Single lock: check cache and return if fully cached
+    {
         let uc = uid_cache.lock().unwrap_or_else(|e| e.into_inner());
         let gc = gid_cache.lock().unwrap_or_else(|e| e.into_inner());
-        needed_uids.iter().any(|u| !uc.contains_key(u))
-            || needed_gids.iter().any(|g| !gc.contains_key(g))
-    };
-
-    if need_query {
-        load_passwd_group_data(session, uid_cache, gid_cache);
+        if needed_uids.iter().all(|u| uc.contains_key(u))
+            && needed_gids.iter().all(|g| gc.contains_key(g))
+        {
+            let uid_map: HashMap<i64, String> = needed_uids
+                .iter()
+                .map(|uid| (*uid, uc.get(uid).cloned().unwrap_or_else(|| uid.to_string())))
+                .collect();
+            let gid_map: HashMap<i64, String> = needed_gids
+                .iter()
+                .map(|gid| (*gid, gc.get(gid).cloned().unwrap_or_else(|| gid.to_string())))
+                .collect();
+            return (uid_map, gid_map);
+        }
     }
 
+    // Cache miss: load remote data
+    load_passwd_group_data(session, uid_cache, gid_cache);
+
+    // Re-read under a single lock
     let uc = uid_cache.lock().unwrap_or_else(|e| e.into_inner());
     let gc = gid_cache.lock().unwrap_or_else(|e| e.into_inner());
     let uid_map: HashMap<i64, String> = needed_uids

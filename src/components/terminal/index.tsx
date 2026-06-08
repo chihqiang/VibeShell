@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sshWrite, sshRead } from '@/apis/api/ssh';
+import { sshWrite } from '@/apis/api/ssh';
 import { listen } from '@tauri-apps/api/event';
 import type { Terminal as XtermTerminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
@@ -13,7 +13,6 @@ interface TerminalProps {
   tabId?: string;
   status?: ConnectionStatus;
   className?: string;
-  visible?: boolean;
 }
 
 interface SshOutputEvent {
@@ -21,14 +20,14 @@ interface SshOutputEvent {
   data: string;
 }
 
-const Terminal = memo(function Terminal({ terminalId, tabId, status, className, visible = true }: TerminalProps) {
+const Terminal = memo(function Terminal({ terminalId, tabId, status, className }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
   const termRef = useRef<XtermTerminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const tabIdRef = useRef(tabId);
   tabIdRef.current = tabId;
-  const prevStatusRef = useRef<ConnectionStatus | undefined>(undefined);
+  const prevStatusRef = useRef(status);
   const hadConnectionRef = useRef(false);
   const pendingRef = useRef<string[]>([]);
   const { notifyError } = useNotify();
@@ -107,9 +106,9 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, className, 
     init();
   }, [terminalId, notifyError]);
 
-  // ResizeObserver — only active when terminal is visible
+  // ResizeObserver — reflow terminal when container resizes
   useEffect(() => {
-    if (!visible || !fitAddonRef.current || !containerRef.current) return;
+    if (!fitAddonRef.current || !containerRef.current) return;
 
     const fitAddon = fitAddonRef.current;
     const resizeObserver = new ResizeObserver(() => {
@@ -121,7 +120,6 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, className, 
     });
     resizeObserver.observe(containerRef.current);
 
-    // Re-fit immediately when becoming visible
     const raf = requestAnimationFrame(() => {
       fitAddon.fit();
       const t = termRef.current;
@@ -132,7 +130,7 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, className, 
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
     };
-  }, [visible, terminalId, notifyError]);
+  }, [terminalId, notifyError]);
 
   // Connection status messages — show connecting/connected/disconnected feedback
   useEffect(() => {
@@ -159,14 +157,7 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, className, 
         pendingRef.current.push(msg);
       }
 
-      // Drain buffered SSH output that arrived before/during connection
-      sshRead({ tabId })
-        .then((buf) => {
-          if (buf && termRef.current) {
-            termRef.current.write(buf);
-          }
-        })
-        .catch(() => {});
+
     } else if (status === 'disconnected' && prev === 'connected') {
       // SSH prompt doesn't end with newline, so break to a new line first
       const msg = `\r\n\x1b[31m${t('terminal.disconnected')}\x1b[0m\r\n`;
@@ -217,7 +208,7 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, className, 
 
       if (cancelled) {
         unlisten();
-        return unlisten;
+        return;
       }
 
       return unlisten;
@@ -234,11 +225,7 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, className, 
   return (
     <div
       ref={containerRef}
-      className={cn(
-        'bg-[#02040a] h-full w-full overflow-hidden',
-        !visible && 'absolute inset-0 invisible pointer-events-none',
-        className,
-      )}
+      className={cn('bg-[#02040a] h-full w-full overflow-hidden', className)}
     />
   );
 });
