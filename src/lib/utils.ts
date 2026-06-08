@@ -161,3 +161,37 @@ export function buildSshConfig(params: {
     private_key_path: authMethod === 'key' ? (privateKeyPath ?? null) : null,
   };
 }
+
+// -- autocorrect guard --
+
+function disableAutocorrect(el: Element) {
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    el.spellcheck = false;
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('autocapitalize', 'off');
+    el.setAttribute('autocomplete', 'off');
+  }
+}
+
+/**
+ * Globally disable macOS autocorrect / autocapitalize on all input/textarea
+ * elements. Call once at app startup.
+ */
+export function guardAutocorrect() {
+  document.querySelectorAll('input, textarea').forEach(disableAutocorrect);
+
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof Element) {
+          if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) {
+            disableAutocorrect(node);
+          }
+          node.querySelectorAll('input, textarea').forEach(disableAutocorrect);
+        }
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}

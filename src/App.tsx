@@ -1,10 +1,13 @@
+import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '@/components/sidebar';
 import TrafficLights from '@/components/titlebar/TrafficLights';
 import HeaderActions from '@/components/titlebar/HeaderActions';
 import { RouteProgress } from '@/components/RouteProgress';
+import { guardAutocorrect } from '@/lib/utils';
 
 function App() {
+  useEffect(() => guardAutocorrect(), []);
   return (
     <div className="flex flex-col h-screen text-foreground font-sans">
       <RouteProgress />
