@@ -32,13 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import HostDialog from '@/components/host/dialogs/HostDialog';
 import DeleteHostDialog from '@/components/host/dialogs/DeleteHostDialog';
 import KeyManagementDialog from '@/components/keys/dialogs/KeyManagementDialog';
-import {
-  COLLAPSED_WIDTH,
-  MIN_WIDTH,
-  MAX_WIDTH,
-  STORAGE_KEY_COLLAPSED,
-  STORAGE_KEY_WIDTH,
-} from '@/lib/types';
+import { COLLAPSED_WIDTH, MIN_WIDTH, MAX_WIDTH, STORAGE_KEY_COLLAPSED, STORAGE_KEY_WIDTH } from '@/lib/types';
 
 export default function HostSidebar() {
   const { t } = useTranslation();
@@ -93,10 +87,7 @@ export default function HostSidebar() {
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!dragging.current) return;
-      const newWidth = Math.max(
-        MIN_WIDTH,
-        Math.min(MAX_WIDTH, startWidth.current + e.clientX - startX.current),
-      );
+      const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth.current + e.clientX - startX.current));
       dragWidthRef.current = newWidth;
       // RAF throttle: at most one state update per frame
       if (dragRafRef.current === null) {
@@ -266,7 +257,13 @@ export default function HostSidebar() {
     }
   }
 
-  const openTerminalCb = useCallback((host: HostConfig) => { openTerminal(host); }, [keys, addTerminalTab, navigate, notifyError]);
+  const openTerminalCb = useCallback(
+    (host: HostConfig) => {
+      openTerminal(host);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [keys, addTerminalTab, navigate, notifyError],
+  );
 
   async function confirmDelete() {
     if (!confirmDeleteId) return;
@@ -290,9 +287,7 @@ export default function HostSidebar() {
     try {
       const affected = hosts.filter((h) => h.tags?.includes(tag));
       await Promise.all(
-        affected.map((h) =>
-          saveHost({ host: { ...h, tags: h.tags ? h.tags.filter((t) => t !== tag) : [] } }),
-        ),
+        affected.map((h) => saveHost({ host: { ...h, tags: h.tags ? h.tags.filter((t) => t !== tag) : [] } })),
       );
       setTags((prev) => prev.filter((t) => t !== tag));
       setHosts((prev) =>
@@ -390,7 +385,13 @@ export default function HostSidebar() {
             </button>
           )}
         </div>
-        <Button variant="outline" size="icon-sm" className="flex-shrink-0" onClick={openAddDialog} title={t('sidebar.addHost')}>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          className="flex-shrink-0"
+          onClick={openAddDialog}
+          title={t('sidebar.addHost')}
+        >
           <Plus size={14} />
         </Button>
       </div>
@@ -571,11 +572,7 @@ const HostTreeItem = memo(function HostTreeItem({
   const { t } = useTranslation();
   const menuPosRef = useRef({ x: 0, y: 0 });
 
-  const statusColor = connected
-    ? 'bg-green-500'
-    : connecting
-      ? 'bg-yellow-500'
-      : 'bg-muted-foreground/30';
+  const statusColor = connected ? 'bg-green-500' : connecting ? 'bg-yellow-500' : 'bg-muted-foreground/30';
 
   return (
     <div
@@ -597,7 +594,9 @@ const HostTreeItem = memo(function HostTreeItem({
       {connecting ? (
         <Loader2 size={12} className="animate-spin text-primary flex-shrink-0" />
       ) : (
-        <span className={cn('w-2 h-2 rounded-full flex-shrink-0 transition-transform group-hover:scale-125', statusColor)} />
+        <span
+          className={cn('w-2 h-2 rounded-full flex-shrink-0 transition-transform group-hover:scale-125', statusColor)}
+        />
       )}
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         <span className="text-xs text-foreground truncate leading-tight">{host.name}</span>

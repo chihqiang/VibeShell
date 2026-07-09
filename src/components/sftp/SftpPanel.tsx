@@ -56,7 +56,7 @@ export default function SftpPanel() {
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-const lastSelectedRef = useRef<string | null>(null);
+  const lastSelectedRef = useRef<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [sortKey, setSortKey] = useState<'name' | 'size' | 'modified'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -232,33 +232,33 @@ const lastSelectedRef = useRef<string | null>(null);
     if (entry.file_type === FileType.Directory) loadDir(entry.path);
   };
 
-const handleClick = (path: string, e: React.MouseEvent) => {
-  setCtxMenu(null);
-  if (e.ctrlKey || e.metaKey) {
-    // Toggle individual
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-    lastSelectedRef.current = path;
-  } else if (e.shiftKey && lastSelectedRef.current) {
-    // Range select — use sortedEntries to match visual order
-    const paths = sortedEntries.map((en) => en.path);
-    const startIdx = paths.indexOf(lastSelectedRef.current);
-    const endIdx = paths.indexOf(path);
-    if (startIdx !== -1 && endIdx !== -1) {
-      const from = Math.min(startIdx, endIdx);
-      const to = Math.max(startIdx, endIdx);
-      setSelected(new Set(paths.slice(from, to + 1)));
+  const handleClick = (path: string, e: React.MouseEvent) => {
+    setCtxMenu(null);
+    if (e.ctrlKey || e.metaKey) {
+      // Toggle individual
+      setSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(path)) next.delete(path);
+        else next.add(path);
+        return next;
+      });
+      lastSelectedRef.current = path;
+    } else if (e.shiftKey && lastSelectedRef.current) {
+      // Range select — use sortedEntries to match visual order
+      const paths = sortedEntries.map((en) => en.path);
+      const startIdx = paths.indexOf(lastSelectedRef.current);
+      const endIdx = paths.indexOf(path);
+      if (startIdx !== -1 && endIdx !== -1) {
+        const from = Math.min(startIdx, endIdx);
+        const to = Math.max(startIdx, endIdx);
+        setSelected(new Set(paths.slice(from, to + 1)));
+      }
+    } else {
+      // Single select
+      setSelected(new Set([path]));
+      lastSelectedRef.current = path;
     }
-  } else {
-    // Single select
-    setSelected(new Set([path]));
-    lastSelectedRef.current = path;
-  }
-};
+  };
 
   const handleContextMenu = (e: React.MouseEvent, entry: FileEntry) => {
     e.preventDefault();

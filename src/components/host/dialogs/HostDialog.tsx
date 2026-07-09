@@ -123,11 +123,7 @@ export default function HostDialog({ open, onClose, host, tags: allTags, keys }:
               />
             </div>
 
-            <HostForm
-              value={form}
-              onChange={handleFormChange}
-              keys={keys}
-            />
+            <HostForm value={form} onChange={handleFormChange} keys={keys} />
 
             <div>
               <Label>{t('sidebar.selectTag')}</Label>

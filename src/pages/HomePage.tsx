@@ -214,14 +214,17 @@ export default function HomePage() {
     };
   }, [setBottomHeight]);
 
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    dragging.current = true;
-    startY.current = e.clientY;
-    startH.current = bottomHeight;
-    dragHeightRef.current = bottomHeight;
-    document.body.style.cursor = 'row-resize';
-    document.body.style.userSelect = 'none';
-  }, [bottomHeight]);
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      dragging.current = true;
+      startY.current = e.clientY;
+      startH.current = bottomHeight;
+      dragHeightRef.current = bottomHeight;
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+    },
+    [bottomHeight],
+  );
 
   // Stable callback for reconnect — avoids breaking TerminalComp's memo
   const handleReconnect = useCallback(

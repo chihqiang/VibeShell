@@ -56,7 +56,9 @@ export default function HostRow({
         />
       )}
       <span className="text-sm text-foreground flex-1 truncate">{host.name}</span>
-      <span className="text-xs text-muted-foreground font-mono hidden sm:block">{host.username}@{host.hostname}</span>
+      <span className="text-xs text-muted-foreground font-mono hidden sm:block">
+        {host.username}@{host.hostname}
+      </span>
 
       <div className="relative">
         <button

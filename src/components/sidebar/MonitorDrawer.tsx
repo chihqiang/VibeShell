@@ -37,9 +37,7 @@ const CollapsibleSection = memo(function CollapsibleSection({
         className="flex items-center gap-2 w-full h-8 px-4 text-left hover:bg-muted/40 transition-colors cursor-pointer group"
       >
         <span className="text-muted-foreground group-hover:text-foreground transition-colors">{icon}</span>
-        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">
-          {title}
-        </span>
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">{title}</span>
         {open ? (
           <ChevronDown size={13} className="text-muted-foreground/60" />
         ) : (
@@ -57,9 +55,10 @@ export default function MonitorDrawer({ open }: MonitorDrawerProps) {
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const isConnected = activeTab?.type === 'terminal' && activeTab.status === 'connected';
   const hostName = activeTab?.type === 'terminal' ? activeTab.host?.name : undefined;
-  const hostAddr = activeTab?.type === 'terminal'
-    ? `${activeTab.connectConfig.username}@${activeTab.connectConfig.hostname}`
-    : undefined;
+  const hostAddr =
+    activeTab?.type === 'terminal'
+      ? `${activeTab.connectConfig.username}@${activeTab.connectConfig.hostname}`
+      : undefined;
 
   return (
     <aside
@@ -73,12 +72,8 @@ export default function MonitorDrawer({ open }: MonitorDrawerProps) {
       <div className="h-full flex flex-col" style={{ width: DRAWER_WIDTH }}>
         {/* Header */}
         <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between flex-shrink-0">
-          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-            {t('monitor.title')}
-          </h3>
-          {isConnected && (
-            <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 animate-pulse" />
-          )}
+          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{t('monitor.title')}</h3>
+          {isConnected && <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 animate-pulse" />}
         </div>
 
         {/* Host info banner — only when connected */}
@@ -89,9 +84,7 @@ export default function MonitorDrawer({ open }: MonitorDrawerProps) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-foreground truncate">{hostName || hostAddr}</div>
-              {hostName && (
-                <div className="text-[11px] text-muted-foreground truncate font-mono">{hostAddr}</div>
-              )}
+              {hostName && <div className="text-[11px] text-muted-foreground truncate font-mono">{hostAddr}</div>}
             </div>
           </div>
         )}
@@ -129,9 +122,7 @@ export default function MonitorDrawer({ open }: MonitorDrawerProps) {
               <Server size={22} className="text-muted-foreground/40" />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">
-                {t('monitor.noConnection', '暂无活跃连接')}
-              </p>
+              <p className="text-xs font-medium text-muted-foreground">{t('monitor.noConnection', '暂无活跃连接')}</p>
               <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
                 {t('monitor.noConnectionHint', '连接到服务器后即可查看实时监控数据')}
               </p>

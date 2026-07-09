@@ -62,9 +62,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="fixed bottom-6 left-1/2 z-[100] flex flex-col-reverse gap-2 -translate-x-1/2 pointer-events-none">
         {items.map((t) => {
           const icon =
-            t.type === 'success' ? <CheckCircle2 size={15} className="text-green-400 flex-shrink-0" /> :
-            t.type === 'error' ? <AlertCircle size={15} className="text-red-400 flex-shrink-0" /> :
-            <Info size={15} className="text-blue-400 flex-shrink-0" />;
+            t.type === 'success' ? (
+              <CheckCircle2 size={15} className="text-green-400 flex-shrink-0" />
+            ) : t.type === 'error' ? (
+              <AlertCircle size={15} className="text-red-400 flex-shrink-0" />
+            ) : (
+              <Info size={15} className="text-blue-400 flex-shrink-0" />
+            );
           return (
             <div
               key={t.id}

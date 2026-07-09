@@ -14,13 +14,7 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const points = data.map((v, i) => `${i * step},${h - (v / max) * h}`).join(' ');
   return (
     <svg width={w} height={h} className="flex-shrink-0" preserveAspectRatio="none">
-      <polyline
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        points={points}
-        vectorEffect="non-scaling-stroke"
-      />
+      <polyline fill="none" stroke={color} strokeWidth="1.5" points={points} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -109,21 +103,27 @@ export default function MonitorInfo() {
         <span className="text-foreground font-mono ml-2 text-right">{data.load || '—'}</span>
       </div>
       <Bar label="CPU" value={parsePercent(data.cpu)} text={data.cpu ? `${data.cpu}%` : '—'} history={cpuHistory} />
-      <Bar label={t('monitor.memory')} value={parsePercent(data.memory)} text={data.memory || '—'} history={memHistory} />
+      <Bar
+        label={t('monitor.memory')}
+        value={parsePercent(data.memory)}
+        text={data.memory || '—'}
+        history={memHistory}
+      />
       <Bar label={t('monitor.swap')} value={parsePercent(data.swap)} text={data.swap || '—'} />
-      {data.net_io && (() => {
-        const [rx, tx] = data.net_io.split('|');
-        const rxNum = parseInt(rx, 10) || 0;
-        const txNum = parseInt(tx, 10) || 0;
-        return (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">{t('monitor.netIO', 'Net I/O')}</span>
-            <span className="text-foreground font-mono ml-2 text-right">
-              ↓{formatSize(rxNum)} ↑{formatSize(txNum)}
-            </span>
-          </div>
-        );
-      })()}
+      {data.net_io &&
+        (() => {
+          const [rx, tx] = data.net_io.split('|');
+          const rxNum = parseInt(rx, 10) || 0;
+          const txNum = parseInt(tx, 10) || 0;
+          return (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('monitor.netIO', 'Net I/O')}</span>
+              <span className="text-foreground font-mono ml-2 text-right">
+                ↓{formatSize(rxNum)} ↑{formatSize(txNum)}
+              </span>
+            </div>
+          );
+        })()}
     </div>
   );
 }

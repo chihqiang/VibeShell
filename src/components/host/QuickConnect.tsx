@@ -26,7 +26,10 @@ import { getSshDefaults } from '@/storage/config';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-function formatRelativeTime(ts: number | null | undefined, t: (k: string, o?: Record<string, unknown>) => string): string {
+function formatRelativeTime(
+  ts: number | null | undefined,
+  t: (k: string, o?: Record<string, unknown>) => string,
+): string {
   if (!ts) return '';
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
@@ -168,20 +171,14 @@ export default function QuickConnect() {
                 value={quickInput}
                 onChange={(e) => setQuickInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && canConnect && handleQuickConnect()}
-                placeholder={t('dashboard.placeholder', { defaultValue: 'ssh root@192.168.1.1  或  root:密码@192.168.1.1:22' })}
+                placeholder={t('dashboard.placeholder', {
+                  defaultValue: 'ssh root@192.168.1.1  或  root:密码@192.168.1.1:22',
+                })}
                 className="flex-1 h-10 text-sm font-mono"
                 autoFocus
               />
-              <Button
-                className="h-10 gap-1.5 px-5"
-                disabled={!canConnect}
-                onClick={handleQuickConnect}
-              >
-                {connecting ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <ArrowRight size={15} />
-                )}
+              <Button className="h-10 gap-1.5 px-5" disabled={!canConnect} onClick={handleQuickConnect}>
+                {connecting ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
                 {connecting ? t('connection.connecting') : t('connection.connect')}
               </Button>
             </div>
@@ -189,12 +186,13 @@ export default function QuickConnect() {
             {/* Live parsed preview */}
             {showPreview && parsed && (
               <div className="flex flex-wrap items-center gap-1.5 px-1 animate-fade-in">
-                <ParsedChip icon={<User size={10} />} label={parsed.username || t('dashboard.defaultUser', { defaultValue: '默认' })} />
+                <ParsedChip
+                  icon={<User size={10} />}
+                  label={parsed.username || t('dashboard.defaultUser', { defaultValue: '默认' })}
+                />
                 <ChevronRight size={10} className="text-muted-foreground/40" />
                 <ParsedChip icon={<Globe size={10} />} label={`${parsed.hostname}:${parsed.port}`} />
-                {parsed.password && (
-                  <ParsedChip icon={<Lock size={10} />} label="••••••" highlight />
-                )}
+                {parsed.password && <ParsedChip icon={<Lock size={10} />} label="••••••" highlight />}
                 {parsed.privateKeyPath && (
                   <ParsedChip icon={<KeyRound size={10} />} label={parsed.privateKeyPath} highlight />
                 )}
@@ -245,11 +243,18 @@ export default function QuickConnect() {
                         'border-border hover:border-primary/40 hover:bg-muted/50 hover:shadow-sm',
                       )}
                     >
-                      <div className={cn(
-                        'flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 transition-colors',
-                        isConnected ? 'bg-green-500/15' : 'bg-muted group-hover:bg-primary/10',
-                      )}>
-                        <Server size={16} className={cn(isConnected ? 'text-green-500' : 'text-muted-foreground group-hover:text-primary')} />
+                      <div
+                        className={cn(
+                          'flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 transition-colors',
+                          isConnected ? 'bg-green-500/15' : 'bg-muted group-hover:bg-primary/10',
+                        )}
+                      >
+                        <Server
+                          size={16}
+                          className={cn(
+                            isConnected ? 'text-green-500' : 'text-muted-foreground group-hover:text-primary',
+                          )}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -278,7 +283,9 @@ export default function QuickConnect() {
                 <Server size={28} className="text-muted-foreground/30" />
               </div>
               <p className="text-center text-xs text-muted-foreground max-w-xs">
-                {t('dashboard.emptyHint', { defaultValue: '还没有最近连接。在左侧主机列表中添加主机，或在上方直接输入地址快速连接。' })}
+                {t('dashboard.emptyHint', {
+                  defaultValue: '还没有最近连接。在左侧主机列表中添加主机，或在上方直接输入地址快速连接。',
+                })}
               </p>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="xs" className="gap-1.5" onClick={() => navigate('/hosts')}>
@@ -305,9 +312,7 @@ function ParsedChip({ icon, label, highlight }: { icon: React.ReactNode; label: 
     <span
       className={cn(
         'inline-flex items-center gap-1 h-5 px-2 rounded text-[11px] font-mono',
-        highlight
-          ? 'bg-primary/10 text-primary border border-primary/20'
-          : 'bg-muted text-muted-foreground',
+        highlight ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-muted text-muted-foreground',
       )}
     >
       {icon}

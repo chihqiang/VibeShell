@@ -70,7 +70,14 @@ function getStoredFontSize(): number {
   }
 }
 
-const Terminal = memo(function Terminal({ terminalId, tabId, status, active = true, className, onReconnect }: TerminalProps) {
+const Terminal = memo(function Terminal({
+  terminalId,
+  tabId,
+  status,
+  active = true,
+  className,
+  onReconnect,
+}: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
   const termRef = useRef<XtermTerminal | null>(null);
@@ -146,26 +153,29 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, active = tr
   }, []);
 
   // Right-click: copy selection if any, otherwise paste clipboard
-  const handleContextMenu = useCallback(async (e: MouseEvent) => {
-    e.preventDefault();
-    const term = termRef.current;
-    // If there's a selection, copy it to clipboard and clear selection
-    if (term && term.hasSelection()) {
-      const text = term.getSelection();
-      navigator.clipboard.writeText(text).catch(() => {});
-      term.clearSelection();
-      return;
-    }
-    // No selection — paste from clipboard
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text && tabIdRef.current) {
-        sshWrite({ tabId: tabIdRef.current, data: text }).catch((err) => notifyError(err));
+  const handleContextMenu = useCallback(
+    async (e: MouseEvent) => {
+      e.preventDefault();
+      const term = termRef.current;
+      // If there's a selection, copy it to clipboard and clear selection
+      if (term && term.hasSelection()) {
+        const text = term.getSelection();
+        navigator.clipboard.writeText(text).catch(() => {});
+        term.clearSelection();
+        return;
       }
-    } catch {
-      // Clipboard API might not be available
-    }
-  }, [notifyError]);
+      // No selection — paste from clipboard
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && tabIdRef.current) {
+          sshWrite({ tabId: tabIdRef.current, data: text }).catch((err) => notifyError(err));
+        }
+      } catch {
+        // Clipboard API might not be available
+      }
+    },
+    [notifyError],
+  );
 
   useEffect(() => {
     const el = containerRef.current;
@@ -419,15 +429,23 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, active = tr
 
       {/* Connecting overlay */}
       {isConnecting && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 animate-overlay-in" style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}>
+        <div
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 animate-overlay-in"
+          style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+        >
           <Loader2 size={28} className="animate-spin text-yellow-400" />
-          <span className="text-xs text-yellow-400/90 font-medium">{hadConnectionRef.current ? t('terminal.reconnecting') : t('terminal.connectingToHost')}</span>
+          <span className="text-xs text-yellow-400/90 font-medium">
+            {hadConnectionRef.current ? t('terminal.reconnecting') : t('terminal.connectingToHost')}
+          </span>
         </div>
       )}
 
       {/* Disconnected overlay (only when previously connected) */}
       {isDisconnected && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 animate-overlay-in" style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}>
+        <div
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 animate-overlay-in"
+          style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+        >
           <WifiOff size={28} className="text-red-400/80" />
           <span className="text-xs text-red-400/80 font-medium">{t('terminal.disconnected')}</span>
           {onReconnect && (
@@ -442,12 +460,7 @@ const Terminal = memo(function Terminal({ terminalId, tabId, status, active = tr
         </div>
       )}
 
-      {showSearch && (
-        <TerminalSearchBar
-          searchAddon={searchAddonRef.current}
-          onClose={() => setShowSearch(false)}
-        />
-      )}
+      {showSearch && <TerminalSearchBar searchAddon={searchAddonRef.current} onClose={() => setShowSearch(false)} />}
     </div>
   );
 });

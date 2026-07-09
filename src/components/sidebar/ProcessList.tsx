@@ -32,11 +32,7 @@ export default function ProcessList() {
   };
 
   if (processes.length === 0) {
-    return (
-      <div className="px-4 py-6 text-center text-[11px] text-muted-foreground/60">
-        {t('monitor.noData')}
-      </div>
-    );
+    return <div className="px-4 py-6 text-center text-[11px] text-muted-foreground/60">{t('monitor.noData')}</div>;
   }
 
   return (
