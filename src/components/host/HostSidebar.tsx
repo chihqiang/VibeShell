@@ -37,7 +37,7 @@ import { COLLAPSED_WIDTH, MIN_WIDTH, MAX_WIDTH, STORAGE_KEY_COLLAPSED, STORAGE_K
 export default function HostSidebar() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { tabs, addTerminalTab } = useTerminalTabs();
+  const { tabs, addTerminalTab, setActiveTab, activeTabId } = useTerminalTabs();
   const { notify, notifyError } = useNotify();
 
   const [collapsed, setCollapsed] = useStorage(STORAGE_KEY_COLLAPSED, false);
@@ -62,6 +62,17 @@ export default function HostSidebar() {
   const [keyMgmtOpen, setKeyMgmtOpen] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const connectingRef = useRef(false);
+
+  // Auto-collapse sidebar when switching to a terminal tab
+  const prevActiveTabIdRef = useRef<string | null>(activeTabId);
+  useEffect(() => {
+    if (prevActiveTabIdRef.current === activeTabId) return;
+    prevActiveTabIdRef.current = activeTabId;
+    const activeTab = tabs.find((t) => t.id === activeTabId);
+    if (activeTab?.type === 'terminal') {
+      setCollapsed(true);
+    }
+  }, [activeTabId, tabs, setCollapsed]);
 
   // Drag resize — RAF throttled to avoid jank
   const dragging = useRef(false);
@@ -237,6 +248,14 @@ export default function HostSidebar() {
   }
 
   async function openTerminal(host: HostConfig) {
+    // If there's already a terminal tab for this host, switch to it instead of creating a duplicate
+    const existingTab = tabs.find((t) => t.type === 'terminal' && t.host?.id === host.id);
+    if (existingTab) {
+      setActiveTab(existingTab.id);
+      navigate('/');
+      return;
+    }
+
     if (connectingRef.current) return;
     connectingRef.current = true;
     setConnectingId(host.id);
@@ -262,7 +281,7 @@ export default function HostSidebar() {
       openTerminal(host);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [keys, addTerminalTab, navigate, notifyError],
+    [keys, addTerminalTab, navigate, notifyError, tabs, setActiveTab],
   );
 
   async function confirmDelete() {

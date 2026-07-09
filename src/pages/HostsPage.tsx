@@ -20,7 +20,7 @@ import { hostToConnectConfig } from '@/lib/utils';
 export default function HostsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { addTerminalTab, tabs } = useTerminalTabs();
+  const { addTerminalTab, tabs, setActiveTab } = useTerminalTabs();
   const { notifyError } = useNotify();
   const [hosts, setHosts] = useState<HostConfig[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -118,6 +118,14 @@ export default function HostsPage() {
   }
 
   async function openTerminal(host: HostConfig) {
+    // If there's already a terminal tab for this host, switch to it instead of creating a duplicate
+    const existingTab = tabs.find((t) => t.type === 'terminal' && t.host?.id === host.id);
+    if (existingTab) {
+      setActiveTab(existingTab.id);
+      navigate('/');
+      return;
+    }
+
     if (connectingRef.current) return;
     connectingRef.current = true;
     setConnectingId(host.id);

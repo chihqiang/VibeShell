@@ -36,7 +36,6 @@ export default function HostRow({
     <div
       className={`group flex items-center gap-3 h-10 px-3 rounded-lg transition-colors relative ${connecting ? 'opacity-60 pointer-events-none' : 'hover:bg-muted cursor-pointer'} ${menuOpen ? 'bg-muted' : ''}`}
       onClick={handleOpenTerminal}
-      onDoubleClick={handleOpenTerminal}
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
