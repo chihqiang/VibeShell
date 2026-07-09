@@ -5,8 +5,10 @@ import type { HostConfig } from '@/apis/types/hosts';
 interface HostRowProps {
   host: HostConfig;
   connecting?: boolean;
+  connected?: boolean;
   menuOpen: boolean;
   onMenuToggle: () => void;
+  onMenuToggleAt?: (x: number, y: number) => void;
   onOpenTerminal: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -15,8 +17,10 @@ interface HostRowProps {
 export default function HostRow({
   host,
   connecting = false,
+  connected = false,
   menuOpen,
   onMenuToggle,
+  onMenuToggleAt,
   onOpenTerminal,
   onEdit,
   onDelete,
@@ -30,16 +34,30 @@ export default function HostRow({
 
   return (
     <div
-      className={`group flex items-center gap-3 h-10 px-3 rounded-lg transition-colors relative ${connecting ? 'opacity-60 pointer-events-none' : 'hover:bg-muted cursor-pointer'}`}
-      onDoubleClick={handleOpenTerminal}
+      className={`group flex items-center gap-3 h-10 px-3 rounded-lg transition-colors relative ${connecting ? 'opacity-60 pointer-events-none' : 'hover:bg-muted cursor-pointer'} ${menuOpen ? 'bg-muted' : ''}`}
+      onClick={handleOpenTerminal}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onMenuToggleAt) {
+          onMenuToggleAt(e.clientX, e.clientY);
+        } else {
+          onMenuToggle();
+        }
+      }}
     >
       {connecting ? (
         <Loader2 size={14} className="animate-spin text-primary flex-shrink-0" />
       ) : (
-        <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
+        <div
+          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${connected ? 'bg-green-500' : 'bg-muted-foreground/30'}`}
+          title={connected ? t('connection.connected') : t('connection.disconnected')}
+        />
       )}
       <span className="text-sm text-foreground flex-1 truncate">{host.name}</span>
-      <span className="text-xs text-muted-foreground">{host.hostname}</span>
+      <span className="text-xs text-muted-foreground font-mono hidden sm:block">
+        {host.username}@{host.hostname}
+      </span>
 
       <div className="relative">
         <button
@@ -54,7 +72,7 @@ export default function HostRow({
 
         {menuOpen && (
           <div
-            className="absolute right-0 top-full z-50 mt-1 w-32 rounded-lg border border-border bg-popover shadow-lg py-1"
+            className="absolute right-0 top-full z-50 mt-1 w-36 rounded-lg border border-border bg-popover shadow-lg py-1"
             onClick={(e) => e.stopPropagation()}
           >
             <button

@@ -17,25 +17,8 @@
 
 ## 界面预览
 
-<p><strong>SSH 连接</strong></p>
-<p>支持密码和密钥认证，可选择记住密码，快速连接远程服务器。</p>
-<img src="docs/images/ssh.png" width="600" alt="SSH 连接">
+<img src="docs/images/vibessh.png" width="600">
 
-<p><strong>主机管理</strong></p>
-<p>标签管理服务器主机，保存连接凭据，双击即可快速连接。</p>
-<img src="docs/images/host.png" width="600" alt="主机管理">
-
-<p><strong>添加主机</strong></p>
-<p>填写主机信息包括名称、地址、端口、用户名和认证方式。</p>
-<img src="docs/images/host-add.png" width="600" alt="添加主机">
-
-<p><strong>密钥管理</strong></p>
-<p>统一管理 SSH 私钥，导入后可在连接时选择使用。</p>
-<img src="docs/images/keys.png" width="600" alt="密钥管理">
-
-<p><strong>添加密钥</strong></p>
-<p>支持从文件导入私钥，或粘贴已有私钥内容。</p>
-<img src="docs/images/keys-add.png" width="600" alt="添加密钥">
 
 ## 下载
 

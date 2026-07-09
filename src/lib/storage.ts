@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 function isSameType(a: unknown, b: unknown): boolean {
   if (a === null || b === null) return a === null && b === null;
@@ -30,19 +30,24 @@ export function setStorage<T>(key: string, value: T): void {
 export function useStorage<T>(key: string, defaultValue: T): [T, (value: T) => void] {
   const [value, setValue] = useState<T>(() => getStorage(key, defaultValue));
 
+  // Store defaultValue in a ref so it doesn't trigger effect re-registration
+  // when callers pass inline object literals (new identity each render).
+  const defaultRef = useRef(defaultValue);
+  defaultRef.current = defaultValue;
+
   useEffect(() => {
     const handler = (e: StorageEvent) => {
       if (e.key === key && e.newValue !== null) {
         try {
           setValue(JSON.parse(e.newValue) as T);
         } catch {
-          setValue(defaultValue);
+          setValue(defaultRef.current);
         }
       }
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
-  }, [key, defaultValue]);
+  }, [key]);
 
   const setAndPersist = useCallback(
     (next: T) => {

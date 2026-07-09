@@ -1,85 +1,73 @@
-import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { listen } from '@tauri-apps/api/event';
-import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
-import { useNotify } from '@/hooks/use-notify';
-import type { DiskInfo, MonitorEvent } from '@/lib/types';
-import type { UnlistenFn } from '@tauri-apps/api/event';
+import { useMonitorData } from '@/hooks/use-monitor';
+import type { DiskInfo } from '@/lib/types';
 
 export default function DiskList() {
   const { t } = useTranslation();
-  const { tabs, activeTabId } = useTerminalTabs();
-  const { notifyError } = useNotify();
-  const [disks, setDisks] = useState<DiskInfo[]>([]);
-  const unlistenRef = useRef<UnlistenFn | null>(null);
-  const genRef = useRef(0);
+  const monitorData = useMonitorData();
+  const disks: DiskInfo[] = monitorData?.disks ?? [];
 
-  const activeTab = tabs.find((t) => t.id === activeTabId);
-  const tabId = activeTab?.type === 'terminal' && activeTab.status === 'connected' ? activeTab.id : null;
-
-  useEffect(() => {
-    const gen = ++genRef.current;
-
-    if (unlistenRef.current) {
-      unlistenRef.current();
-      unlistenRef.current = null;
-    }
-
-    setDisks([]);
-
-    if (!tabId) return;
-
-    const setup = async () => {
-      const unlisten = await listen<MonitorEvent>('ssh://monitor', (event) => {
-        if (event.payload.tab_id !== tabId || gen !== genRef.current) return;
-        setDisks(event.payload.disks);
-      });
-      if (gen !== genRef.current) {
-        unlisten();
-        return;
-      }
-      unlistenRef.current = unlisten;
+  const parseDiskSize = (s: string): number => {
+    const m = s.match(/([\d.]+)\s*([KMGT]i?B?|B)/i);
+    if (!m) return 0;
+    const val = parseFloat(m[1]);
+    const unit = m[2].toUpperCase();
+    const mult: Record<string, number> = {
+      B: 1,
+      KB: 1024,
+      KIB: 1024,
+      MB: 1024 ** 2,
+      MIB: 1024 ** 2,
+      GB: 1024 ** 3,
+      GIB: 1024 ** 3,
+      TB: 1024 ** 4,
+      TIB: 1024 ** 4,
     };
-    setup();
+    return val * (mult[unit] || 1);
+  };
 
-    return () => {
-      if (unlistenRef.current) {
-        unlistenRef.current();
-        unlistenRef.current = null;
-      }
-    };
-  }, [tabId, notifyError]);
+  if (disks.length === 0) {
+    return <div className="px-4 py-6 text-center text-[11px] text-muted-foreground/60">{t('monitor.noData')}</div>;
+  }
 
   return (
-    <div className="border-t border-border/60 flex flex-col min-h-0">
-      <div className="overflow-y-auto min-h-0 flex-1">
-        <table className="w-full text-[10px] border-collapse">
-          <thead className="sticky top-0 bg-secondary">
-            <tr className="text-muted-foreground">
-              <th className="text-left px-2 py-1 font-medium">{t('monitor.diskPath')}</th>
-              <th className="text-right px-2 py-1 font-medium w-[48px]">{t('monitor.diskAvail')}</th>
-              <th className="text-right px-2 py-1 font-medium w-[48px]">{t('monitor.diskSize')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {disks.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="text-center text-muted-foreground px-2 py-8">
-                  {t('monitor.noData')}
+    <div className="pb-1">
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr className="text-muted-foreground">
+            <th className="text-left px-3 py-1 font-medium">{t('monitor.diskPath')}</th>
+            <th className="text-left px-2 py-1 font-medium w-[80px]">{t('monitor.diskUsage', '使用率')}</th>
+            <th className="text-right px-2 py-1 font-medium w-[48px]">{t('monitor.diskAvail')}</th>
+            <th className="text-right px-3 py-1 font-medium w-[48px]">{t('monitor.diskSize')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {disks.map((d, i) => {
+            const totalNum = parseDiskSize(d.size);
+            const availNum = parseDiskSize(d.avail);
+            const usedPct = totalNum > 0 ? Math.round(((totalNum - availNum) / totalNum) * 100) : 0;
+            const barColor = usedPct > 90 ? '#ef4444' : usedPct > 70 ? '#f59e0b' : '#22c55e';
+            return (
+              <tr key={i} className="hover:bg-muted/30">
+                <td className="px-3 py-1 text-foreground truncate max-w-0">{d.path}</td>
+                <td className="px-2 py-1">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${usedPct}%`, backgroundColor: barColor }}
+                      />
+                    </div>
+                    <span className="text-[10px] tabular-nums text-muted-foreground w-7 text-right">{usedPct}%</span>
+                  </div>
                 </td>
+                <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{d.avail}</td>
+                <td className="px-3 py-1 text-right tabular-nums text-muted-foreground">{d.size}</td>
               </tr>
-            ) : (
-              disks.map((d, i) => (
-                <tr key={i} className="hover:bg-muted/30">
-                  <td className="px-2 py-0.5 text-foreground truncate max-w-0">{d.path}</td>
-                  <td className="px-2 py-0.5 text-right tabular-nums text-muted-foreground">{d.avail}</td>
-                  <td className="px-2 py-0.5 text-right tabular-nums text-muted-foreground">{d.size}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -91,8 +91,8 @@ export default function SettingsPage() {
               className={cn(
                 'w-full h-8 px-3 text-xs rounded-lg text-left transition-colors cursor-pointer',
                 active === s
-                  ? 'bg-muted text-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-l-2 border-transparent',
               )}
             >
               {sectionLabel[s]}

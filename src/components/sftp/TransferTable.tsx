@@ -158,7 +158,7 @@ export function TransferTable({
                         {t(`sftp.transferStatus_${item.status}`)}
                       </span>
                       {item.status === 'failed' && item.error && (
-                        <div className="text-[10px] text-destructive/70 truncate max-w-36" title={item.error}>
+                        <div className="text-[11px] text-destructive/70 truncate max-w-36" title={item.error}>
                           {item.error}
                         </div>
                       )}

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { listKeys } from '@/apis/api/keys';
 import { Input } from '@/components/ui/input';
 import ImportKeyDialog from '@/components/keys/dialogs/ImportKeyDialog';
-import type { HostFormData } from '@/lib/types';
+import type { HostFormState } from '@/lib/types';
 import type { KeyEntry } from '@/apis/types/keys';
 import Field from '@/components/host/Field';
 import PortInput from '@/components/host/PortInput';
@@ -11,8 +11,8 @@ import AuthToggle from '@/components/host/AuthToggle';
 import KeySelector from '@/components/host/KeySelector';
 
 interface HostFormProps {
-  value: HostFormData;
-  onChange: (data: HostFormData) => void;
+  value: HostFormState;
+  onChange: (data: HostFormState) => void;
   keys: KeyEntry[];
   compact?: boolean;
 }
@@ -24,7 +24,7 @@ export default function HostForm({ value, onChange, keys, compact }: HostFormPro
   const [allKeys, setAllKeys] = useState(keys);
   const keyRef = useRef<HTMLDivElement>(null);
 
-  const updateField = <K extends keyof HostFormData>(key: K, v: HostFormData[K]) => {
+  const updateField = <K extends keyof HostFormState>(key: K, v: HostFormState[K]) => {
     onChange({ ...value, [key]: v });
   };
 

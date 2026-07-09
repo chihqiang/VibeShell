@@ -28,7 +28,7 @@ export default function KeySelector({
   const { t } = useTranslation();
   return (
     <div className={compact ? 'flex flex-col gap-1 relative' : 'relative'}>
-      {compact && <span className="text-[10px] text-muted-foreground font-medium">{t('connection.privateKey')}</span>}
+      {compact && <span className="text-[11px] text-muted-foreground font-medium">{t('connection.privateKey')}</span>}
       <button
         type="button"
         onClick={onToggle}
@@ -69,7 +69,7 @@ export default function KeySelector({
                     ) : (
                       <div className="flex flex-col min-w-0 flex-1">
                         <span className="text-sm text-foreground truncate">{k.name}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono truncate">
+                        <span className="text-[11px] text-muted-foreground font-mono truncate">
                           {k.key_type} {k.fingerprint}
                         </span>
                       </div>

@@ -2,7 +2,7 @@ import { listHosts, listTags } from '@/apis/api/hosts';
 import { listKeys } from '@/apis/api/keys';
 import type { HostConfig } from '@/apis/types/hosts';
 import type { KeyEntry } from '@/apis/types/keys';
-import type { HostFormState, AuthMethod } from '@/lib/types';
+import type { HostFormState } from '@/lib/types';
 
 export async function fetchAllHostData(): Promise<{
   hosts: HostConfig[];
@@ -27,7 +27,7 @@ export function hostConfigToFormState(host: HostConfig): HostFormState {
     hostname: host.hostname,
     port: host.port,
     username: host.username,
-    authMethod: (host.auth_method as AuthMethod) || 'password',
+    authMethod: host.auth_method || 'password',
     password: host.auth_method === 'password' ? host.password || '' : '',
     privateKeyPath: host.private_key_path || '',
     keyPassphrase: host.auth_method === 'key' ? host.password || '' : '',

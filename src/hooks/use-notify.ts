@@ -9,7 +9,7 @@ export function useNotify() {
     (message: string, feedback?: boolean) => {
       info(message);
       if (feedback !== false) {
-        toast(message);
+        toast(message, { type: 'success' });
       }
     },
     [toast],
@@ -20,7 +20,7 @@ export function useNotify() {
       const msg = typeof message === 'string' ? message : message instanceof Error ? message.message : String(message);
       logError(msg);
       if (feedback !== false) {
-        toast(msg);
+        toast(msg, { type: 'error' });
       }
     },
     [toast],

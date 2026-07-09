@@ -1,14 +1,17 @@
 import { createContext, useState, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 interface ToastItem {
   id: number;
   message: string;
   leaving: boolean;
+  type: 'success' | 'error' | 'info';
 }
 
 interface ToastOptions {
   duration?: number;
+  type?: 'success' | 'error' | 'info';
 }
 
 interface ToastContextValue {
@@ -44,7 +47,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (message: string, options?: ToastOptions) => {
       const id = nextId.current++;
       const duration = options?.duration ?? 3000;
-      setItems((prev) => [...prev, { id, message, leaving: false }]);
+      const type = options?.type ?? 'info';
+      setItems((prev) => [...prev, { id, message, leaving: false, type }]);
       setTimeout(() => dismissToast(id), duration);
     },
     [dismissToast],
@@ -56,18 +60,29 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div className="fixed bottom-6 left-1/2 z-[100] flex flex-col-reverse gap-2 -translate-x-1/2 pointer-events-none">
-        {items.map((t) => (
-          <div
-            key={t.id}
-            onClick={() => dismissToast(t.id)}
-            className={cn(
-              'rounded-lg bg-foreground px-4 py-2 text-sm text-background shadow-lg cursor-pointer pointer-events-auto',
-              t.leaving ? 'animate-fade-out-down' : 'animate-fade-in-up',
-            )}
-          >
-            {t.message}
-          </div>
-        ))}
+        {items.map((t) => {
+          const icon =
+            t.type === 'success' ? (
+              <CheckCircle2 size={15} className="text-green-400 flex-shrink-0" />
+            ) : t.type === 'error' ? (
+              <AlertCircle size={15} className="text-red-400 flex-shrink-0" />
+            ) : (
+              <Info size={15} className="text-blue-400 flex-shrink-0" />
+            );
+          return (
+            <div
+              key={t.id}
+              onClick={() => dismissToast(t.id)}
+              className={cn(
+                'flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm text-background shadow-lg cursor-pointer pointer-events-auto',
+                t.leaving ? 'animate-fade-out-down' : 'animate-fade-in-up',
+              )}
+            >
+              {icon}
+              {t.message}
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

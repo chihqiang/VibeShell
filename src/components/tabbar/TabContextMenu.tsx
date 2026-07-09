@@ -1,5 +1,8 @@
 import { useTranslation } from 'react-i18next';
+import { Copy } from 'lucide-react';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
+import { useNotify } from '@/hooks/use-notify';
+import { buildSshCommand } from '@/lib/utils';
 
 interface TabContextMenuProps {
   tabId: string | null;
@@ -11,6 +14,7 @@ interface TabContextMenuProps {
 export default function TabContextMenu({ tabId, position, onClose, onReconnect }: TabContextMenuProps) {
   const { t } = useTranslation();
   const { tabs, closeTab, closeAllOtherTabs, closeAllTabs, addQuickTab, addTerminalTab } = useTerminalTabs();
+  const { notify } = useNotify();
 
   if (!tabId) return null;
 
@@ -21,7 +25,7 @@ export default function TabContextMenu({ tabId, position, onClose, onReconnect }
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className="fixed z-50 w-32 rounded-lg border border-border bg-popover shadow-lg py-1"
+        className="fixed z-50 w-36 rounded-lg border border-border bg-popover shadow-lg py-1"
         style={{ top: position.top, left: position.left }}
       >
         <button
@@ -41,6 +45,17 @@ export default function TabContextMenu({ tabId, position, onClose, onReconnect }
         </button>
         {tab?.type === 'terminal' && (
           <>
+            <button
+              onClick={() => {
+                const cmd = buildSshCommand(tab.connectConfig);
+                navigator.clipboard.writeText(cmd).then(() => notify(t('common.copied')));
+                onClose();
+              }}
+              className="flex items-center gap-2 w-full h-8 px-3 text-sm text-left hover:bg-muted transition-colors cursor-pointer"
+            >
+              <Copy size={13} />
+              {t('tab.copyHostInfo', '复制主机信息')}
+            </button>
             <div className="border-t border-border my-1" />
             <button
               disabled={!canReconnect}

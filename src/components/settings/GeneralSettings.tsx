@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Language, languageDisplayName, languageOptions, changeLanguage } from '@/hooks/use-lang';
 import { type Theme, themeOptions, useTheme } from '@/hooks/use-theme';
+import { terminalThemes, getStoredThemeId, setStoredThemeId } from '@/lib/terminal-themes';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
@@ -21,6 +23,7 @@ interface GeneralSettingsProps {
 export function GeneralSettings({ onSaved }: GeneralSettingsProps) {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
+  const [termThemeId, setTermThemeId] = useState(getStoredThemeId());
 
   const handleLanguageChange = (lang: Language) => {
     changeLanguage(lang);
@@ -29,6 +32,14 @@ export function GeneralSettings({ onSaved }: GeneralSettingsProps) {
 
   const handleThemeChange = (v: Theme) => {
     setTheme(v);
+    onSaved();
+  };
+
+  const handleTermThemeChange = (id: string) => {
+    setTermThemeId(id);
+    setStoredThemeId(id);
+    // Notify all live terminal instances to update their theme
+    window.dispatchEvent(new CustomEvent('vibeshell:term-theme-change'));
     onSaved();
   };
 
@@ -69,12 +80,39 @@ export function GeneralSettings({ onSaved }: GeneralSettingsProps) {
                 <SelectList>
                   {themeOptions.map((th) => (
                     <SelectItem key={th} value={th}>
-                      {th === 'dark' ? t('settings.dark') : t('settings.light')}
+                      {th === 'dark'
+                        ? t('settings.dark')
+                        : th === 'light'
+                          ? t('settings.light')
+                          : t('settings.auto', 'Auto')}
                     </SelectItem>
                   ))}
                 </SelectList>
               </SelectPopup>
             </Select>
+          </div>
+        </div>
+        <div>
+          <Label>{t('settings.terminalTheme', 'Terminal Theme')}</Label>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            {terminalThemes.map((tt) => (
+              <button
+                key={tt.id}
+                onClick={() => handleTermThemeChange(tt.id)}
+                className={cn(
+                  'flex items-center gap-2 h-8 px-3 text-xs rounded-lg border transition-all cursor-pointer',
+                  termThemeId === tt.id
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-background border-input text-muted-foreground hover:border-muted-foreground',
+                )}
+              >
+                <span
+                  className="w-3 h-3 rounded-full flex-shrink-0 border border-border/50"
+                  style={{ backgroundColor: tt.colors.background }}
+                />
+                {tt.name}
+              </button>
+            ))}
           </div>
         </div>
       </CardContent>

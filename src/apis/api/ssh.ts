@@ -13,10 +13,6 @@ export function sshDisconnect(params: { tabId: string }): Promise<void> {
   return invoke('ssh_disconnect', params);
 }
 
-export function sshRead(params: { tabId: string }): Promise<string> {
-  return invoke('ssh_read', params);
-}
-
 export function sshWrite(params: { tabId: string; data: string }): Promise<void> {
   return invoke('ssh_write', params);
 }

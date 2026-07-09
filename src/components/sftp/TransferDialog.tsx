@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { X, RotateCw, Square, LoaderCircle, CheckCircle2, AlertCircle, Upload, Download } from 'lucide-react';
+import { X, RotateCw, Square, LoaderCircle, CheckCircle2, AlertCircle, Upload, Download, Inbox } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -43,8 +43,9 @@ export function TransferDialog({
         </DialogHeader>
         <div className="max-h-96 overflow-y-auto px-1">
           {transfers.length === 0 ? (
-            <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
-              {t('sftp.transferIdle')}
+            <div className="flex flex-col items-center justify-center gap-3 h-32 text-muted-foreground">
+              <Inbox size={32} className="opacity-20" />
+              <span className="text-xs">{t('sftp.transferIdle')}</span>
             </div>
           ) : (
             <table className="w-full text-xs border-collapse">
@@ -117,7 +118,7 @@ export function TransferDialog({
                           {t(`sftp.transferStatus_${item.status}`)}
                         </span>
                         {item.status === 'failed' && item.error && (
-                          <div className="text-[10px] text-destructive/70 truncate max-w-36" title={item.error}>
+                          <div className="text-[11px] text-destructive/70 truncate max-w-36" title={item.error}>
                             {item.error}
                           </div>
                         )}

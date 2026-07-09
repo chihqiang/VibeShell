@@ -13,12 +13,14 @@ import type { HostConfig } from '@/apis/types/hosts';
 import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
 import { deleteHost, saveHost } from '@/apis/api/hosts';
+import { sshTestConnect } from '@/apis/api/ssh';
 import { fetchAllHostData } from '@/apis/utils/hosts';
+import { hostToConnectConfig } from '@/lib/utils';
 
 export default function HostsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { addTerminalTab } = useTerminalTabs();
+  const { addTerminalTab, tabs, setActiveTab } = useTerminalTabs();
   const { notifyError } = useNotify();
   const [hosts, setHosts] = useState<HostConfig[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -30,6 +32,16 @@ export default function HostsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const connectingRef = useRef(false);
+
+  const connectedHostIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const tab of tabs) {
+      if (tab.type === 'terminal' && tab.host?.id) {
+        ids.add(tab.host.id);
+      }
+    }
+    return ids;
+  }, [tabs]);
 
   const loadData = useCallback(async () => {
     try {
@@ -105,21 +117,32 @@ export default function HostsPage() {
     loadData();
   }
 
-  function openTerminal(host: HostConfig) {
+  async function openTerminal(host: HostConfig) {
+    // If there's already a terminal tab for this host, switch to it instead of creating a duplicate
+    const existingTab = tabs.find((t) => t.type === 'terminal' && t.host?.id === host.id);
+    if (existingTab) {
+      setActiveTab(existingTab.id);
+      navigate('/');
+      return;
+    }
+
     if (connectingRef.current) return;
     connectingRef.current = true;
     setConnectingId(host.id);
-    addTerminalTab(
-      {
-        hostname: host.hostname,
-        port: host.port,
-        username: host.username,
-        password: host.password || null,
-        private_key_path: host.private_key_path || null,
-      },
-      host,
-    );
-    navigate('/');
+    try {
+      const config = await hostToConnectConfig(host, keys);
+      await sshTestConnect(config);
+      addTerminalTab(config, host);
+      const now = Date.now();
+      await saveHost({ host: { ...host, last_connected_at: now } });
+      setHosts((prev) => prev.map((h) => (h.id === host.id ? { ...h, last_connected_at: now } : h)));
+      navigate('/');
+    } catch (e) {
+      notifyError(e);
+    } finally {
+      setConnectingId(null);
+      connectingRef.current = false;
+    }
   }
 
   function handleDelete(host: HostConfig) {
@@ -184,6 +207,7 @@ export default function HostsPage() {
                   key={h.id}
                   host={h}
                   connecting={connectingId === h.id}
+                  connected={connectedHostIds.has(h.id)}
                   menuOpen={menuOpenId === h.id}
                   onMenuToggle={() => setMenuOpenId(menuOpenId === h.id ? null : h.id)}
                   onOpenTerminal={() => openTerminal(h)}
@@ -214,6 +238,7 @@ export default function HostsPage() {
                   key={h.id}
                   host={h}
                   connecting={connectingId === h.id}
+                  connected={connectedHostIds.has(h.id)}
                   menuOpen={menuOpenId === h.id}
                   onMenuToggle={() => setMenuOpenId(menuOpenId === h.id ? null : h.id)}
                   onOpenTerminal={() => openTerminal(h)}

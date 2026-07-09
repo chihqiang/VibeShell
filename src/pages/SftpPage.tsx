@@ -11,7 +11,7 @@ import { TransferTable } from '@/components/sftp/TransferTable';
 import { TransferDialog } from '@/components/sftp/TransferDialog';
 import SftpPane from '@/components/sftp/SftpPane';
 import ContextMenu from '@/components/sftp/ContextMenu';
-import type { ConnectionConfig } from '@/lib/types';
+import type { HostFormState } from '@/lib/types';
 import { useNotify } from '@/hooks/use-notify';
 import { useNProgress } from '@/hooks/use-nprogress';
 import { useSftpConnection, useSftpTransfers, useSftpDragDrop } from '@/hooks/use-tab';
@@ -22,7 +22,7 @@ export default function SftpPage() {
   const { start, done } = useNProgress();
   const navigate = useNavigate();
   const location = useLocation();
-  const conn = (location.state as { connection?: ConnectionConfig })?.connection;
+  const conn = (location.state as { connection?: HostFormState })?.connection;
 
   const tabId = useSftpConnection(conn);
 
@@ -118,7 +118,7 @@ export default function SftpPage() {
     <div className="flex-1 flex flex-col min-h-0 bg-background">
       <SftpHeader conn={conn} />
 
-      <div className="flex-1 flex gap-3 p-4 min-h-0">
+      <div className="flex-1 flex gap-3 p-5 min-h-0">
         <SftpPane
           title={t('sftp.remote')}
           path={currentPath}

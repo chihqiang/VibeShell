@@ -197,6 +197,8 @@ fn monitor_script() -> String {
         r#"(ps aux --sort=-%mem 2>/dev/null | head -16 | tail -15 | awk '{printf "%s|%s|%s|%s\n", $4, $3, $11, $2}' || echo '')"#,
         r#"echo '---DF---'"#,
         r#"(df -h 2>/dev/null | awk 'NR>1{printf "%s|%s|%s\n", $6, $2, $4}' | grep '^/' || echo '')"#,
+        r#"echo '---NET---'"#,
+        r#"(cat /proc/net/dev 2>/dev/null | awk 'NR>2{rx+=$2; tx+=$10} END{printf "%d|%d\n", rx, tx}' || echo '')"#,
     ];
     parts.join(" && ")
 }
@@ -208,6 +210,7 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
     let mut cpu = String::new();
     let mut memory = String::new();
     let mut swap = String::new();
+    let mut net_io = String::new();
     let mut processes = Vec::new();
     let mut disks = Vec::new();
 
@@ -225,6 +228,7 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
             "CPU" => cpu = trimmed.to_string(),
             "MEM" => memory = trimmed.to_string(),
             "SWAP" => swap = trimmed.to_string(),
+            "NET" => net_io = trimmed.to_string(),
             "PS" => {
                 let parts: Vec<&str> = trimmed.split('|').collect();
                 if parts.len() == 4 {
@@ -258,6 +262,7 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
         cpu,
         memory,
         swap,
+        net_io,
         processes,
         disks,
     }
