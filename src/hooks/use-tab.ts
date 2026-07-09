@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { save } from '@tauri-apps/plugin-dialog';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { sshConnect } from '@/apis/api/ssh';
-import { formToConnectConfig } from '@/lib/utils';
+import { sshConnect } from '@/services/sshService';
+import { formToConnectConfig } from '@/utils/ssh';
 import {
   sftpListFilesRecursive,
   sftpUploadFileProgress,
@@ -16,15 +16,17 @@ import {
   sftpDeleteFile,
   sftpGetUsersGroups,
   sftpChmod,
-} from '@/apis/api/sftp';
-import { expandLocalFiles } from '@/apis/utils/sftp';
-import { FileType } from '@/apis/types/sftp';
-import type { FileEntry } from '@/apis/types/sftp';
-import type { HostFormState, TransferItem, SftpProgressPayload, ChmodFormData } from '@/lib/types';
-import { TRANSFER_STORAGE_KEY } from '@/lib/types';
+  expandLocalFiles,
+} from '@/services/sftpService';
+import { FileType } from '@/types/sftp';
+import type { FileEntry } from '@/types/sftp';
+import type { HostFormState } from '@/types/host';
+import type { TransferItem, SftpProgressPayload, ChmodFormData } from '@/types/sftp';
+import { STORAGE_KEYS } from '@/constants/storage-keys';
+import { TRANSFER_CONCURRENCY } from '@/constants/app';
 import { useNotify } from '@/hooks/use-notify';
-import { runWithConcurrency } from '@/lib/utils';
-import { getCachedUsersGroups, setCachedUsersGroups } from '@/storage/users-groups';
+import { runWithConcurrency } from '@/utils/async';
+import { getCachedUsersGroups, setCachedUsersGroups } from '@/services/usersGroupsService';
 
 // ── useSftpConnection ──
 
@@ -59,7 +61,7 @@ export function useSftpConnection(conn: HostFormState | undefined): string | nul
       cancelled = true;
       const id = tabIdRef.current;
       if (id) {
-        import('@/apis/api/ssh').then(({ sshDisconnect }) => {
+        import('@/services/sshService').then(({ sshDisconnect }) => {
           sshDisconnect({ tabId: id }).catch((e) => notifyError(e, false));
         });
       }
@@ -114,7 +116,7 @@ export function useSftpDragDrop(tabId: string | null, onDrop: (paths: string[]) 
 
 function loadPersistedTransfers(notifyError?: (msg: string | unknown) => void): TransferItem[] {
   try {
-    const raw = localStorage.getItem(TRANSFER_STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEYS.SFTP_TRANSFERS);
     if (raw) {
       const items: TransferItem[] = JSON.parse(raw);
       return items.map((item) => ({
@@ -144,7 +146,7 @@ export function useSftpTransfers(tabId: string | null, currentPath: string, load
     persistTimerRef.current = setTimeout(() => {
       persistTimerRef.current = null;
       try {
-        localStorage.setItem(TRANSFER_STORAGE_KEY, JSON.stringify(transfers));
+        localStorage.setItem(STORAGE_KEYS.SFTP_TRANSFERS, JSON.stringify(transfers));
       } catch (e) {
         notifyError(e, false);
       }
@@ -239,7 +241,7 @@ export function useSftpTransfers(tabId: string | null, currentPath: string, load
       setTransfersOpen(true);
 
       const pendingItems = newItems.filter((item) => item.status === 'pending');
-      await runWithConcurrency(pendingItems, 4, async (item) => {
+      await runWithConcurrency(pendingItems, TRANSFER_CONCURRENCY, async (item) => {
         try {
           setTransfers((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: 'uploading' } : x)));
           await sftpUploadFileProgress({
@@ -354,7 +356,7 @@ export function useSftpTransfers(tabId: string | null, currentPath: string, load
         setTransfers((prev) => [...newItems, ...prev]);
         setTransfersOpen(true);
 
-        await runWithConcurrency(newItems, 4, async (item) => {
+        await runWithConcurrency(newItems, TRANSFER_CONCURRENCY, async (item) => {
           setTransfers((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: 'downloading' } : x)));
           try {
             await sftpDownloadFileProgress({

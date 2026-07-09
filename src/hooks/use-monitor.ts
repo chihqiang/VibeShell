@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useNotify } from '@/hooks/use-notify';
-import type { MonitorEvent } from '@/lib/types';
+import type { MonitorEvent } from '@/types/monitor';
 
 // Module-level singleton: a single listener shared across all components
 type ListenerEntry = {

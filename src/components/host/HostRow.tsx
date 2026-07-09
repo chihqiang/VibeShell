@@ -1,6 +1,6 @@
 import { Pencil, Terminal, Trash2, MoreHorizontal, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { HostConfig } from '@/apis/types/hosts';
+import type { HostConfig } from '@/types/host';
 
 interface HostRowProps {
   host: HostConfig;
@@ -14,7 +14,7 @@ interface HostRowProps {
   onDelete: () => void;
 }
 
-export default function HostRow({
+export function HostRow({
   host,
   connecting = false,
   connected = false,

@@ -1,14 +1,12 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { listKeys } from '@/apis/api/keys';
+import { listKeys } from '@/services/keyService';
 import { Input } from '@/components/ui/input';
-import ImportKeyDialog from '@/components/keys/dialogs/ImportKeyDialog';
-import type { HostFormState } from '@/lib/types';
-import type { KeyEntry } from '@/apis/types/keys';
-import Field from '@/components/host/Field';
-import PortInput from '@/components/host/PortInput';
-import AuthToggle from '@/components/host/AuthToggle';
-import KeySelector from '@/components/host/KeySelector';
+import { ImportKeyDialog } from '@/components/keys';
+import type { HostFormState } from '@/types';
+import type { KeyEntry } from '@/types/key';
+import { AuthToggle, KeySelector } from '@/components/host';
+import { Field, NumberInput } from '@/components/ui';
 
 interface HostFormProps {
   value: HostFormState;
@@ -17,7 +15,7 @@ interface HostFormProps {
   compact?: boolean;
 }
 
-export default function HostForm({ value, onChange, keys, compact }: HostFormProps) {
+export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
   const { t } = useTranslation();
   const [keyOpen, setKeyOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -33,7 +31,7 @@ export default function HostForm({ value, onChange, keys, compact }: HostFormPro
     : null;
 
   const handleSelectKey = async (entry: KeyEntry) => {
-    const { getKeysPath } = await import('@/storage/config');
+    const { getKeysPath } = await import('@/services/configService');
     updateField('privateKeyPath', `${await getKeysPath()}/${entry.file_name}`);
     updateField('keyPassphrase', entry.password || '');
     setKeyOpen(false);
@@ -82,7 +80,7 @@ export default function HostForm({ value, onChange, keys, compact }: HostFormPro
             />
           </Field>
           <Field label={t('quickConnect.port')} compact>
-            <PortInput value={value.port} onChange={(v) => updateField('port', v)} compact />
+            <NumberInput value={value.port} onChange={(v) => updateField('port', v)} placeholder="22" compact />
           </Field>
           <Field label={t('quickConnect.username')} compact>
             <Input
@@ -127,7 +125,7 @@ export default function HostForm({ value, onChange, keys, compact }: HostFormPro
           />
         </Field>
         <Field label={t('connection.port')}>
-          <PortInput value={value.port} onChange={(v) => updateField('port', v)} />
+          <NumberInput value={value.port} onChange={(v) => updateField('port', v)} placeholder="22" />
         </Field>
       </div>
 

@@ -121,6 +121,11 @@ body {
   display: none;
 }
 
+/* Vertical text for side button labels */
+.writing-vertical-rl {
+  writing-mode: vertical-rl;
+}
+
 /* Thin custom scrollbar */
 * {
   scrollbar-width: thin;

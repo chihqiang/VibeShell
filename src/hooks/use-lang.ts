@@ -1,8 +1,12 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { getStorage, setStorage } from '@/lib/storage';
+import { getStorage, setStorage } from '@/utils/storage';
+import { STORAGE_KEYS } from '@/constants/storage-keys';
+import { Language } from '@/types/common';
 
-const LANG_KEY = 'vibeshell-language';
+export type { Language };
+
+const LANG_KEY = STORAGE_KEYS.LANGUAGE;
 
 const modules = import.meta.glob<{ default: Record<string, unknown> }>('@/i18n/*.json', {
   eager: true,
@@ -38,11 +42,6 @@ i18n.use(initReactI18next).init({
     escapeValue: false,
   },
 });
-
-export enum Language {
-  ZH = 'zh',
-  EN = 'en',
-}
 
 export const languageDisplayName: Record<Language, string> = {
   [Language.ZH]: '中文',

@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sftpCreateFile, sftpCreateDir } from '@/apis/api/sftp';
+import { sftpCreateFile, sftpCreateDir } from '@/services/sftpService';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Upload, FilePlus, FolderPlus, ListTodo } from 'lucide-react';
+import { Upload, FilePlus, FolderPlus, ListTodo, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNotify } from '@/hooks/use-notify';
-import NewFileDialog from '@/components/sftp/dialogs/NewFileDialog';
-import NewFolderDialog from '@/components/sftp/dialogs/NewFolderDialog';
+import { PromptDialog } from '@/components/ui';
 
 interface SftpToolbarProps {
   tabId: string | null;
   currentPath: string;
   onRefresh: () => void;
   onUpload?: (paths: string[]) => void;
+  onUploadFolder?: () => void;
+  onDownload?: () => void;
+  downloadDisabled?: boolean;
   activeTransferCount?: number;
   failedTransferCount?: number;
   onShowTransfers?: () => void;
@@ -23,6 +25,9 @@ export function SftpToolbar({
   currentPath,
   onRefresh,
   onUpload,
+  onUploadFolder,
+  onDownload,
+  downloadDisabled = false,
   activeTransferCount = 0,
   failedTransferCount = 0,
   onShowTransfers,
@@ -71,10 +76,23 @@ export function SftpToolbar({
 
   return (
     <>
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-secondary/20">
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-border bg-secondary/10 flex-shrink-0">
         <Button variant="ghost" size="xs" onClick={doUpload}>
           <Upload size={13} /> {t('sftp.upload')}
         </Button>
+        {onUploadFolder && (
+          <Button variant="ghost" size="xs" onClick={onUploadFolder}>
+            <FolderPlus size={13} /> {t('sftp.uploadFolder')}
+          </Button>
+        )}
+        {onDownload && (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <Button variant="ghost" size="xs" disabled={downloadDisabled} onClick={onDownload}>
+              <Download size={13} /> {t('sftp.download')}
+            </Button>
+          </>
+        )}
         <div className="w-px h-4 bg-border" />
         <Button
           variant="ghost"
@@ -123,19 +141,25 @@ export function SftpToolbar({
         </Button>
       </div>
 
-      <NewFileDialog
+      <PromptDialog
         open={mkfileOpen}
         onOpenChange={setMkfileOpen}
+        title={t('sftp.newFile')}
+        label={t('sftp.name')}
         value={mkfileValue}
         onValueChange={setMkfileValue}
         onConfirm={doNewFile}
+        placeholder="file.txt"
       />
-      <NewFolderDialog
+      <PromptDialog
         open={mkdirOpen}
         onOpenChange={setMkdirOpen}
+        title={t('sftp.newFolder')}
+        label={t('sftp.name')}
         value={mkdirValue}
         onValueChange={setMkdirValue}
         onConfirm={doMkdir}
+        placeholder="new-folder"
       />
     </>
   );

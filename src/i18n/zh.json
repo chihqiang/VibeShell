@@ -47,8 +47,6 @@
     "testConnection": "测试连接"
   },
   "sftp": {
-    "title": "SFTP 文件管理",
-    "remote": "远程",
     "upload": "上传",
     "uploadFolder": "上传文件夹",
     "download": "下载",
@@ -112,8 +110,6 @@
     "transferIdle": "暂无传输"
   },
   "terminal": {
-    "closeTab": "关闭标签页",
-    "closeTabConfirm": "确定要关闭标签页 \"{{name}}\" 吗？未保存的数据可能会丢失。",
     "connectingToHost": "连接主机...",
     "connectedSuccess": "连接主机成功",
     "disconnected": "连接断开",
@@ -132,14 +128,13 @@
   "settings": {
     "title": "设置",
     "language": "语言",
-    "appearance": "外观",
     "theme": "主题",
     "themeSelect": "选择主题...",
     "dark": "深色",
     "light": "浅色",
+    "auto": "自动",
     "general": "通用",
     "ssh": "SSH 设置",
-
     "defaultPort": "默认端口",
     "defaultHostname": "默认主机地址",
     "defaultUsername": "默认用户名",
@@ -199,30 +194,20 @@
     "killConfirmMessage": "确认执行 kill -9 {{pid}} 终止进程「{{command}}」吗？"
   },
   "quickConnect": {
-    "title": "快速连接",
     "hostname": "主机地址",
     "port": "端口",
     "username": "用户名",
     "password": "密码",
-    "connect": "连接",
-    "clear": "清空",
-    "recent": "最近连接",
-    "tableName": "连接名称",
-    "tableAccount": "账号",
-    "empty": "暂无快速连接"
+    "recent": "最近连接"
   },
   "dashboard": {
-    "welcome": "快速连接",
-    "subtitle": "输入 user@host:port 直接连接，无需保存",
-    "subtitleNew": "输入 SSH 命令直接连接，支持密码或密钥",
+    "welcome": "欢迎",
     "placeholder": "ssh root@192.168.1.1 或 root:密码@192.168.1.1:22",
     "formatHint1": "密码连接：root:password@192.168.1.1:22",
     "formatHint2": "密钥连接：ssh -i ~/.ssh/id_rsa root@192.168.1.1",
     "formatHint3": "带端口：ssh -p 2222 root@192.168.1.1",
     "defaultUser": "默认",
-    "advanced": "认证设置",
     "usernameRequired": "请输入用户名，格式: user@host",
-    "recentCleared": "已清空最近连接",
     "emptyHint": "还没有最近连接。在左侧主机列表中添加主机，或在上方直接输入地址快速连接。",
     "justNow": "刚刚",
     "minutesAgo": "{{count}} 分钟前",
@@ -236,6 +221,7 @@
     "saved": "已保存",
     "close": "关闭",
     "copied": "已复制到剪贴板",
+    "copyFingerprint": "复制指纹",
     "loading": "加载中...",
     "error": "错误",
     "quit": "退出应用",
@@ -243,5 +229,12 @@
     "day": "天",
     "hour": "小时",
     "minute": "分钟"
+  },
+  "statusbar": {
+    "hosts": "{{count}} 台主机",
+    "connected": "已连接 {{count}} 台"
+  },
+  "topbar": {
+    "searchPlaceholder": "搜索主机..."
   }
 }

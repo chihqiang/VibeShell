@@ -7,7 +7,7 @@ interface TerminalSearchBarProps {
   onClose: () => void;
 }
 
-export default function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarProps) {
+export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarProps) {
   const [query, setQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

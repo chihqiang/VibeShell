@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Copy } from 'lucide-react';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useNotify } from '@/hooks/use-notify';
-import { buildSshCommand } from '@/lib/utils';
+import { buildSshCommand } from '@/utils';
 
 interface TabContextMenuProps {
   tabId: string | null;
@@ -11,7 +11,7 @@ interface TabContextMenuProps {
   onReconnect?: (tabId: string) => void;
 }
 
-export default function TabContextMenu({ tabId, position, onClose, onReconnect }: TabContextMenuProps) {
+export function TabContextMenu({ tabId, position, onClose, onReconnect }: TabContextMenuProps) {
   const { t } = useTranslation();
   const { tabs, closeTab, closeAllOtherTabs, closeAllTabs, addQuickTab, addTerminalTab } = useTerminalTabs();
   const { notify } = useNotify();

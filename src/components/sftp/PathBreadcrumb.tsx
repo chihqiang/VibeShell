@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronRight, Pencil } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils';
 
 interface PathBreadcrumbProps {
   path: string;
@@ -8,7 +8,7 @@ interface PathBreadcrumbProps {
   className?: string;
 }
 
-export default function PathBreadcrumb({ path, onNavigate, className }: PathBreadcrumbProps) {
+export function PathBreadcrumb({ path, onNavigate, className }: PathBreadcrumbProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(path);
   const inputRef = useRef<HTMLInputElement>(null);

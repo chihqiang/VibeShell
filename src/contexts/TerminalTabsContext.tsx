@@ -1,37 +1,12 @@
 import { createContext, useContext, useReducer, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sshDisconnect } from '@/apis/api/ssh';
-import type { HostConfig } from '@/apis/types/hosts';
-import ConfirmDialog from '@/components/sftp/dialogs/ConfirmDialog';
-import type { ConnectionStatus } from '@/lib/types';
+import { sshDisconnect } from '@/services/sshService';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import type { ConnectionStatus } from '@/types/common';
+import type { HostConfig, ConnectConfig } from '@/types/host';
+import type { TerminalTab, QuickTab, TerminalTabData } from '@/types/terminal';
 
-export type { ConnectionStatus };
-
-export interface ConnectConfig {
-  hostname: string;
-  port: number;
-  username: string;
-  password: string | null;
-  privateKeyPath: string | null;
-}
-
-interface BaseTab {
-  id: string;
-  status: ConnectionStatus;
-  title: string;
-}
-
-export interface QuickTab extends BaseTab {
-  type: 'quick';
-}
-
-export interface TerminalTabData extends BaseTab {
-  type: 'terminal';
-  host?: HostConfig;
-  connectConfig: ConnectConfig;
-}
-
-export type TerminalTab = QuickTab | TerminalTabData;
+export type { ConnectionStatus, ConnectConfig, TerminalTab, QuickTab, TerminalTabData };
 
 interface TerminalTabsContextValue {
   tabs: TerminalTab[];

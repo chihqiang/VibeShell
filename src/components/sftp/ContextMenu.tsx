@@ -2,12 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Code, Pencil, Trash2, Settings2, Download } from 'lucide-react';
 import { useFileActions } from '@/hooks/use-tab';
-import RenameDialog from '@/components/sftp/dialogs/RenameDialog';
-import EditDialog from '@/components/sftp/dialogs/EditDialog';
-import ChmodDialog from '@/components/sftp/dialogs/ChmodDialog';
-import ConfirmDialog from '@/components/sftp/dialogs/ConfirmDialog';
-import { FileType } from '@/apis/types/sftp';
-import type { FileEntry } from '@/apis/types/sftp';
+import { EditDialog, ChmodDialog } from '@/components/sftp';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { PromptDialog } from '@/components/ui';
+import { FileType } from '@/types/sftp';
+import type { FileEntry } from '@/types/sftp';
 
 interface ContextMenuProps {
   ctxMenu: { x: number; y: number; entry: FileEntry } | null;
@@ -20,7 +19,7 @@ interface ContextMenuProps {
   username?: string;
 }
 
-export default function ContextMenu({
+export function ContextMenu({
   ctxMenu,
   onClose,
   tabId,
@@ -144,9 +143,11 @@ export default function ContextMenu({
         </>
       )}
 
-      <RenameDialog
+      <PromptDialog
         open={renameOpen}
         onOpenChange={handleRenameOpenChange}
+        title={t('sftp.rename')}
+        label={t('sftp.name')}
         value={renameValue}
         onValueChange={setRenameValue}
         onConfirm={doRename}

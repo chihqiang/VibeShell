@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Lock, KeyRound } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { AuthMethod } from '@/lib/types';
+import { cn } from '@/utils';
+import type { AuthMethod } from '@/types';
 
-export default function AuthToggle({
+export function AuthToggle({
   value,
   onChange,
   compact,
