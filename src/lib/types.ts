@@ -1,7 +1,6 @@
 // -- core enums / union types --
 
 export type AuthMethod = 'password' | 'key';
-export type TabType = 'quick' | 'terminal';
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 export type ImportMode = 'file' | 'paste';
 export type TransferDirection = 'upload' | 'download';
@@ -10,7 +9,16 @@ export type SftpProgressPhase = 'uploading' | 'downloading';
 
 // -- host / connection --
 
-export interface HostFormData {
+/**
+ * Unified host form data. Used for:
+ * - Host editing dialog (with tags)
+ * - Quick connect dialog (tags defaults to [])
+ * - SFTP connection passing
+ *
+ * This replaces the former HostFormData + ConnectionConfig + HostFormState trio.
+ */
+export interface HostFormState {
+  name: string;
   hostname: string;
   port: number;
   username: string;
@@ -18,14 +26,6 @@ export interface HostFormData {
   password: string;
   privateKeyPath: string;
   keyPassphrase: string;
-}
-
-export interface ConnectionConfig extends HostFormData {
-  name: string;
-}
-
-export interface HostFormState extends HostFormData {
-  name: string;
   tags: string[];
 }
 
@@ -70,15 +70,6 @@ export const COLLAPSED_WIDTH = 28;
 export const STORAGE_KEY_COLLAPSED = 'vibeshell-sidebar-collapsed';
 export const STORAGE_KEY_WIDTH = 'vibeshell-sidebar-width';
 
-export interface MonitorData {
-  ip: string;
-  uptime: string;
-  load: string;
-  cpu: string;
-  memory: string;
-  swap: string;
-}
-
 export interface ProcessInfo {
   mem: string;
   cpu: string;
@@ -100,6 +91,10 @@ export interface MonitorEvent {
   cpu: string;
   memory: string;
   swap: string;
+  net_io?: string;
   processes: ProcessInfo[];
   disks: DiskInfo[];
 }
+
+/** Display subset of MonitorEvent (without tab_id, processes, disks) */
+export type MonitorData = Omit<MonitorEvent, 'tab_id' | 'processes' | 'disks'>;

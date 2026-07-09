@@ -16,7 +16,7 @@ export default function Field({
   if (compact) {
     return (
       <div className={cn('flex flex-col gap-1', className)}>
-        <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
+        <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
         {children}
       </div>
     );

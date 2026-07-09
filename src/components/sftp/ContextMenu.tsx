@@ -98,11 +98,10 @@ export default function ContextMenu({
           <div className="fixed inset-0 z-40" onClick={onClose} />
           <div
             ref={menuRef}
-            className="fixed z-50 w-40 rounded-lg border border-border bg-popover shadow-lg py-1"
+            className="fixed z-50 w-36 rounded-lg border border-border bg-popover shadow-lg py-1"
             style={{
-              left: ctxMenu.x,
-              top: ctxMenu.y - 8,
-              transform: 'translateY(-100%)',
+              left: Math.min(ctxMenu.x, window.innerWidth - 160),
+              top: Math.min(ctxMenu.y, window.innerHeight - 200),
             }}
           >
             {menuEntry?.file_type === FileType.File && (

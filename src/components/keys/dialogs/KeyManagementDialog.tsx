@@ -93,9 +93,9 @@ export default function KeyManagementDialog({ open, onClose }: Props) {
                     <FileKey size={14} className="text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-foreground truncate">{key.name}</div>
-                      <div className="text-[10px] text-muted-foreground truncate font-mono">{key.fingerprint}</div>
+                      <div className="text-[11px] text-muted-foreground truncate font-mono">{key.fingerprint}</div>
                     </div>
-                    <span className="text-[10px] text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded">
+                    <span className="text-[11px] text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded">
                       {key.key_type}
                     </span>
                     <button

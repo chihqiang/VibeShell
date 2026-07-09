@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import TagSelect from '@/components/ui/tag-select';
 import HostForm from '@/components/host/HostForm';
-import type { HostFormData, HostFormState } from '@/lib/types';
+import type { HostFormState } from '@/lib/types';
 import type { HostConfig } from '@/apis/types/hosts';
 import type { KeyEntry } from '@/apis/types/keys';
 import { getSshDefaults } from '@/storage/config';
@@ -75,8 +75,8 @@ export default function HostDialog({ open, onClose, host, tags: allTags, keys }:
     setForm((prev) => ({ ...prev, [key]: v }));
   }
 
-  const handleFormChange = (data: HostFormData) => {
-    setForm((prev) => ({ ...prev, ...data }));
+  const handleFormChange = (data: HostFormState) => {
+    setForm(data);
   };
 
   async function handleSave() {
@@ -124,15 +124,7 @@ export default function HostDialog({ open, onClose, host, tags: allTags, keys }:
             </div>
 
             <HostForm
-              value={{
-                hostname: form.hostname,
-                port: form.port,
-                username: form.username,
-                authMethod: form.authMethod,
-                password: form.password,
-                privateKeyPath: form.privateKeyPath,
-                keyPassphrase: form.keyPassphrase,
-              }}
+              value={form}
               onChange={handleFormChange}
               keys={keys}
             />

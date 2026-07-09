@@ -21,7 +21,7 @@ export default function AuthToggle({
             key={method}
             onClick={() => onChange(method)}
             className={cn(
-              'flex items-center gap-1 h-7 px-2 text-[10px] rounded-md cursor-pointer transition-colors',
+              'flex items-center gap-1 h-7 px-2 text-xs rounded-md cursor-pointer transition-colors',
               value === method
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',

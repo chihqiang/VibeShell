@@ -133,6 +133,8 @@ pub struct MonitorEvent {
     pub cpu: String,
     pub memory: String,
     pub swap: String,
+    #[serde(default)]
+    pub net_io: String,
     pub processes: Vec<ProcessInfo>,
     pub disks: Vec<DiskInfo>,
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
@@ -15,9 +15,13 @@ import {
   RefreshCw,
   ListTodo,
   Upload,
+  Download,
   FilePlus,
   FolderPlus,
+  ArrowUp as ArrowUpIcon,
+  ArrowDown,
 } from 'lucide-react';
+import PathBreadcrumb from '@/components/sftp/PathBreadcrumb';
 import { Button } from '@/components/ui/button';
 import { FileType } from '@/apis/types/sftp';
 import { expandLocalFiles } from '@/apis/utils/sftp';
@@ -51,8 +55,11 @@ export default function SftpPanel() {
   const [currentPath, setCurrentPath] = useState('.');
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+const lastSelectedRef = useRef<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [sortKey, setSortKey] = useState<'name' | 'size' | 'modified'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const [mkdirOpen, setMkdirOpen] = useState(false);
   const [mkdirValue, setMkdirValue] = useState('');
@@ -74,11 +81,40 @@ export default function SftpPanel() {
     (x) => x.status === 'pending' || x.status === 'uploading' || x.status === 'downloading',
   ).length;
 
+  const sortedEntries = useMemo(() => {
+    const sorted = [...entries];
+    sorted.sort((a, b) => {
+      // Directories always first
+      if (a.file_type !== b.file_type) {
+        return a.file_type === FileType.Directory ? -1 : 1;
+      }
+      let cmp = 0;
+      if (sortKey === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortKey === 'size') {
+        cmp = a.size - b.size;
+      } else if (sortKey === 'modified') {
+        cmp = (a.modified || '').localeCompare(b.modified || '');
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return sorted;
+  }, [entries, sortKey, sortDir]);
+
+  const toggleSort = (key: 'name' | 'size' | 'modified') => {
+    if (sortKey === key) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
   const virtualizer = useVirtualizer({
-    count: entries.length,
+    count: sortedEntries.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 28,
-    getItemKey: (index) => entries[index].path,
+    getItemKey: (index) => sortedEntries[index].path,
   });
 
   const loadDir = useCallback(
@@ -196,14 +232,40 @@ export default function SftpPanel() {
     if (entry.file_type === FileType.Directory) loadDir(entry.path);
   };
 
-  const handleClick = (path: string) => {
-    setSelected((prev) => (prev === path ? null : path));
-    setCtxMenu(null);
-  };
+const handleClick = (path: string, e: React.MouseEvent) => {
+  setCtxMenu(null);
+  if (e.ctrlKey || e.metaKey) {
+    // Toggle individual
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+    lastSelectedRef.current = path;
+  } else if (e.shiftKey && lastSelectedRef.current) {
+    // Range select — use sortedEntries to match visual order
+    const paths = sortedEntries.map((en) => en.path);
+    const startIdx = paths.indexOf(lastSelectedRef.current);
+    const endIdx = paths.indexOf(path);
+    if (startIdx !== -1 && endIdx !== -1) {
+      const from = Math.min(startIdx, endIdx);
+      const to = Math.max(startIdx, endIdx);
+      setSelected(new Set(paths.slice(from, to + 1)));
+    }
+  } else {
+    // Single select
+    setSelected(new Set([path]));
+    lastSelectedRef.current = path;
+  }
+};
 
   const handleContextMenu = (e: React.MouseEvent, entry: FileEntry) => {
     e.preventDefault();
-    setSelected(entry.path);
+    if (!selected.has(entry.path)) {
+      setSelected(new Set([entry.path]));
+      lastSelectedRef.current = entry.path;
+    }
     setCtxMenu({ x: e.clientX, y: e.clientY, entry });
   };
 
@@ -248,8 +310,11 @@ export default function SftpPanel() {
         setTransfers((prev) => [...newItems, ...prev]);
         setTransferDialogOpen(true);
 
+        // Batch: mark all as downloading in a single state update
+        const pendingIds = new Set(newItems.map((i) => i.id));
+        setTransfers((prev) => prev.map((x) => (pendingIds.has(x.id) ? { ...x, status: 'downloading' as const } : x)));
+
         for (const item of newItems) {
-          setTransfers((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: 'downloading' } : x)));
           try {
             await sftpDownloadFileProgress({
               tabId,
@@ -258,12 +323,12 @@ export default function SftpPanel() {
               transferId: item.id,
             });
             setTransfers((prev) =>
-              prev.map((x) => (x.id === item.id ? { ...x, status: 'completed', current: x.total || 1 } : x)),
+              prev.map((x) => (x.id === item.id ? { ...x, status: 'completed' as const, current: x.total || 1 } : x)),
             );
           } catch (e) {
             notifyError(e);
             setTransfers((prev) =>
-              prev.map((x) => (x.id === item.id ? { ...x, status: 'failed', error: String(e) } : x)),
+              prev.map((x) => (x.id === item.id ? { ...x, status: 'failed' as const, error: String(e) } : x)),
             );
           }
         }
@@ -291,7 +356,6 @@ export default function SftpPanel() {
 
       setTransfers((prev) => [item, ...prev]);
       setTransferDialogOpen(true);
-      setTransfers((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'downloading' } : x)));
 
       try {
         await sftpDownloadFileProgress({
@@ -336,9 +400,12 @@ export default function SftpPanel() {
       setTransfers((prev) => [...newItems, ...prev]);
       setTransferDialogOpen(true);
 
+      // Batch: mark all as uploading in a single state update
+      const pendingIds = new Set(newItems.map((i) => i.id));
+      setTransfers((prev) => prev.map((x) => (pendingIds.has(x.id) ? { ...x, status: 'uploading' as const } : x)));
+
       const failures: string[] = [];
       for (const item of newItems) {
-        setTransfers((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: 'uploading' } : x)));
         try {
           await sftpUploadFileProgress({
             tabId: tabId!,
@@ -347,13 +414,13 @@ export default function SftpPanel() {
             transferId: item.id,
           });
           setTransfers((prev) =>
-            prev.map((x) => (x.id === item.id ? { ...x, status: 'completed', current: x.total || 1 } : x)),
+            prev.map((x) => (x.id === item.id ? { ...x, status: 'completed' as const, current: x.total || 1 } : x)),
           );
         } catch (e) {
           notifyError(e);
           failures.push(`${item.name}: ${String(e)}`);
           setTransfers((prev) =>
-            prev.map((x) => (x.id === item.id ? { ...x, status: 'failed', error: String(e) } : x)),
+            prev.map((x) => (x.id === item.id ? { ...x, status: 'failed' as const, error: String(e) } : x)),
           );
         }
       }
@@ -422,7 +489,7 @@ export default function SftpPanel() {
     try {
       await sftpCreateDir({ tabId, path: newDir });
       notify(t('sftp.newFolderSuccess'));
-      setMkfileOpen(false);
+      setMkdirOpen(false);
       setMkdirValue('');
       loadDir(currentPath);
     } catch (e) {
@@ -453,14 +520,7 @@ export default function SftpPanel() {
         >
           <ArrowUp size={12} />
         </Button>
-        <input
-          value={currentPath}
-          onChange={(e) => setCurrentPath(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') loadDir(currentPath || '.');
-          }}
-          className="flex-1 ml-1 h-5 px-1 text-[11px] font-mono bg-transparent border-none outline-none text-muted-foreground focus:text-foreground"
-        />
+        <PathBreadcrumb path={currentPath} onNavigate={(p) => loadDir(p)} />
         <Button
           variant="ghost"
           size="icon-xs"
@@ -492,6 +552,20 @@ export default function SftpPanel() {
         <Button
           variant="ghost"
           size="xs"
+          disabled={selected.size === 0}
+          onClick={() => {
+            const selectedEntries = sortedEntries.filter((e) => selected.has(e.path));
+            for (const entry of selectedEntries) {
+              handleDownload(entry);
+            }
+          }}
+        >
+          <Download size={13} /> {t('sftp.download')}
+        </Button>
+        <div className="w-px h-4 bg-border" />
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => {
             setMkfileValue('');
             setMkfileOpen(true);
@@ -511,22 +585,43 @@ export default function SftpPanel() {
         </Button>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 text-[11px]">
+      <div className="flex-1 flex flex-col min-h-0 text-xs">
         <div className="grid grid-cols-[1fr_70px_90px_100px_140px] bg-secondary/10 border-b border-border flex-shrink-0">
-          <div className="text-left font-medium text-muted-foreground px-3 py-1 text-[10px]">{t('sftp.name')}</div>
-          <div className="text-right font-medium text-muted-foreground px-3 py-1 text-[10px]">{t('sftp.size')}</div>
-          <div className="text-left font-medium text-muted-foreground px-3 py-1 text-[10px]">
+          <button
+            onClick={() => toggleSort('name')}
+            className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            {t('sftp.name')}
+            {sortKey === 'name' && (sortDir === 'asc' ? <ArrowUpIcon size={9} /> : <ArrowDown size={9} />)}
+          </button>
+          <button
+            onClick={() => toggleSort('size')}
+            className="text-right font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center justify-end gap-1 cursor-pointer"
+          >
+            {t('sftp.size')}
+            {sortKey === 'size' && (sortDir === 'asc' ? <ArrowUpIcon size={9} /> : <ArrowDown size={9} />)}
+          </button>
+          <div className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px]">
             {t('sftp.permissions')}
           </div>
-          <div className="text-left font-medium text-muted-foreground px-3 py-1 text-[10px]">
+          <div className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px]">
             {t('sftp.user')}/{t('sftp.group')}
           </div>
-          <div className="text-left font-medium text-muted-foreground px-3 py-1 text-[10px]">{t('sftp.modified')}</div>
+          <button
+            onClick={() => toggleSort('modified')}
+            className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            {t('sftp.modified')}
+            {sortKey === 'modified' && (sortDir === 'asc' ? <ArrowUpIcon size={9} /> : <ArrowDown size={9} />)}
+          </button>
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
-          {entries.length === 0 && !loading ? (
-            <div className="text-center text-muted-foreground py-12">{t('sftp.empty')}</div>
+          {sortedEntries.length === 0 && !loading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+              <Folder size={28} className="opacity-20" />
+              <span className="text-xs">{t('sftp.empty')}</span>
+            </div>
           ) : (
             <div
               style={{
@@ -535,16 +630,16 @@ export default function SftpPanel() {
               }}
             >
               {virtualizer.getVirtualItems().map((vItem) => {
-                const entry = entries[vItem.index];
+                const entry = sortedEntries[vItem.index];
                 return (
                   <div
                     key={vItem.key}
                     data-index={vItem.index}
                     ref={virtualizer.measureElement}
-                    onClick={() => handleClick(entry.path)}
+                    onClick={(e) => handleClick(entry.path, e)}
                     onDoubleClick={() => handleDoubleClick(entry)}
                     onContextMenu={(e) => handleContextMenu(e, entry)}
-                    className={`grid grid-cols-[1fr_70px_90px_100px_140px] cursor-pointer transition-colors absolute left-0 right-0 top-0 h-7 ${selected === entry.path ? 'bg-primary/10' : 'hover:bg-muted'}`}
+                    className={`grid grid-cols-[1fr_70px_90px_100px_140px] cursor-pointer transition-colors absolute left-0 right-0 top-0 h-7 ${selected.has(entry.path) ? 'bg-primary/15 border-l-2 border-l-primary' : 'hover:bg-muted/60'}`}
                     style={{ transform: `translateY(${vItem.start}px)` }}
                   >
                     <div className="px-3 flex items-center gap-1.5 truncate">

@@ -3,16 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { sshDisconnect } from '@/apis/api/ssh';
 import type { HostConfig } from '@/apis/types/hosts';
 import ConfirmDialog from '@/components/sftp/dialogs/ConfirmDialog';
-import type { TabType, ConnectionStatus } from '@/lib/types';
+import type { ConnectionStatus } from '@/lib/types';
 
-export type { TabType, ConnectionStatus };
+export type { ConnectionStatus };
 
 export interface ConnectConfig {
   hostname: string;
   port: number;
   username: string;
   password: string | null;
-  private_key_path: string | null;
+  privateKeyPath: string | null;
 }
 
 interface BaseTab {
@@ -45,6 +45,7 @@ interface TerminalTabsContextValue {
   closeAllTabs: () => void;
   setActiveTab: (tabId: string) => void;
   updateStatus: (tabId: string, status: ConnectionStatus) => void;
+  reorderTabs: (fromId: string, toId: string) => void;
 }
 
 function createInitialTab(): QuickTab {
@@ -73,6 +74,7 @@ type TabsAction =
   | { type: 'UPDATE_STATUS'; tabId: string; status: ConnectionStatus }
   | { type: 'SET_PENDING_CLOSE'; tabId: string | null }
   | { type: 'REPLACE_ALL'; tabs: TerminalTab[]; activeTabId: string }
+  | { type: 'REORDER'; fromId: string; toId: string }
   | { type: 'REMOVE_TAB'; tabId: string };
 
 function createInitialState(): TabsState {
@@ -144,6 +146,17 @@ function reducer(state: TabsState, action: TabsAction): TabsState {
         tabMap.set(tab.id, tab);
       }
       return { ...state, tabMap, activeTabId: action.activeTabId };
+    }
+
+    case 'REORDER': {
+      const entries = Array.from(state.tabMap.entries());
+      const fromIdx = entries.findIndex(([id]) => id === action.fromId);
+      const toIdx = entries.findIndex(([id]) => id === action.toId);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return state;
+      const [moved] = entries.splice(fromIdx, 1);
+      entries.splice(toIdx, 0, moved);
+      const tabMap = new Map(entries);
+      return { ...state, tabMap };
     }
 
     case 'REMOVE_TAB': {
@@ -260,6 +273,10 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_STATUS', tabId, status });
   }, []);
 
+  const reorderTabs = useCallback((fromId: string, toId: string) => {
+    dispatch({ type: 'REORDER', fromId, toId });
+  }, []);
+
   const contextValue = useMemo<TerminalTabsContextValue>(
     () => ({
       tabs,
@@ -273,6 +290,7 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
       closeAllTabs,
       setActiveTab,
       updateStatus,
+      reorderTabs,
     }),
     [
       tabs,
@@ -286,6 +304,7 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
       closeAllTabs,
       setActiveTab,
       updateStatus,
+      reorderTabs,
     ],
   );
 

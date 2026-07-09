@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listen } from '@tauri-apps/api/event';
 import { sshConnect, sshDisconnect } from '@/apis/api/ssh';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
@@ -10,17 +11,24 @@ import SftpBottomPanel from '@/components/sftp/SftpBottomPanel';
 import { useNotify } from '@/hooks/use-notify';
 import { getSshDefaults } from '@/storage/config';
 import { BOTTOM_PANEL_MIN, BOTTOM_PANEL_DEFAULT } from '@/lib/types';
+import { useStorage } from '@/lib/storage';
+
+const SFTP_OPEN_KEY = 'vibeshell-sftp-open';
+const SFTP_HEIGHT_KEY = 'vibeshell-sftp-height';
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { tabs, activeTabId, updateStatus, terminalTabVersion } = useTerminalTabs();
   const { notifyError } = useNotify();
   const connectedTabs = useRef(new Set<string>());
   const abortRef = useRef(new Map<string, AbortController>());
-  const [showSftp, setShowSftp] = useState(false);
-  const [bottomHeight, setBottomHeight] = useState(BOTTOM_PANEL_DEFAULT);
+  const [showSftp, setShowSftp] = useStorage(SFTP_OPEN_KEY, false);
+  const [bottomHeight, setBottomHeight] = useStorage(SFTP_HEIGHT_KEY, BOTTOM_PANEL_DEFAULT);
   const dragging = useRef(false);
   const startY = useRef(0);
   const startH = useRef(0);
+  const dragRafRef = useRef<number | null>(null);
+  const dragHeightRef = useRef(0);
 
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
@@ -28,6 +36,10 @@ export default function HomePage() {
   activeTabIdRef.current = activeTabId;
   const retryCount = useRef(new Map<string, number>());
   const reconnectTimer = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  // Helper to write text to a terminal via custom event (consumed by Terminal component)
+  const writeToTerminal = (tabId: string, text: string) => {
+    window.dispatchEvent(new CustomEvent('vibeshell:term-write', { detail: { tabId, text } }));
+  };
   const reconnectConfig = useRef({
     enabled: true,
     maxRetries: 10,
@@ -55,11 +67,7 @@ export default function HomePage() {
         if (controller.signal.aborted) return;
         await sshConnect({
           tabId,
-          hostname: config.hostname,
-          port: config.port,
-          username: config.username,
-          password: config.password || null,
-          privateKeyPath: config.private_key_path || null,
+          ...config,
           monitorIntervalSecs: defaults.monitorInterval,
           heartbeatIntervalSecs: defaults.heartbeatInterval,
         });
@@ -108,12 +116,21 @@ export default function HomePage() {
         if (!tab || tab.type !== 'terminal') return;
 
         const retries = retryCount.current.get(tab_id) || 0;
-        if (retries >= cfg.maxRetries) return;
+        if (retries >= cfg.maxRetries) {
+          const msg = `\r\n\x1b[31m${t('terminal.reconnectMaxRetries', '已达最大重试次数，请手动重连')}\x1b[0m\r\n`;
+          writeToTerminal(tab_id, msg);
+          return;
+        }
 
         const existing = reconnectTimer.current.get(tab_id);
         if (existing) clearTimeout(existing);
 
         const delay = Math.min(cfg.initialDelaySecs * 1000 * Math.pow(2, retries), cfg.maxDelaySecs * 1000);
+        const delaySecs = Math.ceil(delay / 1000);
+        const nextRetry = retries + 1;
+        const msg = `\r\n\x1b[33m${delaySecs}s ${t('terminal.reconnectRetry', { retry: nextRetry, max: cfg.maxRetries, defaultValue: `后第 ${nextRetry}/${cfg.maxRetries} 次自动重连...` })}\x1b[0m\r\n`;
+        writeToTerminal(tab_id, msg);
+
         const timer = setTimeout(() => {
           reconnectTimer.current.delete(tab_id);
           if (!tabsRef.current.find((t) => t.id === tab_id)) return;
@@ -127,7 +144,7 @@ export default function HomePage() {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [updateStatus, connectTab]);
+  }, [updateStatus, connectTab, t]);
 
   // Cleanup orphaned entries on tab removal
   useEffect(() => {
@@ -167,11 +184,24 @@ export default function HomePage() {
       if (!dragging.current) return;
       const delta = startY.current - ev.clientY;
       const newH = Math.max(BOTTOM_PANEL_MIN, startH.current + delta);
-      setBottomHeight(newH);
+      dragHeightRef.current = newH;
+      // RAF throttle: only one React state update per frame
+      if (dragRafRef.current === null) {
+        dragRafRef.current = requestAnimationFrame(() => {
+          dragRafRef.current = null;
+          setBottomHeight(dragHeightRef.current);
+        });
+      }
     };
     const onMouseUp = () => {
       if (!dragging.current) return;
       dragging.current = false;
+      // Cancel pending RAF and persist final value to localStorage
+      if (dragRafRef.current !== null) {
+        cancelAnimationFrame(dragRafRef.current);
+        dragRafRef.current = null;
+      }
+      setBottomHeight(dragHeightRef.current);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -180,29 +210,35 @@ export default function HomePage() {
     return () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      if (dragRafRef.current !== null) cancelAnimationFrame(dragRafRef.current);
     };
-  }, []);
+  }, [setBottomHeight]);
 
-  const handleResizeStart = (e: React.MouseEvent) => {
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
     dragging.current = true;
     startY.current = e.clientY;
     startH.current = bottomHeight;
+    dragHeightRef.current = bottomHeight;
     document.body.style.cursor = 'row-resize';
     document.body.style.userSelect = 'none';
-  };
+  }, [bottomHeight]);
+
+  // Stable callback for reconnect — avoids breaking TerminalComp's memo
+  const handleReconnect = useCallback(
+    (tabId: string) => {
+      const tab = tabsRef.current.find((t) => t.id === tabId);
+      if (tab && tab.type === 'terminal') {
+        connectTab(tab.id, tab.connectConfig);
+      }
+    },
+    [connectTab],
+  );
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <TabBar
-        onReconnect={(tabId) => {
-          const tab = tabsRef.current.find((t) => t.id === tabId);
-          if (tab && tab.type === 'terminal') {
-            connectTab(tab.id, tab.connectConfig);
-          }
-        }}
-      />
+      <TabBar onReconnect={handleReconnect} />
 
       <div className="flex-1 min-h-0 relative">
         {activeTab?.type === 'quick' && <QuickConnect />}
@@ -213,7 +249,9 @@ export default function HomePage() {
               terminalId={`xterm-${tab.id}`}
               tabId={tab.id}
               status={tab.status}
+              active={tab.id === activeTabId}
               className={tab.id !== activeTabId ? 'hidden' : undefined}
+              onReconnect={() => handleReconnect(tab.id)}
             />
           ) : null,
         )}

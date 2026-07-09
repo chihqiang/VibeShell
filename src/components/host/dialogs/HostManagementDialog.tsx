@@ -12,8 +12,7 @@ import { useNotify } from '@/hooks/use-notify';
 import { listHosts, deleteHost, saveHost } from '@/apis/api/hosts';
 import { listKeys } from '@/apis/api/keys';
 import { sshTestConnect } from '@/apis/api/ssh';
-import { resolvePrivateKeyPath } from '@/apis/utils/keys';
-import { buildSshConfig } from '@/lib/utils';
+import { hostToConnectConfig } from '@/lib/utils';
 
 interface Props {
   open: boolean;
@@ -82,23 +81,8 @@ export default function HostManagementDialog({ open, onClose }: Props) {
     if (connecting) return;
     setConnecting(true);
     try {
-      const privateKeyPath = await resolvePrivateKeyPath(host, keys);
-      const config = buildSshConfig({
-        authMethod: host.auth_method,
-        hostname: host.hostname,
-        port: host.port,
-        username: host.username,
-        password: host.auth_method === 'password' ? host.password || null : null,
-        keyPassphrase: host.auth_method === 'key' ? host.password || null : null,
-        privateKeyPath,
-      });
-      await sshTestConnect({
-        hostname: config.hostname,
-        port: config.port,
-        username: config.username,
-        password: config.password,
-        privateKeyPath: config.private_key_path,
-      });
+      const config = await hostToConnectConfig(host, keys);
+      await sshTestConnect(config);
       const now = Date.now();
       addTerminalTab(config, host);
       await saveHost({ host: { ...host, last_connected_at: now } });
@@ -188,7 +172,7 @@ export default function HostManagementDialog({ open, onClose }: Props) {
                 >
                   {sectionIcon(key)}
                   <span className="truncate flex-1">{sectionLabel(key)}</span>
-                  <span className="text-[10px] text-muted-foreground">{sectionCount(key)}</span>
+                  <span className="text-[11px] text-muted-foreground">{sectionCount(key)}</span>
                 </button>
               ))}
             </div>

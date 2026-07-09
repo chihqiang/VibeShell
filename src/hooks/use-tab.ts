@@ -4,6 +4,7 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { sshConnect } from '@/apis/api/ssh';
+import { formToConnectConfig } from '@/lib/utils';
 import {
   sftpListFilesRecursive,
   sftpUploadFileProgress,
@@ -19,7 +20,7 @@ import {
 import { expandLocalFiles } from '@/apis/utils/sftp';
 import { FileType } from '@/apis/types/sftp';
 import type { FileEntry } from '@/apis/types/sftp';
-import type { ConnectionConfig, TransferItem, SftpProgressPayload, ChmodFormData } from '@/lib/types';
+import type { HostFormState, TransferItem, SftpProgressPayload, ChmodFormData } from '@/lib/types';
 import { TRANSFER_STORAGE_KEY } from '@/lib/types';
 import { useNotify } from '@/hooks/use-notify';
 import { runWithConcurrency } from '@/lib/utils';
@@ -27,7 +28,7 @@ import { getCachedUsersGroups, setCachedUsersGroups } from '@/storage/users-grou
 
 // ── useSftpConnection ──
 
-export function useSftpConnection(conn: ConnectionConfig | undefined): string | null {
+export function useSftpConnection(conn: HostFormState | undefined): string | null {
   const [tabId, setTabId] = useState<string | null>(null);
   const tabIdRef = useRef<string | null>(null);
   const { notifyError } = useNotify();
@@ -44,11 +45,7 @@ export function useSftpConnection(conn: ConnectionConfig | undefined): string | 
       try {
         await sshConnect({
           tabId: tid,
-          hostname: conn.hostname,
-          port: conn.port,
-          username: conn.username,
-          password: conn.authMethod === 'password' ? conn.password : conn.keyPassphrase || null,
-          privateKeyPath: conn.authMethod === 'key' ? conn.privateKeyPath : null,
+          ...formToConnectConfig(conn),
         });
         if (cancelled) return;
         tabIdRef.current = tid;
@@ -642,7 +639,7 @@ export function useFileActions(
         user: chmodFormData.uid !== e.user ? chmodFormData.uid : null,
         group: chmodFormData.gid !== e.group ? chmodFormData.gid : null,
         recursive: chmodFormData.recursive,
-        isDirectory: e.file_type === 'directory',
+        isDirectory: e.file_type === FileType.Directory,
       });
       notify(t('sftp.chmodSuccess'));
       setChmodOpen(false);

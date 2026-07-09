@@ -17,21 +17,21 @@ export default function WindowControls() {
         onClick={() => setCloseConfirmOpen(true)}
         title="Close"
       >
-        <X size={8} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <X size={9} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
       </button>
       <button
         className="flex items-center justify-center w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-600 focus:outline-none group"
         onClick={() => appWindow.minimize()}
         title="Minimize"
       >
-        <Minus size={8} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Minus size={9} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
       </button>
       <button
         className="flex items-center justify-center w-3 h-3 rounded-full bg-green-500 hover:bg-green-600 focus:outline-none group"
         onClick={() => appWindow.toggleMaximize()}
         title="Maximize"
       >
-        <Square size={7} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Square size={9} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
       </button>
 
       <ConfirmDialog

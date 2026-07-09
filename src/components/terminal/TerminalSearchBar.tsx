@@ -1,0 +1,94 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Search, X, ChevronUp, ChevronDown, CaseSensitive } from 'lucide-react';
+import type { SearchAddon } from '@xterm/addon-search';
+
+interface TerminalSearchBarProps {
+  searchAddon: SearchAddon | null;
+  onClose: () => void;
+}
+
+export default function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarProps) {
+  const [query, setQuery] = useState('');
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const doSearch = useCallback(
+    (direction: 'next' | 'prev') => {
+      if (!searchAddon || !query) return;
+      searchAddon.findNext(query, {
+        caseSensitive,
+        wholeWord: false,
+        regex: false,
+      });
+      if (direction === 'prev') {
+        searchAddon.findPrevious(query, {
+          caseSensitive,
+          wholeWord: false,
+          regex: false,
+        });
+      }
+    },
+    [searchAddon, query, caseSensitive],
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      doSearch(e.shiftKey ? 'prev' : 'next');
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
+  return (
+    <div className="absolute top-2 right-3 z-20 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-popover border border-border shadow-lg">
+      <Search size={13} className="text-muted-foreground flex-shrink-0" />
+      <input
+        ref={inputRef}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Search..."
+        className="w-40 text-xs bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
+      />
+      <button
+        onClick={() => setCaseSensitive(!caseSensitive)}
+        className={`flex items-center justify-center w-5 h-5 rounded text-xs transition-colors cursor-pointer ${
+          caseSensitive ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        }`}
+        title="Case sensitive"
+      >
+        <CaseSensitive size={13} />
+      </button>
+      <div className="w-px h-4 bg-border" />
+      <button
+        onClick={() => doSearch('prev')}
+        disabled={!query}
+        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer"
+        title="Previous"
+      >
+        <ChevronUp size={13} />
+      </button>
+      <button
+        onClick={() => doSearch('next')}
+        disabled={!query}
+        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer"
+        title="Next"
+      >
+        <ChevronDown size={13} />
+      </button>
+      <button
+        onClick={onClose}
+        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+        title="Close"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
+}

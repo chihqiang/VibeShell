@@ -14,11 +14,12 @@ import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
 import { deleteHost, saveHost } from '@/apis/api/hosts';
 import { fetchAllHostData } from '@/apis/utils/hosts';
+import { hostToConnectConfig } from '@/lib/utils';
 
 export default function HostsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { addTerminalTab } = useTerminalTabs();
+  const { addTerminalTab, tabs } = useTerminalTabs();
   const { notifyError } = useNotify();
   const [hosts, setHosts] = useState<HostConfig[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -30,6 +31,16 @@ export default function HostsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const connectingRef = useRef(false);
+
+  const connectedHostIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const tab of tabs) {
+      if (tab.type === 'terminal' && tab.host?.id) {
+        ids.add(tab.host.id);
+      }
+    }
+    return ids;
+  }, [tabs]);
 
   const loadData = useCallback(async () => {
     try {
@@ -105,20 +116,12 @@ export default function HostsPage() {
     loadData();
   }
 
-  function openTerminal(host: HostConfig) {
+  async function openTerminal(host: HostConfig) {
     if (connectingRef.current) return;
     connectingRef.current = true;
     setConnectingId(host.id);
-    addTerminalTab(
-      {
-        hostname: host.hostname,
-        port: host.port,
-        username: host.username,
-        password: host.password || null,
-        private_key_path: host.private_key_path || null,
-      },
-      host,
-    );
+    const config = await hostToConnectConfig(host, keys);
+    addTerminalTab(config, host);
     navigate('/');
   }
 
@@ -184,6 +187,7 @@ export default function HostsPage() {
                   key={h.id}
                   host={h}
                   connecting={connectingId === h.id}
+                  connected={connectedHostIds.has(h.id)}
                   menuOpen={menuOpenId === h.id}
                   onMenuToggle={() => setMenuOpenId(menuOpenId === h.id ? null : h.id)}
                   onOpenTerminal={() => openTerminal(h)}
@@ -214,6 +218,7 @@ export default function HostsPage() {
                   key={h.id}
                   host={h}
                   connecting={connectingId === h.id}
+                  connected={connectedHostIds.has(h.id)}
                   menuOpen={menuOpenId === h.id}
                   onMenuToggle={() => setMenuOpenId(menuOpenId === h.id ? null : h.id)}
                   onOpenTerminal={() => openTerminal(h)}

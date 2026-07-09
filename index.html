@@ -7,7 +7,7 @@
     <title>VibeShell</title>
     <style>
       :root, .light {
-        --background: 0 0% 100%;
+        --background: 0 0% 97%;
         --foreground: 222.2 84% 4.9%;
         --card: 0 0% 100%;
         --card-foreground: 222.2 84% 4.9%;
@@ -23,35 +23,79 @@
         --accent-foreground: 222.2 47.4% 11.2%;
         --destructive: 0 84.2% 60.2%;
         --destructive-foreground: 210 40% 98%;
-        --border: 214.3 31.8% 91.4%;
+        --border: 214.3 31.8% 88%;
         --input: 214.3 31.8% 91.4%;
         --ring: 200 100% 45%;
         --radius: 0.65rem;
 
         --sidebar-width: 220px;
         --top-tabs-height: 36px;
+
+        --term-bg: #f6f8fa;
+        --term-fg: #1f2328;
+        --term-cursor: #0969da;
+        --term-cursor-accent: #f6f8fa;
+        --term-selection: #0969da40;
+        --term-black: #6e7781;
+        --term-red: #cf222e;
+        --term-green: #116329;
+        --term-yellow: #4d2d00;
+        --term-blue: #0969da;
+        --term-magenta: #8250df;
+        --term-cyan: #1b7c83;
+        --term-white: #59636e;
+        --term-bright-black: #8b949e;
+        --term-bright-red: #ff8182;
+        --term-bright-green: #3fb950;
+        --term-bright-yellow: #d29922;
+        --term-bright-blue: #58a6ff;
+        --term-bright-magenta: #bc8cff;
+        --term-bright-cyan: #39c5cf;
+        --term-bright-white: #f0f6fc;
       }
 
       .dark {
-        --background: 220 28% 8%;
+        --background: 222 25% 9%;
         --foreground: 210 40% 95%;
-        --card: 220 22% 12%;
+        --card: 222 24% 13%;
         --card-foreground: 210 40% 95%;
-        --popover: 220 22% 12%;
+        --popover: 222 24% 13%;
         --popover-foreground: 210 40% 95%;
         --primary: 200 100% 61%;
         --primary-foreground: 220 40% 96%;
-        --secondary: 220 16% 16%;
+        --secondary: 222 18% 16%;
         --secondary-foreground: 210 40% 90%;
-        --muted: 220 16% 16%;
+        --muted: 222 18% 16%;
         --muted-foreground: 220 10% 70%;
         --accent: var(--primary);
         --accent-foreground: 220 40% 96%;
         --destructive: 0 70% 50%;
         --destructive-foreground: 210 40% 96%;
-        --border: 220 22% 18%;
-        --input: 220 22% 18%;
+        --border: 222 20% 20%;
+        --input: 222 20% 20%;
         --ring: 200 100% 61%;
+
+        --term-bg: #02040a;
+        --term-fg: #e6edf3;
+        --term-cursor: #58a6ff;
+        --term-cursor-accent: #02040a;
+        --term-selection: #58a6ff40;
+        --term-black: #484f58;
+        --term-red: #ff7b72;
+        --term-green: #3fb950;
+        --term-yellow: #d29922;
+        --term-blue: #58a6ff;
+        --term-magenta: #bc8cff;
+        --term-cyan: #39c5cf;
+        --term-white: #b1bac4;
+        --term-bright-black: #6e7681;
+        --term-bright-red: #ffa198;
+        --term-bright-green: #56d364;
+        --term-bright-yellow: #e3b341;
+        --term-bright-blue: #79c0ff;
+        --term-bright-magenta: #d2a8ff;
+        --term-bright-cyan: #56d4dd;
+        --term-bright-white: #f0f6fc;
       }
 
       ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -70,8 +114,16 @@
     </style>
     <script>
       (function() {
-        var t = localStorage.getItem('vibeshell-theme');
-        if (t === 'light') document.documentElement.classList.remove('dark');
+        try {
+          var raw = localStorage.getItem('vibeshell-theme');
+          var t = raw ? JSON.parse(raw) : 'dark';
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = t === 'dark' || (t === 'auto' && prefersDark) || (!t || t === 'dark');
+          if (isDark) document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
+        } catch(e) {
+          document.documentElement.classList.add('dark');
+        }
       })();
     </script>
   </head>

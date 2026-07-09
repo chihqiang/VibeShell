@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import type { ConnectionConfig } from '@/lib/types';
+import type { HostFormState } from '@/lib/types';
 
 interface SftpHeaderProps {
-  conn: ConnectionConfig;
+  conn: HostFormState;
 }
 
 export function SftpHeader({ conn }: SftpHeaderProps) {

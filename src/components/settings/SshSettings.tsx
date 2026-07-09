@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,47 @@ interface SshSettingsProps {
 
 export function SshSettings({ defaults, onSave }: SshSettingsProps) {
   const { t } = useTranslation();
+  // Local form state — syncs from props, debounces saves
+  const [form, setForm] = useState<Record<string, string>>(defaults);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firstRender = useRef(true);
+
+  // Sync external defaults into local form when they change (e.g. initial load)
+  useEffect(() => {
+    setForm(defaults);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(defaults)]);
+
+  // Debounced save — flushes to backend 600ms after last keystroke
+  const debouncedSave = useCallback(
+    (updated: Record<string, string>) => {
+      if (firstRender.current) {
+        firstRender.current = false;
+        return;
+      }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        for (const key of Object.keys(updated)) {
+          if (updated[key] !== defaults[key]) {
+            onSave(key, updated[key]);
+          }
+        }
+      }, 600);
+    },
+    [defaults, onSave],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const updateField = (key: string, value: string) => {
+    const updated = { ...form, [key]: value };
+    setForm(updated);
+    debouncedSave(updated);
+  };
 
   return (
     <Card>
@@ -22,8 +64,8 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
           <Label>{t('settings.defaultHostname')}</Label>
           <Input
             type="text"
-            value={defaults.hostname || ''}
-            onChange={(e) => onSave('hostname', e.target.value)}
+            value={form.hostname || ''}
+            onChange={(e) => updateField('hostname', e.target.value)}
             placeholder="192.168.1.1"
             className="mt-1"
           />
@@ -32,8 +74,8 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
           <Label>{t('settings.defaultUsername')}</Label>
           <Input
             type="text"
-            value={defaults.username || ''}
-            onChange={(e) => onSave('username', e.target.value)}
+            value={form.username || ''}
+            onChange={(e) => updateField('username', e.target.value)}
             placeholder="root"
             className="mt-1"
           />
@@ -43,10 +85,10 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
           <Input
             type="text"
             inputMode="numeric"
-            value={defaults.port && defaults.port !== '0' ? defaults.port : ''}
+            value={form.port && form.port !== '0' ? form.port : ''}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
-              onSave('port', v || '0');
+              updateField('port', v || '0');
             }}
             placeholder="22"
             className="mt-1"
@@ -57,32 +99,32 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
           <Input
             type="text"
             inputMode="numeric"
-            value={defaults.monitorInterval || ''}
+            value={form.monitorInterval || ''}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              onSave('monitorInterval', isNaN(num) || num < 1 ? '4' : String(num));
+              updateField('monitorInterval', isNaN(num) || num < 1 ? '4' : String(num));
             }}
             placeholder="4"
             className="mt-1"
           />
-          <p className="text-[10px] text-muted-foreground mt-0.5">{t('settings.monitorIntervalHint')}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.monitorIntervalHint')}</p>
         </div>
         <div>
           <Label>{t('settings.heartbeatInterval')}</Label>
           <Input
             type="text"
             inputMode="numeric"
-            value={defaults.heartbeatInterval || ''}
+            value={form.heartbeatInterval || ''}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              onSave('heartbeatInterval', isNaN(num) || num < 1 ? '10' : String(num));
+              updateField('heartbeatInterval', isNaN(num) || num < 1 ? '10' : String(num));
             }}
             placeholder="10"
             className="mt-1"
           />
-          <p className="text-[10px] text-muted-foreground mt-0.5">{t('settings.heartbeatIntervalHint')}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.heartbeatIntervalHint')}</p>
         </div>
 
         <div className="border-t border-border pt-4">
@@ -92,8 +134,8 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
         <div className="flex items-center justify-between">
           <Label className="text-xs">{t('settings.reconnectEnabled')}</Label>
           <Switch
-            checked={defaults.reconnectEnabled !== 'false'}
-            onCheckedChange={(v) => onSave('reconnectEnabled', String(v))}
+            checked={form.reconnectEnabled !== 'false'}
+            onCheckedChange={(v) => updateField('reconnectEnabled', String(v))}
           />
         </div>
 
@@ -102,11 +144,11 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
           <Input
             type="text"
             inputMode="numeric"
-            value={defaults.reconnectMaxRetries || ''}
+            value={form.reconnectMaxRetries || ''}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              onSave('reconnectMaxRetries', isNaN(num) || num < 1 ? '10' : String(num));
+              updateField('reconnectMaxRetries', isNaN(num) || num < 1 ? '10' : String(num));
             }}
             placeholder="10"
             className="mt-1"
@@ -118,16 +160,16 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
           <Input
             type="text"
             inputMode="numeric"
-            value={defaults.reconnectInitialDelay || ''}
+            value={form.reconnectInitialDelay || ''}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              onSave('reconnectInitialDelay', isNaN(num) || num < 1 ? '1' : String(num));
+              updateField('reconnectInitialDelay', isNaN(num) || num < 1 ? '1' : String(num));
             }}
             placeholder="1"
             className="mt-1"
           />
-          <p className="text-[10px] text-muted-foreground mt-0.5">{t('settings.reconnectInitialDelayHint')}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.reconnectInitialDelayHint')}</p>
         </div>
 
         <div>
@@ -135,16 +177,16 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
           <Input
             type="text"
             inputMode="numeric"
-            value={defaults.reconnectMaxDelay || ''}
+            value={form.reconnectMaxDelay || ''}
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              onSave('reconnectMaxDelay', isNaN(num) || num < 1 ? '30' : String(num));
+              updateField('reconnectMaxDelay', isNaN(num) || num < 1 ? '30' : String(num));
             }}
             placeholder="30"
             className="mt-1"
           />
-          <p className="text-[10px] text-muted-foreground mt-0.5">{t('settings.reconnectMaxDelayHint')}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.reconnectMaxDelayHint')}</p>
         </div>
       </CardContent>
     </Card>
