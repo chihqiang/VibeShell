@@ -135,5 +135,5 @@ const TabBarItem = memo(
       </div>
     );
   },
-  (prev, next) => prev.tab === next.tab && prev.active === next.active,
+  (prev, next) => prev.tab === next.tab && prev.active === next.active && prev.dragOver === next.dragOver,
 );

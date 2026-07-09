@@ -19,17 +19,11 @@ export default function TerminalSearchBar({ searchAddon, onClose }: TerminalSear
   const doSearch = useCallback(
     (direction: 'next' | 'prev') => {
       if (!searchAddon || !query) return;
-      searchAddon.findNext(query, {
-        caseSensitive,
-        wholeWord: false,
-        regex: false,
-      });
+      const opts = { caseSensitive, wholeWord: false, regex: false };
       if (direction === 'prev') {
-        searchAddon.findPrevious(query, {
-          caseSensitive,
-          wholeWord: false,
-          regex: false,
-        });
+        searchAddon.findPrevious(query, opts);
+      } else {
+        searchAddon.findNext(query, opts);
       }
     },
     [searchAddon, query, caseSensitive],

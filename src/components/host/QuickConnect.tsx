@@ -113,6 +113,7 @@ export default function QuickConnect() {
       if (activeTabId) {
         convertTabToTerminal(activeTabId, config);
       }
+      setQuickInput('');
     } catch (e) {
       notifyError(e);
     } finally {

@@ -13,6 +13,7 @@ import type { HostConfig } from '@/apis/types/hosts';
 import type { KeyEntry } from '@/apis/types/keys';
 import { useNotify } from '@/hooks/use-notify';
 import { deleteHost, saveHost } from '@/apis/api/hosts';
+import { sshTestConnect } from '@/apis/api/ssh';
 import { fetchAllHostData } from '@/apis/utils/hosts';
 import { hostToConnectConfig } from '@/lib/utils';
 
@@ -120,9 +121,20 @@ export default function HostsPage() {
     if (connectingRef.current) return;
     connectingRef.current = true;
     setConnectingId(host.id);
-    const config = await hostToConnectConfig(host, keys);
-    addTerminalTab(config, host);
-    navigate('/');
+    try {
+      const config = await hostToConnectConfig(host, keys);
+      await sshTestConnect(config);
+      addTerminalTab(config, host);
+      const now = Date.now();
+      await saveHost({ host: { ...host, last_connected_at: now } });
+      setHosts((prev) => prev.map((h) => (h.id === host.id ? { ...h, last_connected_at: now } : h)));
+      navigate('/');
+    } catch (e) {
+      notifyError(e);
+    } finally {
+      setConnectingId(null);
+      connectingRef.current = false;
+    }
   }
 
   function handleDelete(host: HostConfig) {
