@@ -85,6 +85,7 @@
     "recursive": "递归应用",
     "refresh": "刷新",
     "empty": "目录为空",
+    "editPath": "编辑路径",
     "cantReadDir": "无法读取目录内容",
     "dropToUpload": "拖拽文件到此处上传",
     "transfers": "传输队列",
@@ -107,14 +108,21 @@
     "transferDownload": "下载",
     "transferCancelled": "已取消",
     "transferClearCompleted": "清除已完成",
-    "transferIdle": "暂无传输"
+    "transferIdle": "暂无传输",
+    "loadFileError": "加载文件失败"
   },
   "terminal": {
     "connectingToHost": "连接主机...",
     "connectedSuccess": "连接主机成功",
     "disconnected": "连接断开",
     "reconnecting": "重新连接...",
-    "connectFailed": "连接失败"
+    "connectFailed": "连接失败",
+    "reconnectMaxRetries": "已达最大重试次数，请手动重连",
+    "reconnectRetry": "后第 {{retry}}/{{max}} 次自动重连...",
+    "searchPlaceholder": "搜索...",
+    "searchCaseSensitive": "区分大小写",
+    "searchPrevious": "上一个",
+    "searchNext": "下一个"
   },
   "tab": {
     "closeConfirmTitle": "关闭标签页",
@@ -123,7 +131,8 @@
     "closeOtherTabs": "关闭其他",
     "closeAllTabs": "关闭所有",
     "reconnect": "重新连接",
-    "duplicateTab": "复制标签"
+    "duplicateTab": "复制标签",
+    "copyHostInfo": "复制主机信息"
   },
   "settings": {
     "title": "设置",
@@ -221,6 +230,7 @@
     "saved": "已保存",
     "close": "关闭",
     "copied": "已复制到剪贴板",
+    "copySshCommand": "复制SSH命令",
     "copyFingerprint": "复制指纹",
     "loading": "加载中...",
     "error": "错误",
@@ -235,6 +245,9 @@
     "connected": "已连接 {{count}} 台"
   },
   "topbar": {
-    "searchPlaceholder": "搜索主机..."
+    "searchPlaceholder": "搜索主机...",
+    "close": "关闭",
+    "minimize": "最小化",
+    "maximize": "最大化"
   }
 }

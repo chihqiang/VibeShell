@@ -2,15 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMonitorData } from '@/hooks/use-monitor';
 import { formatUptime, parsePercent, formatSize } from '@/utils';
-
-const MAX_HISTORY = 30;
+import { MONITOR_MAX_HISTORY, MONITOR_WARN_THRESHOLD, MONITOR_DANGER_THRESHOLD, MONITOR_COLORS, SPARKLINE_WIDTH, SPARKLINE_HEIGHT } from '@/constants';
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null;
   const max = Math.max(...data, 1);
-  const w = 100;
-  const h = 20;
-  const step = w / (MAX_HISTORY - 1);
+  const w = SPARKLINE_WIDTH;
+  const h = SPARKLINE_HEIGHT;
+  const step = w / (MONITOR_MAX_HISTORY - 1);
   const points = data.map((v, i) => `${i * step},${h - (v / max) * h}`).join(' ');
   return (
     <svg width={w} height={h} className="flex-shrink-0" preserveAspectRatio="none">
@@ -20,7 +19,7 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 }
 
 function Bar({ label, value, text, history }: { label: string; value: number; text: string; history?: number[] }) {
-  const color = value > 80 ? '#ef4444' : value > 50 ? '#f59e0b' : '#22c55e';
+  const color = value > MONITOR_DANGER_THRESHOLD ? MONITOR_COLORS.danger : value > MONITOR_WARN_THRESHOLD ? MONITOR_COLORS.warn : MONITOR_COLORS.normal;
 
   return (
     <div>
@@ -69,8 +68,8 @@ export function MonitorInfo() {
         rafRef.current = null;
         const cv = pendingCpuRef.current;
         const mv = pendingMemRef.current;
-        if (cv !== null) setCpuHistory((prev) => [...prev, cv].slice(-MAX_HISTORY));
-        if (mv !== null) setMemHistory((prev) => [...prev, mv].slice(-MAX_HISTORY));
+        if (cv !== null) setCpuHistory((prev) => [...prev, cv].slice(-MONITOR_MAX_HISTORY));
+        if (mv !== null) setMemHistory((prev) => [...prev, mv].slice(-MONITOR_MAX_HISTORY));
       });
     }
 
@@ -117,7 +116,7 @@ export function MonitorInfo() {
           const txNum = parseInt(tx, 10) || 0;
           return (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">{t('monitor.netIO', 'Net I/O')}</span>
+              <span className="text-muted-foreground">{t('monitor.netIO')}</span>
               <span className="text-foreground font-mono ml-2 text-right">
                 ↓{formatSize(rxNum)} ↑{formatSize(txNum)}
               </span>

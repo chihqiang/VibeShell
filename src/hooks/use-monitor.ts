@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useNotify } from '@/hooks/use-notify';
+import { TAURI_EVENTS } from '@/constants';
 import type { MonitorEvent } from '@/types/monitor';
 
 // Module-level singleton: a single listener shared across all components
@@ -33,7 +34,7 @@ function acquire(tabId: string, cb: (event: MonitorEvent) => void): () => void {
   const entry: ListenerEntry = { tabId, unlisten: () => {}, refCount: 1, callbacks };
   activeEntry = entry;
 
-  listen<MonitorEvent>('ssh://monitor', (event) => {
+  listen<MonitorEvent>(TAURI_EVENTS.SSH_MONITOR, (event) => {
     if (event.payload.tab_id !== entry.tabId) return;
     for (const fn of entry.callbacks) fn(event.payload);
   }).then((unlisten) => {

@@ -85,6 +85,7 @@
     "recursive": "Apply recursively",
     "refresh": "Refresh",
     "empty": "Directory is empty",
+    "editPath": "Edit path",
     "cantReadDir": "Could not read directory contents",
     "dropToUpload": "Drag and drop files here to upload",
     "transfers": "Transfers",
@@ -107,14 +108,21 @@
     "transferDownload": "Download",
     "transferCancelled": "Cancelled",
     "transferClearCompleted": "Clear completed",
-    "transferIdle": "No transfers"
+    "transferIdle": "No transfers",
+    "loadFileError": "Failed to load file"
   },
   "terminal": {
     "connectingToHost": "Connecting to host...",
     "connectedSuccess": "Connected successfully",
     "disconnected": "Connection disconnected",
     "reconnecting": "Reconnecting...",
-    "connectFailed": "Connection failed"
+    "connectFailed": "Connection failed",
+    "reconnectMaxRetries": "Max retries reached. Please reconnect manually.",
+    "reconnectRetry": "Auto reconnect attempt {{retry}}/{{max}}...",
+    "searchPlaceholder": "Search...",
+    "searchCaseSensitive": "Case sensitive",
+    "searchPrevious": "Previous",
+    "searchNext": "Next"
   },
   "tab": {
     "closeConfirmTitle": "Close Tab",
@@ -123,7 +131,8 @@
     "closeOtherTabs": "Close Others",
     "closeAllTabs": "Close All",
     "reconnect": "Reconnect",
-    "duplicateTab": "Duplicate Tab"
+    "duplicateTab": "Duplicate Tab",
+    "copyHostInfo": "Copy Host Info"
   },
   "settings": {
     "title": "Settings",
@@ -221,6 +230,7 @@
     "saved": "Saved",
     "close": "Close",
     "copied": "Copied to clipboard",
+    "copySshCommand": "Copy SSH Command",
     "copyFingerprint": "Copy fingerprint",
     "loading": "Loading...",
     "error": "Error",
@@ -235,6 +245,9 @@
     "connected": "{{count}} connected"
   },
   "topbar": {
-    "searchPlaceholder": "Search hosts..."
+    "searchPlaceholder": "Search hosts...",
+    "close": "Close",
+    "minimize": "Minimize",
+    "maximize": "Maximize"
   }
 }

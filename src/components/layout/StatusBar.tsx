@@ -6,6 +6,7 @@ import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useLayout } from '@/contexts/LayoutContext';
 import { listHosts } from '@/services/hostService';
 import type { HostConfig } from '@/types/host';
+import { DOM_EVENTS, APP_NAME, SFTP_LABEL } from '@/constants';
 
 /** 底部状态栏 — 显示主机数、连接数等信息 */
 export function StatusBar() {
@@ -15,7 +16,10 @@ export function StatusBar() {
   const [hosts, setHosts] = useState<HostConfig[]>([]);
 
   useEffect(() => {
-    listHosts().then(setHosts).catch(() => {});
+    const reload = () => listHosts().then(setHosts).catch(() => {});
+    reload();
+    window.addEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
+    return () => window.removeEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
   }, []);
 
   const connectedCount = useMemo(
@@ -42,7 +46,7 @@ export function StatusBar() {
       ? t('connection.connecting')
       : isTerminal
         ? t('terminal.disconnected')
-        : 'VibeShell';
+        : APP_NAME;
 
   return (
     <footer className="flex-shrink-0 h-6 flex items-center px-2 bg-primary text-primary-foreground text-[11px] select-none gap-1">
@@ -57,7 +61,7 @@ export function StatusBar() {
       {/* 主机统计 */}
       <button className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-colors cursor-pointer">
         <Server size={11} />
-        <span>{t('statusbar.hosts', { count: hosts.length, defaultValue: `${hosts.length} 台主机` })}</span>
+        <span>{t('statusbar.hosts', { count: hosts.length })}</span>
       </button>
 
       <div className="w-px h-3 bg-primary-foreground/20" />
@@ -66,14 +70,14 @@ export function StatusBar() {
       <button className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-colors cursor-pointer">
         {connectedCount > 0 ? <Wifi size={11} /> : <WifiOff size={11} />}
         <span>
-          {t('statusbar.connected', { count: connectedCount, defaultValue: `已连接 ${connectedCount} 台` })}
+          {t('statusbar.connected', { count: connectedCount })}
         </span>
       </button>
 
       <div className="flex-1" />
 
       {/* 右侧：面板切换按钮 */}
-      {isTerminal && (
+      {isConnected && (
         <>
           <button
             onClick={toggleSftp}
@@ -81,10 +85,10 @@ export function StatusBar() {
               'flex items-center gap-1 px-1.5 h-full hover:bg-primary-foreground/10 transition-colors cursor-pointer',
               sftpOpen && 'bg-primary-foreground/15',
             )}
-            title="SFTP"
+            title={SFTP_LABEL}
           >
             <Folder size={11} />
-            <span>SFTP</span>
+            <span>{SFTP_LABEL}</span>
           </button>
 
           <div className="w-px h-3 bg-primary-foreground/20" />

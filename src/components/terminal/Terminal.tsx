@@ -11,6 +11,22 @@ import { Loader2, WifiOff, RotateCw } from 'lucide-react';
 import { cn } from '@/utils';
 import { useNotify } from '@/hooks/use-notify';
 import { getStoredThemeId, getTerminalTheme } from '@/utils/terminal-themes';
+import {
+  TERM_DEFAULT_FONT_SIZE,
+  TERM_MIN_FONT_SIZE,
+  TERM_MAX_FONT_SIZE,
+  TERM_FONT_FAMILY,
+  TERM_OVERLAY_BG,
+  TERM_OVERLAY_BLUR,
+  STORAGE_KEYS,
+  DOM_EVENTS,
+  TAURI_EVENTS,
+  ANSI_YELLOW,
+  ANSI_GREEN,
+  ANSI_RED,
+  ANSI_RESET,
+  ANSI_NEWLINE,
+} from '@/constants';
 import { TerminalSearchBar } from './TerminalSearchBar';
 
 /** Build an xterm ITheme object from the stored terminal theme. */
@@ -55,18 +71,13 @@ interface SshOutputEvent {
   data: string;
 }
 
-const TERM_FONT_SIZE_KEY = 'vibeshell-term-font-size';
-const DEFAULT_FONT_SIZE = 13;
-const MIN_FONT_SIZE = 8;
-const MAX_FONT_SIZE = 32;
-
 function getStoredFontSize(): number {
   try {
-    const v = localStorage.getItem(TERM_FONT_SIZE_KEY);
-    const n = v ? parseInt(v, 10) : DEFAULT_FONT_SIZE;
-    return isNaN(n) ? DEFAULT_FONT_SIZE : Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, n));
+    const v = localStorage.getItem(STORAGE_KEYS.TERM_FONT_SIZE);
+    const n = v ? parseInt(v, 10) : TERM_DEFAULT_FONT_SIZE;
+    return isNaN(n) ? TERM_DEFAULT_FONT_SIZE : Math.max(TERM_MIN_FONT_SIZE, Math.min(TERM_MAX_FONT_SIZE, n));
   } catch {
-    return DEFAULT_FONT_SIZE;
+    return TERM_DEFAULT_FONT_SIZE;
   }
 }
 
@@ -87,6 +98,8 @@ const Terminal = memo(function Terminal({
   const prevStatusRef = useRef(status);
   const hadConnectionRef = useRef(false);
   const pendingRef = useRef<string[]>([]);
+  /** Flush function for batched terminal writes — set during init, called on cleanup */
+  const flushWriteRef = useRef<(() => void) | null>(null);
   const fontSizeRef = useRef(getStoredFontSize());
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const [showSearch, setShowSearch] = useState(false);
@@ -108,8 +121,29 @@ const Terminal = memo(function Terminal({
         term.refresh(0, term.rows - 1);
       }
     };
-    window.addEventListener('vibeshell:term-theme-change', handler);
-    return () => window.removeEventListener('vibeshell:term-theme-change', handler);
+    window.addEventListener(DOM_EVENTS.TERM_THEME_CHANGE, handler);
+    return () => window.removeEventListener(DOM_EVENTS.TERM_THEME_CHANGE, handler);
+  }, []);
+
+  // Listen for external refit requests (e.g. SFTP panel open/close changes
+  // the terminal area height) — refit xterm and scroll to bottom so the
+  // cursor/prompt remains visible.
+  useEffect(() => {
+    const handler = () => {
+      // Skip when hidden — the active effect will handle refit on show
+      const el = containerRef.current;
+      if (!el || el.clientWidth === 0 || el.clientHeight === 0) return;
+      requestAnimationFrame(() => {
+        try {
+          fitAddonRef.current?.fit();
+          termRef.current?.scrollToBottom();
+        } catch {
+          // ignore fit errors during teardown
+        }
+      });
+    };
+    window.addEventListener(DOM_EVENTS.TERM_REFIT, handler);
+    return () => window.removeEventListener(DOM_EVENTS.TERM_REFIT, handler);
   }, []);
 
   // Ctrl+wheel (or Cmd+wheel on macOS) to zoom font size
@@ -120,10 +154,10 @@ const Terminal = memo(function Terminal({
     const fitAddon = fitAddonRef.current;
     if (!term || !fitAddon) return;
     const delta = e.deltaY < 0 ? 1 : -1;
-    const next = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSizeRef.current + delta));
+    const next = Math.max(TERM_MIN_FONT_SIZE, Math.min(TERM_MAX_FONT_SIZE, fontSizeRef.current + delta));
     if (next === fontSizeRef.current) return;
     fontSizeRef.current = next;
-    localStorage.setItem(TERM_FONT_SIZE_KEY, String(next));
+    localStorage.setItem(STORAGE_KEYS.TERM_FONT_SIZE, String(next));
     term.options.fontSize = next;
     fitAddon.fit();
   }, []);
@@ -207,7 +241,7 @@ const Terminal = memo(function Terminal({
         cursorBlink: true,
         cursorStyle: 'bar',
         fontSize: fontSizeRef.current,
-        fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
+        fontFamily: TERM_FONT_FAMILY,
         theme: buildXtermTheme(),
         allowProposedApi: true,
         convertEol: true,
@@ -240,10 +274,41 @@ const Terminal = memo(function Terminal({
       }
       pendingRef.current = [];
 
+      // Batch keystrokes to reduce IPC overhead — accumulate data within a
+      // single animation frame (~16ms) and send it as one sshWrite call.
+      // For large payloads (paste), send immediately without waiting.
+      let writeBuffer = '';
+      let writeRafId: number | null = null;
+      const flushWrite = () => {
+        writeRafId = null;
+        const tid = tabIdRef.current;
+        if (tid && writeBuffer) {
+          const batch = writeBuffer;
+          writeBuffer = '';
+          sshWrite({ tabId: tid, data: batch }).catch((e) => notifyError(e));
+        }
+      };
+      // Store flush function so cleanup can drain pending writes
+      flushWriteRef.current = flushWrite;
+
       term.onData((data) => {
         const tid = tabIdRef.current;
-        if (tid) {
-          sshWrite({ tabId: tid, data }).catch((e) => notifyError(e));
+        if (!tid) return;
+        // Large data (paste) — send immediately, merging any pending buffer
+        if (data.length > 64) {
+          if (writeRafId !== null) {
+            cancelAnimationFrame(writeRafId);
+            writeRafId = null;
+          }
+          const merged = writeBuffer + data;
+          writeBuffer = '';
+          sshWrite({ tabId: tid, data: merged }).catch((e) => notifyError(e));
+          return;
+        }
+        // Small data (keystrokes) — batch within one animation frame
+        writeBuffer += data;
+        if (writeRafId === null) {
+          writeRafId = requestAnimationFrame(flushWrite);
         }
       });
     };
@@ -253,6 +318,8 @@ const Terminal = memo(function Terminal({
     // Cleanup: dispose xterm instance when component unmounts or terminalId changes
     return () => {
       disposed = true;
+      // Flush any pending batched writes before disposing the terminal
+      flushWriteRef.current?.();
       const term = termRef.current;
       if (term) {
         term.dispose();
@@ -276,8 +343,8 @@ const Terminal = memo(function Terminal({
         pendingRef.current.push(detail.text);
       }
     };
-    window.addEventListener('vibeshell:term-write', handler);
-    return () => window.removeEventListener('vibeshell:term-write', handler);
+    window.addEventListener(DOM_EVENTS.TERM_WRITE, handler);
+    return () => window.removeEventListener(DOM_EVENTS.TERM_WRITE, handler);
   }, [tabId]);
 
   // ResizeObserver — reflow terminal when container resizes (RAF debounced)
@@ -296,6 +363,9 @@ const Terminal = memo(function Terminal({
           rafId = null;
           try {
             fitAddon.fit();
+            // Scroll to bottom after resize so the cursor/prompt stays visible
+            // (e.g. when SFTP panel opens and shrinks the terminal area)
+            termRef.current?.scrollToBottom();
           } catch {
             // ignore fit errors during teardown
           }
@@ -324,7 +394,10 @@ const Terminal = memo(function Terminal({
       try {
         fitAddonRef.current?.fit();
         const t = termRef.current;
-        if (t) t.refresh(0, t.rows - 1);
+        if (t) {
+          t.refresh(0, t.rows - 1);
+          t.scrollToBottom();
+        }
       } catch {
         // ignore
       }
@@ -342,7 +415,7 @@ const Terminal = memo(function Terminal({
     if (status === 'connecting' && prev !== 'connecting') {
       const isReconnect = hadConnectionRef.current;
       const text = isReconnect ? t('terminal.reconnecting') : t('terminal.connectingToHost');
-      const msg = `\x1b[33m${text}\x1b[0m\r\n`;
+      const msg = `${ANSI_YELLOW}${text}${ANSI_RESET}${ANSI_NEWLINE}`;
       if (termRef.current) {
         termRef.current.write(msg);
       } else {
@@ -350,7 +423,7 @@ const Terminal = memo(function Terminal({
       }
     } else if (status === 'connected' && prev !== 'connected') {
       hadConnectionRef.current = true;
-      const msg = `\x1b[32m${t('terminal.connectedSuccess')}\x1b[0m\r\n`;
+      const msg = `${ANSI_GREEN}${t('terminal.connectedSuccess')}${ANSI_RESET}${ANSI_NEWLINE}`;
       if (termRef.current) {
         termRef.current.write(msg);
       } else {
@@ -358,14 +431,14 @@ const Terminal = memo(function Terminal({
       }
     } else if (status === 'disconnected' && prev === 'connected') {
       // SSH prompt doesn't end with newline, so break to a new line first
-      const msg = `\r\n\x1b[31m${t('terminal.disconnected')}\x1b[0m\r\n`;
+      const msg = `${ANSI_NEWLINE}${ANSI_RED}${t('terminal.disconnected')}${ANSI_RESET}${ANSI_NEWLINE}`;
       if (termRef.current) {
         termRef.current.write(msg);
       } else {
         pendingRef.current.push(msg);
       }
     } else if (status === 'disconnected' && prev === 'connecting') {
-      const msg = `\x1b[31m${t('terminal.connectFailed')}\x1b[0m\r\n`;
+      const msg = `${ANSI_RED}${t('terminal.connectFailed')}${ANSI_RESET}${ANSI_NEWLINE}`;
       if (termRef.current) {
         termRef.current.write(msg);
       } else {
@@ -394,7 +467,7 @@ const Terminal = memo(function Terminal({
         pending = '';
       };
 
-      const unlisten = await listen<SshOutputEvent>('ssh://output', (event) => {
+      const unlisten = await listen<SshOutputEvent>(TAURI_EVENTS.SSH_OUTPUT, (event) => {
         if (cancelled) return;
         if (event.payload.tab_id === tabIdRef.current) {
           pending += event.payload.data;
@@ -431,7 +504,7 @@ const Terminal = memo(function Terminal({
       {isConnecting && (
         <div
           className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 animate-overlay-in"
-          style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+          style={{ backgroundColor: TERM_OVERLAY_BG, backdropFilter: TERM_OVERLAY_BLUR }}
         >
           <Loader2 size={28} className="animate-spin text-yellow-400" />
           <span className="text-xs text-yellow-400/90 font-medium">
@@ -444,7 +517,7 @@ const Terminal = memo(function Terminal({
       {isDisconnected && (
         <div
           className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 animate-overlay-in"
-          style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+          style={{ backgroundColor: TERM_OVERLAY_BG, backdropFilter: TERM_OVERLAY_BLUR }}
         >
           <WifiOff size={28} className="text-red-400/80" />
           <span className="text-xs text-red-400/80 font-medium">{t('terminal.disconnected')}</span>

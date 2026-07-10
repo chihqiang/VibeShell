@@ -24,14 +24,13 @@ import { useLayout } from '@/contexts/LayoutContext';
 import type { HostConfig } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 import { hostToConnectConfig, cn, parseSshCommand } from '@/utils';
-import { fetchHostsAndKeys } from '@/services/hostService';
-import { saveHost } from '@/services/hostService';
+import { fetchHostsAndKeys, saveHost } from '@/services/hostService';
 import { sshTestConnect } from '@/services/sshService';
 import { useNotify } from '@/hooks/use-notify';
 import { getSshDefaults } from '@/services/configService';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { APP_NAME } from '@/constants/app';
+import { APP_NAME, DEFAULT_SSH_PORT, DOM_EVENTS } from '@/constants';
 
 function formatRelativeTime(
   ts: number | null | undefined,
@@ -40,12 +39,12 @@ function formatRelativeTime(
   if (!ts) return '';
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return t('dashboard.justNow', { defaultValue: '刚刚' });
-  if (mins < 60) return t('dashboard.minutesAgo', { count: mins, defaultValue: `${mins} 分钟前` });
+  if (mins < 1) return t('dashboard.justNow');
+  if (mins < 60) return t('dashboard.minutesAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return t('dashboard.hoursAgo', { count: hours, defaultValue: `${hours} 小时前` });
+  if (hours < 24) return t('dashboard.hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  return t('dashboard.daysAgo', { count: days, defaultValue: `${days} 天前` });
+  return t('dashboard.daysAgo', { count: days });
 }
 
 /** 欢迎主页 — 快速连接 + 最近连接 + 系统信息 */
@@ -88,6 +87,9 @@ export function WelcomePage() {
       arch: os.arch(),
     }));
     os.hostname().then((h) => setSysInfo((prev) => ({ ...prev, hostname: h || '' })));
+    const reload = () => loadData();
+    window.addEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
+    return () => window.removeEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
   }, [loadData]);
 
   const recentHosts = useMemo(
@@ -120,7 +122,7 @@ export function WelcomePage() {
       username = defaults.username;
     }
     if (!username) {
-      notifyError(new Error(t('dashboard.usernameRequired', { defaultValue: '请输入用户名，格式: user@host' })));
+      notifyError(new Error(t('dashboard.usernameRequired')));
       return;
     }
 
@@ -128,7 +130,7 @@ export function WelcomePage() {
     try {
       const config = {
         hostname: parsed.hostname,
-        port: parsed.port || 22,
+        port: parsed.port || DEFAULT_SSH_PORT,
         username,
         password: parsed.password,
         privateKeyPath: parsed.privateKeyPath,
@@ -155,6 +157,7 @@ export function WelcomePage() {
       const now = Date.now();
       await saveHost({ host: { ...host, last_connected_at: now } });
       setHosts((prev) => prev.map((h) => (h.id === host.id ? { ...h, last_connected_at: now } : h)));
+      window.dispatchEvent(new CustomEvent(DOM_EVENTS.HOSTS_CHANGED));
     } catch (e) {
       notifyError(e);
     }
@@ -171,9 +174,7 @@ export function WelcomePage() {
                 value={quickInput}
                 onChange={(e) => setQuickInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && canConnect && handleQuickConnect()}
-                placeholder={t('dashboard.placeholder', {
-                  defaultValue: 'ssh root@192.168.1.1  或  root:密码@192.168.1.1:22',
-                })}
+                placeholder={t('dashboard.placeholder')}
                 className="flex-1 h-10 text-sm font-mono"
                 autoFocus
               />
@@ -187,7 +188,7 @@ export function WelcomePage() {
               <div className="flex flex-wrap items-center gap-1.5 px-1 animate-fade-in">
                 <ParsedChip
                   icon={<User size={10} />}
-                  label={parsed.username || t('dashboard.defaultUser', { defaultValue: '默认' })}
+                  label={parsed.username || t('dashboard.defaultUser')}
                 />
                 <ChevronRight size={10} className="text-muted-foreground/40" />
                 <ParsedChip icon={<Globe size={10} />} label={`${parsed.hostname}:${parsed.port}`} />
@@ -201,13 +202,13 @@ export function WelcomePage() {
             {!showPreview && (
               <div className="space-y-1 px-1">
                 <p className="text-[11px] text-muted-foreground/70">
-                  {t('dashboard.formatHint1', { defaultValue: '密码连接：root:password@192.168.1.1:22' })}
+                  {t('dashboard.formatHint1')}
                 </p>
                 <p className="text-[11px] text-muted-foreground/70">
-                  {t('dashboard.formatHint2', { defaultValue: '密钥连接：ssh -i ~/.ssh/id_rsa root@192.168.1.1' })}
+                  {t('dashboard.formatHint2')}
                 </p>
                 <p className="text-[11px] text-muted-foreground/70">
-                  {t('dashboard.formatHint3', { defaultValue: '带端口：ssh -p 2222 root@192.168.1.1' })}
+                  {t('dashboard.formatHint3')}
                 </p>
               </div>
             )}
@@ -285,9 +286,7 @@ export function WelcomePage() {
                     <Server size={24} className="text-muted-foreground/30" />
                   </div>
                   <p className="text-center text-xs text-muted-foreground max-w-xs">
-                    {t('dashboard.emptyHint', {
-                      defaultValue: '还没有最近连接。点击左侧主机管理添加主机，或在上方直接输入地址快速连接。',
-                    })}
+                    {t('dashboard.emptyHint')}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="xs" className="gap-1.5" onClick={() => setActiveView('hosts')}>

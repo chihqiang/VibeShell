@@ -7,6 +7,7 @@ import type { HostFormState } from '@/types';
 import type { KeyEntry } from '@/types/key';
 import { AuthToggle, KeySelector } from '@/components/host';
 import { Field, NumberInput } from '@/components/ui';
+import { DEFAULT_SSH_PORT } from '@/constants';
 
 interface HostFormProps {
   value: HostFormState;
@@ -80,7 +81,7 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
             />
           </Field>
           <Field label={t('quickConnect.port')} compact>
-            <NumberInput value={value.port} onChange={(v) => updateField('port', v)} placeholder="22" compact />
+            <NumberInput value={value.port} onChange={(v) => updateField('port', v)} placeholder={String(DEFAULT_SSH_PORT)} compact />
           </Field>
           <Field label={t('quickConnect.username')} compact>
             <Input
@@ -125,7 +126,7 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
           />
         </Field>
         <Field label={t('connection.port')}>
-          <NumberInput value={value.port} onChange={(v) => updateField('port', v)} placeholder="22" />
+          <NumberInput value={value.port} onChange={(v) => updateField('port', v)} placeholder={String(DEFAULT_SSH_PORT)} />
         </Field>
       </div>
 

@@ -10,7 +10,7 @@ import { TabBar } from '@/components/tabbar';
 import { SftpBottomPanel } from '@/components/sftp';
 import { useNotify } from '@/hooks/use-notify';
 import { getSshDefaults } from '@/services/configService';
-import { BOTTOM_PANEL_MIN_HEIGHT, BOTTOM_PANEL_DEFAULT_HEIGHT } from '@/constants/layout';
+import { BOTTOM_PANEL_MIN_HEIGHT, BOTTOM_PANEL_DEFAULT_HEIGHT, DOM_EVENTS, TAURI_EVENTS, ANSI_RED, ANSI_YELLOW, ANSI_RESET, ANSI_NEWLINE, DEFAULT_RECONNECT_MAX_RETRIES, DEFAULT_RECONNECT_INITIAL_DELAY, DEFAULT_RECONNECT_MAX_DELAY } from '@/constants';
 import { STORAGE_KEYS } from '@/constants/storage-keys';
 import { useStorage } from '@/utils/storage';
 import { useLayout } from '@/contexts/LayoutContext';
@@ -21,6 +21,7 @@ export function EditorArea() {
   const { tabs, activeTabId, updateStatus, terminalTabVersion } = useTerminalTabs();
   const { sftpOpen } = useLayout();
   const { notifyError } = useNotify();
+  const prevSftpOpen = useRef(sftpOpen);
   const connectedTabs = useRef(new Set<string>());
   const abortRef = useRef(new Map<string, AbortController>());
   const [bottomHeight, setBottomHeight] = useStorage(STORAGE_KEYS.SFTP_HEIGHT, BOTTOM_PANEL_DEFAULT_HEIGHT);
@@ -37,13 +38,13 @@ export function EditorArea() {
   const retryCount = useRef(new Map<string, number>());
   const reconnectTimer = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const writeToTerminal = (tabId: string, text: string) => {
-    window.dispatchEvent(new CustomEvent('vibeshell:term-write', { detail: { tabId, text } }));
+    window.dispatchEvent(new CustomEvent(DOM_EVENTS.TERM_WRITE, { detail: { tabId, text } }));
   };
   const reconnectConfig = useRef({
     enabled: true,
-    maxRetries: 10,
-    initialDelaySecs: 1,
-    maxDelaySecs: 30,
+    maxRetries: DEFAULT_RECONNECT_MAX_RETRIES,
+    initialDelaySecs: DEFAULT_RECONNECT_INITIAL_DELAY,
+    maxDelaySecs: DEFAULT_RECONNECT_MAX_DELAY,
   });
 
   const connectTab = useCallback(
@@ -99,7 +100,7 @@ export function EditorArea() {
   }, [terminalTabVersion, connectTab]);
 
   useEffect(() => {
-    const unlisten = listen<{ tab_id: string; alive: boolean }>('ssh://heartbeat', (event) => {
+    const unlisten = listen<{ tab_id: string; alive: boolean }>(TAURI_EVENTS.SSH_HEARTBEAT, (event) => {
       const { tab_id, alive } = event.payload;
       updateStatus(tab_id, alive ? 'connected' : 'disconnected');
 
@@ -112,7 +113,7 @@ export function EditorArea() {
 
         const retries = retryCount.current.get(tab_id) || 0;
         if (retries >= cfg.maxRetries) {
-          const msg = `\r\n\x1b[31m${t('terminal.reconnectMaxRetries', '已达最大重试次数，请手动重连')}\x1b[0m\r\n`;
+          const msg = `${ANSI_NEWLINE}${ANSI_RED}${t('terminal.reconnectMaxRetries')}${ANSI_RESET}${ANSI_NEWLINE}`;
           writeToTerminal(tab_id, msg);
           return;
         }
@@ -123,7 +124,7 @@ export function EditorArea() {
         const delay = Math.min(cfg.initialDelaySecs * 1000 * Math.pow(2, retries), cfg.maxDelaySecs * 1000);
         const delaySecs = Math.ceil(delay / 1000);
         const nextRetry = retries + 1;
-        const msg = `\r\n\x1b[33m${delaySecs}s ${t('terminal.reconnectRetry', { retry: nextRetry, max: cfg.maxRetries, defaultValue: `后第 ${nextRetry}/${cfg.maxRetries} 次自动重连...` })}\x1b[0m\r\n`;
+        const msg = `${ANSI_NEWLINE}${ANSI_YELLOW}${delaySecs}s ${t('terminal.reconnectRetry', { retry: nextRetry, max: cfg.maxRetries })}${ANSI_RESET}${ANSI_NEWLINE}`;
         writeToTerminal(tab_id, msg);
 
         const timer = setTimeout(() => {
@@ -204,6 +205,18 @@ export function EditorArea() {
       if (dragRafRef.current !== null) cancelAnimationFrame(dragRafRef.current);
     };
   }, [setBottomHeight]);
+
+  // Notify terminal to refit when SFTP panel opens/closes — the terminal area
+  // height changes and xterm needs to recalculate rows/cols + scroll to bottom.
+  useEffect(() => {
+    if (prevSftpOpen.current === sftpOpen) return;
+    prevSftpOpen.current = sftpOpen;
+    // Dispatch after a frame so the DOM has settled with the new panel height
+    const raf = requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent(DOM_EVENTS.TERM_REFIT));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [sftpOpen]);
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {

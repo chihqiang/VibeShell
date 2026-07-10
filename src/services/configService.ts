@@ -2,6 +2,14 @@ import { invoke } from '@/utils/invoke';
 import type { AppConfig, SshDefaultsData } from '@/types/config';
 import { getStorage, setStorage } from '@/utils/storage';
 import { STORAGE_KEYS } from '@/constants/storage-keys';
+import {
+  DEFAULT_SSH_PORT,
+  DEFAULT_MONITOR_INTERVAL,
+  DEFAULT_HEARTBEAT_INTERVAL,
+  DEFAULT_RECONNECT_MAX_RETRIES,
+  DEFAULT_RECONNECT_INITIAL_DELAY,
+  DEFAULT_RECONNECT_MAX_DELAY,
+} from '@/constants/app';
 
 export type { SshDefaultsData };
 
@@ -9,13 +17,13 @@ export type { SshDefaultsData };
 export const SSH_FALLBACK: SshDefaultsData = {
   hostname: '',
   username: '',
-  port: 22,
-  monitorInterval: 4,
-  heartbeatInterval: 10,
+  port: DEFAULT_SSH_PORT,
+  monitorInterval: DEFAULT_MONITOR_INTERVAL,
+  heartbeatInterval: DEFAULT_HEARTBEAT_INTERVAL,
   reconnectEnabled: true,
-  reconnectMaxRetries: 10,
-  reconnectInitialDelay: 1,
-  reconnectMaxDelay: 30,
+  reconnectMaxRetries: DEFAULT_RECONNECT_MAX_RETRIES,
+  reconnectInitialDelay: DEFAULT_RECONNECT_INITIAL_DELAY,
+  reconnectMaxDelay: DEFAULT_RECONNECT_MAX_DELAY,
 };
 
 // ── API 调用 ──

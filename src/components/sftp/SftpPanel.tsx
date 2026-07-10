@@ -26,6 +26,7 @@ import type { FileEntry } from '@/types/sftp';
 import type { TransferItem } from '@/types';
 import { formatSize } from '@/utils';
 import { useNotify } from '@/hooks/use-notify';
+import { TAURI_EVENTS, SFTP_ROW_HEIGHT, SFTP_GRID_COLS, SFTP_FALLBACK_FOLDER_NAME } from '@/constants';
 import {
   sftpListFiles,
   sftpListFilesRecursive,
@@ -99,7 +100,7 @@ export function SftpPanel() {
   const virtualizer = useVirtualizer({
     count: sortedEntries.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 28,
+    estimateSize: () => SFTP_ROW_HEIGHT,
     getItemKey: (index) => sortedEntries[index].path,
   });
 
@@ -178,7 +179,7 @@ export function SftpPanel() {
       current: number;
       total: number;
       phase: string;
-    }>('sftp://transfer-progress', (event) => {
+    }>(TAURI_EVENTS.SFTP_TRANSFER_PROGRESS, (event) => {
       const { transferId, current, total, phase } = event.payload;
       setTransfers((prev) =>
         prev.map((x) =>
@@ -426,7 +427,7 @@ export function SftpPanel() {
     const folder = await open({ directory: true });
     if (!folder) return;
 
-    const { files: allFiles, failures } = await expandLocalFiles([folder], currentPath, { fallbackName: 'folder' });
+    const { files: allFiles, failures } = await expandLocalFiles([folder], currentPath, { fallbackName: SFTP_FALLBACK_FOLDER_NAME });
 
     if (failures.length > 0) {
       for (const f of failures) {
@@ -466,7 +467,7 @@ export function SftpPanel() {
           size="icon-xs"
           onClick={() => setTransferDialogOpen(true)}
           className="relative"
-          title="Transfers"
+          title={t('sftp.transfers')}
         >
           <ListTodo size={12} />
           {activeTransferCount > 0 && (
@@ -503,7 +504,7 @@ export function SftpPanel() {
       />
 
       <div className="flex-1 flex flex-col min-h-0 text-xs">
-        <div className="grid grid-cols-[1fr_70px_90px_100px_140px] bg-secondary/10 border-b border-border flex-shrink-0">
+        <div className="grid bg-secondary/10 border-b border-border flex-shrink-0" style={{ gridTemplateColumns: SFTP_GRID_COLS }}>
           <button
             onClick={() => toggleSort('name')}
             className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer"
@@ -556,8 +557,8 @@ export function SftpPanel() {
                     onClick={(e) => handleClick(entry.path, e)}
                     onDoubleClick={() => handleDoubleClick(entry)}
                     onContextMenu={(e) => handleContextMenu(e, entry)}
-                    className={`grid grid-cols-[1fr_70px_90px_100px_140px] cursor-pointer transition-colors absolute left-0 right-0 top-0 h-7 ${selected.has(entry.path) ? 'bg-primary/15 border-l-2 border-l-primary' : 'hover:bg-muted/60'}`}
-                    style={{ transform: `translateY(${vItem.start}px)` }}
+                    className={`grid cursor-pointer transition-colors absolute left-0 right-0 top-0 h-7 ${selected.has(entry.path) ? 'bg-primary/15 border-l-2 border-l-primary' : 'hover:bg-muted/60'}`}
+                    style={{ transform: `translateY(${vItem.start}px)`, gridTemplateColumns: SFTP_GRID_COLS }}
                   >
                     <div className="px-3 flex items-center gap-1.5 truncate">
                       {entry.file_type === FileType.Directory ? (
@@ -604,7 +605,7 @@ export function SftpPanel() {
         transfers={transfers}
         onCancel={(id) => {
           sftpCancelTransfer({ transferId: id }).catch((e) => notifyError(e));
-          setTransfers((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'failed', error: 'Cancelled' } : x)));
+          setTransfers((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'failed', error: t('sftp.transferCancelled') } : x)));
         }}
         onRetry={(item) => {
           setTransfers((prev) =>

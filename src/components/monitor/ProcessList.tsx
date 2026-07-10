@@ -7,8 +7,7 @@ import { useMonitorData } from '@/hooks/use-monitor';
 import { sshWrite } from '@/services/sshService';
 import type { ProcessInfo } from '@/types';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-
-const MAX_PROCESSES = 8;
+import { PROCESS_MAX_DISPLAY, KILL_COMMAND } from '@/constants';
 
 /** 进程列表 — 显示 TOP 进程，支持 kill */
 export function ProcessList() {
@@ -21,13 +20,14 @@ export function ProcessList() {
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const tabId = activeTab?.type === 'terminal' && activeTab.status === 'connected' ? activeTab.id : null;
-  const processes: ProcessInfo[] = (monitorData?.processes ?? []).slice(0, MAX_PROCESSES);
+  const processes: ProcessInfo[] = (monitorData?.processes ?? []).slice(0, PROCESS_MAX_DISPLAY);
 
   const handleKill = (pid: string) => {
     if (!tabId) return;
     setKillingPid(pid);
-    sshWrite({ tabId, data: `kill -9 ${pid}\n` })
-      .then(() => notify(`kill -9 ${pid}`))
+    const cmd = `${KILL_COMMAND} ${pid}\n`;
+    sshWrite({ tabId, data: cmd })
+      .then(() => notify(cmd.trim()))
       .catch((e) => notifyError(e))
       .finally(() => setKillingPid(null));
   };
@@ -60,7 +60,7 @@ export function ProcessList() {
                   onClick={() => setConfirmKill({ pid: p.pid, command: p.command })}
                   disabled={killingPid === p.pid}
                   className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer disabled:opacity-30"
-                  title={`kill -9 ${p.pid}`}
+                  title={`${KILL_COMMAND} ${p.pid}`}
                 >
                   <Skull size={12} />
                 </button>
@@ -73,11 +73,10 @@ export function ProcessList() {
       <ConfirmDialog
         open={confirmKill !== null}
         onOpenChange={(v) => !v && setConfirmKill(null)}
-        title={t('monitor.killConfirmTitle', { defaultValue: '确认终止进程' })}
+        title={t('monitor.killConfirmTitle')}
         message={t('monitor.killConfirmMessage', {
           pid: confirmKill?.pid ?? '',
           command: confirmKill?.command ?? '',
-          defaultValue: `确认执行 kill -9 ${confirmKill?.pid ?? ''} 终止进程「${confirmKill?.command ?? ''}」吗？`,
         })}
         onConfirm={() => {
           if (confirmKill) handleKill(confirmKill.pid);

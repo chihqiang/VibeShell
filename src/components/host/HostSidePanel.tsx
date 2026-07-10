@@ -10,8 +10,10 @@ import {
   Terminal,
   Pencil,
   MoreVertical,
+  Copy,
 } from 'lucide-react';
 import { cn, hostToConnectConfig, buildSshCommand } from '@/utils';
+import { DOM_EVENTS } from '@/constants';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useNotify } from '@/hooks/use-notify';
@@ -45,6 +47,7 @@ export function HostSidePanel() {
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const connectingRef = useRef(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -52,6 +55,7 @@ export function HostSidePanel() {
       setHosts(h);
       setTags(tg);
       setKeys(k);
+      window.dispatchEvent(new CustomEvent(DOM_EVENTS.HOSTS_CHANGED));
     } catch (e) {
       notifyError(e);
     }
@@ -63,7 +67,9 @@ export function HostSidePanel() {
 
   useEffect(() => {
     if (!menuOpenId) return;
-    function handleClick() {
+    function handleClick(e: MouseEvent) {
+      // 点击在菜单内部时不关闭 — 由按钮 onClick 自行处理
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) return;
       setMenuOpenId(null);
     }
     document.addEventListener('mousedown', handleClick);
@@ -164,6 +170,7 @@ export function HostSidePanel() {
       const now = Date.now();
       await saveHost({ host: { ...host, last_connected_at: now } });
       setHosts((prev) => prev.map((h) => (h.id === host.id ? { ...h, last_connected_at: now } : h)));
+      window.dispatchEvent(new CustomEvent(DOM_EVENTS.HOSTS_CHANGED));
       setActiveView(null);
     } catch (e) {
       notifyError(e);
@@ -179,6 +186,7 @@ export function HostSidePanel() {
       await deleteHost({ id: confirmDeleteId });
       setHosts((prev) => prev.filter((h) => h.id !== confirmDeleteId));
       setConfirmDeleteId(null);
+      window.dispatchEvent(new CustomEvent(DOM_EVENTS.HOSTS_CHANGED));
     } catch (e) {
       notifyError(e);
       setConfirmDeleteId(null);
@@ -229,8 +237,8 @@ export function HostSidePanel() {
 
         {menuOpenId === host.id && (
           <div
+            ref={menuRef}
             className="absolute right-2 top-8 z-50 w-32 bg-popover border border-border rounded-lg shadow-lg py-0.5"
-            onMouseDown={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => openTerminal(host)}
@@ -248,7 +256,7 @@ export function HostSidePanel() {
               onClick={() => handleCopySsh(host)}
               className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
-              <Terminal size={12} /> {t('common.copied', { defaultValue: '复制SSH' })}
+              <Copy size={12} /> {t('common.copySshCommand')}
             </button>
             <button
               onClick={() => handleDelete(host)}
@@ -345,7 +353,7 @@ export function HostSidePanel() {
         {!hasContent && searchQuery && (
           <div className="flex flex-col items-center gap-2 pt-12 px-4 text-muted-foreground">
             <Search size={24} className="opacity-20" />
-            <span className="text-xs text-center">{t('sidebar.noSearchResults', '未找到匹配的主机')}</span>
+            <span className="text-xs text-center">{t('sidebar.noSearchResults')}</span>
           </div>
         )}
       </div>

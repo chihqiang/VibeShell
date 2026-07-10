@@ -684,7 +684,14 @@ pub fn write(tab_id: &str, data: &str) -> Result<(), String> {
     if let Ok(mut t) = inner.last_activity.lock() {
         *t = Instant::now();
     }
-    inner.channel.write_all(data.as_bytes()).map_err(|e| {
+    // Switch to blocking mode with a short timeout so write_all completes
+    // fully without returning WouldBlock (session is non-blocking by default).
+    inner.session.set_blocking(true);
+    inner.session.set_timeout(5_000);
+    let result = inner.channel.write_all(data.as_bytes());
+    // Restore non-blocking mode for the reader thread
+    inner.session.set_blocking(false);
+    result.map_err(|e| {
         log::error!("Write failed: {}", e);
         format!("Write failed: {}", e)
     })

@@ -4,6 +4,15 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  DEFAULT_SSH_PORT,
+  DEFAULT_MONITOR_INTERVAL,
+  DEFAULT_HEARTBEAT_INTERVAL,
+  DEFAULT_RECONNECT_MAX_RETRIES,
+  DEFAULT_RECONNECT_INITIAL_DELAY,
+  DEFAULT_RECONNECT_MAX_DELAY,
+  SETTINGS_DEBOUNCE_MS,
+} from '@/constants';
 
 interface SshSettingsProps {
   defaults: Record<string, string>;
@@ -37,7 +46,7 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onSave(key, updated[key]);
           }
         }
-      }, 600);
+      }, SETTINGS_DEBOUNCE_MS);
     },
     [defaults, onSave],
   );
@@ -90,7 +99,7 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
               const v = e.target.value.replace(/\D/g, '');
               updateField('port', v || '0');
             }}
-            placeholder="22"
+            placeholder={String(DEFAULT_SSH_PORT)}
             className="mt-1"
           />
         </div>
@@ -103,9 +112,9 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('monitorInterval', isNaN(num) || num < 1 ? '4' : String(num));
+              updateField('monitorInterval', isNaN(num) || num < 1 ? String(DEFAULT_MONITOR_INTERVAL) : String(num));
             }}
-            placeholder="4"
+            placeholder={String(DEFAULT_MONITOR_INTERVAL)}
             className="mt-1"
           />
           <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.monitorIntervalHint')}</p>
@@ -119,9 +128,9 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('heartbeatInterval', isNaN(num) || num < 1 ? '10' : String(num));
+              updateField('heartbeatInterval', isNaN(num) || num < 1 ? String(DEFAULT_HEARTBEAT_INTERVAL) : String(num));
             }}
-            placeholder="10"
+            placeholder={String(DEFAULT_HEARTBEAT_INTERVAL)}
             className="mt-1"
           />
           <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.heartbeatIntervalHint')}</p>
@@ -148,9 +157,9 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('reconnectMaxRetries', isNaN(num) || num < 1 ? '10' : String(num));
+              updateField('reconnectMaxRetries', isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_MAX_RETRIES) : String(num));
             }}
-            placeholder="10"
+            placeholder={String(DEFAULT_RECONNECT_MAX_RETRIES)}
             className="mt-1"
           />
         </div>
@@ -164,9 +173,9 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('reconnectInitialDelay', isNaN(num) || num < 1 ? '1' : String(num));
+              updateField('reconnectInitialDelay', isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_INITIAL_DELAY) : String(num));
             }}
-            placeholder="1"
+            placeholder={String(DEFAULT_RECONNECT_INITIAL_DELAY)}
             className="mt-1"
           />
           <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.reconnectInitialDelayHint')}</p>
@@ -181,9 +190,9 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('reconnectMaxDelay', isNaN(num) || num < 1 ? '30' : String(num));
+              updateField('reconnectMaxDelay', isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_MAX_DELAY) : String(num));
             }}
-            placeholder="30"
+            placeholder={String(DEFAULT_RECONNECT_MAX_DELAY)}
             className="mt-1"
           />
           <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.reconnectMaxDelayHint')}</p>

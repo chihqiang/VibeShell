@@ -4,6 +4,7 @@ import { cn } from '@/utils';
 import { Language, languageDisplayName, languageOptions, changeLanguage } from '@/hooks/use-lang';
 import { type Theme, themeOptions, useTheme } from '@/hooks/use-theme';
 import { terminalThemes, getStoredThemeId, setStoredThemeId } from '@/utils/terminal-themes';
+import { DOM_EVENTS } from '@/constants';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
@@ -39,7 +40,7 @@ export function GeneralSettings({ onSaved }: GeneralSettingsProps) {
     setTermThemeId(id);
     setStoredThemeId(id);
     // Notify all live terminal instances to update their theme
-    window.dispatchEvent(new CustomEvent('vibeshell:term-theme-change'));
+    window.dispatchEvent(new CustomEvent(DOM_EVENTS.TERM_THEME_CHANGE));
     onSaved();
   };
 

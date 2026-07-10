@@ -5,9 +5,4 @@ export { useNProgress } from './use-nprogress';
 export { useMonitorData } from './use-monitor';
 export { default as useLang, languageDisplayName, languageOptions, changeLanguage } from './use-lang';
 export type { Language } from '@/types/common';
-export {
-  useSftpConnection,
-  useSftpDragDrop,
-  useSftpTransfers,
-  useFileActions,
-} from './use-tab';
+export { useFileActions } from './use-tab';

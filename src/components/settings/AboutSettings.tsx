@@ -7,11 +7,14 @@ import * as os from '@tauri-apps/plugin-os';
 import { ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-
-const CHECK_TIMEOUT_MS = 30_000;
-const DOWNLOAD_TIMEOUT_MS = 300_000;
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 2000;
+import {
+  APP_NAME,
+  GITHUB_URL,
+  UPDATE_CHECK_TIMEOUT_MS,
+  UPDATE_DOWNLOAD_TIMEOUT_MS,
+  UPDATE_MAX_RETRIES,
+  UPDATE_RETRY_DELAY_MS,
+} from '@/constants';
 
 export function AboutSettings() {
   const { t } = useTranslation();
@@ -52,19 +55,19 @@ export function AboutSettings() {
       let update: Awaited<ReturnType<typeof check>> = null;
       let lastError: unknown = null;
 
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      for (let attempt = 1; attempt <= UPDATE_MAX_RETRIES; attempt++) {
         try {
           setStatusText(
             attempt > 1
-              ? t('settings.updateRetrying', { attempt, max: MAX_RETRIES })
+              ? t('settings.updateRetrying', { attempt, max: UPDATE_MAX_RETRIES })
               : t('settings.updateChecking'),
           );
-          update = await check({ timeout: CHECK_TIMEOUT_MS });
+          update = await check({ timeout: UPDATE_CHECK_TIMEOUT_MS });
           break;
         } catch (err) {
           lastError = err;
-          if (attempt < MAX_RETRIES) {
-            await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+          if (attempt < UPDATE_MAX_RETRIES) {
+            await new Promise((r) => setTimeout(r, UPDATE_RETRY_DELAY_MS));
           }
         }
       }
@@ -99,7 +102,7 @@ export function AboutSettings() {
             setProgress(100);
           }
         },
-        { timeout: DOWNLOAD_TIMEOUT_MS },
+        { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS },
       );
 
       toast(t('settings.updateInstalling'));
@@ -126,10 +129,10 @@ export function AboutSettings() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-xs text-muted-foreground">VibeShell v{info.appVersion || '...'}</span>
+            <span className="text-xs text-muted-foreground">{APP_NAME} v{info.appVersion || '...'}</span>
             <div className="flex items-center gap-2">
               <a
-                href="https://github.com/chihqiang/VibeShell"
+                href={GITHUB_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 h-7 px-3 text-xs rounded-md border border-input bg-background text-foreground hover:bg-muted transition-colors"

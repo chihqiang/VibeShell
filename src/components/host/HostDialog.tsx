@@ -14,6 +14,7 @@ import type { HostConfig } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 import { getSshDefaults } from '@/services/configService';
 import { useNotify } from '@/hooks/use-notify';
+import { DEFAULT_SSH_PORT } from '@/constants';
 interface HostDialogProps {
   open: boolean;
   onClose: () => void;
@@ -34,7 +35,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
       : {
           name: '',
           hostname: '',
-          port: 22,
+          port: DEFAULT_SSH_PORT,
           username: '',
           authMethod: 'password',
           password: '',

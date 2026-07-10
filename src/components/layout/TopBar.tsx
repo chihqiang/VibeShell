@@ -5,6 +5,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { cn, hostToConnectConfig } from '@/utils';
+import { DOM_EVENTS } from '@/constants';
 import { listHosts, saveHost } from '@/services/hostService';
 import { listKeys } from '@/services/keyService';
 import { sshTestConnect } from '@/services/sshService';
@@ -27,21 +28,21 @@ function WindowControls() {
         <button
           className="flex items-center justify-center w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 focus:outline-none group"
           onClick={() => setCloseConfirmOpen(true)}
-          title="Close"
+          title={t('topbar.close')}
         >
           <X size={9} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
         <button
           className="flex items-center justify-center w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-600 focus:outline-none group"
           onClick={() => appWindow.minimize()}
-          title="Minimize"
+          title={t('topbar.minimize')}
         >
           <Minus size={9} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
         <button
           className="flex items-center justify-center w-3 h-3 rounded-full bg-green-500 hover:bg-green-600 focus:outline-none group"
           onClick={() => appWindow.toggleMaximize()}
-          title="Maximize"
+          title={t('topbar.maximize')}
         >
           <Square size={9} className="text-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
@@ -76,12 +77,16 @@ function GlobalSearch() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    Promise.all([listHosts(), listKeys()])
-      .then(([h, k]) => {
-        setHosts(h);
-        setKeys(k);
-      })
-      .catch(notifyError);
+    const reload = () =>
+      Promise.all([listHosts(), listKeys()])
+        .then(([h, k]) => {
+          setHosts(h);
+          setKeys(k);
+        })
+        .catch(notifyError);
+    reload();
+    window.addEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
+    return () => window.removeEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
   }, [notifyError]);
 
   // 点击外部关闭下拉
@@ -125,6 +130,7 @@ function GlobalSearch() {
         const now = Date.now();
         await saveHost({ host: { ...host, last_connected_at: now } });
         setHosts((prev) => prev.map((h) => (h.id === host.id ? { ...h, last_connected_at: now } : h)));
+        window.dispatchEvent(new CustomEvent(DOM_EVENTS.HOSTS_CHANGED));
         setQuery('');
         setOpen(false);
         setActiveView(null);
@@ -168,7 +174,7 @@ function GlobalSearch() {
         }}
         onFocus={() => query && setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder={t('topbar.searchPlaceholder', { defaultValue: '搜索主机...' })}
+        placeholder={t('topbar.searchPlaceholder')}
         className="h-6 pl-8 pr-3 text-xs bg-muted/50 border-none"
       />
 
@@ -177,7 +183,7 @@ function GlobalSearch() {
           {filtered.length === 0 ? (
             <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
               <Search size={13} className="opacity-40" />
-              {t('sidebar.noSearchResults', { defaultValue: '未找到匹配的主机' })}
+              {t('sidebar.noSearchResults')}
             </div>
           ) : (
             filtered.map((host, i) => (

@@ -5,11 +5,10 @@ import { cn } from '@/utils';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useStorage } from '@/utils/storage';
+import { MONITOR_DRAWER_WIDTH, STORAGE_KEYS } from '@/constants';
 import { MonitorInfo } from './MonitorInfo';
 import { ProcessList } from './ProcessList';
 import { DiskList } from './DiskList';
-
-const DRAWER_WIDTH = 300;
 
 const CollapsibleSection = memo(function CollapsibleSection({
   title,
@@ -64,9 +63,9 @@ export function MonitorDrawer() {
         'flex-shrink-0 bg-secondary border-l border-border/60 flex flex-col overflow-hidden relative',
         'transition-[width] duration-200',
       )}
-      style={{ width: monitorOpen ? DRAWER_WIDTH : 0 }}
+      style={{ width: monitorOpen ? MONITOR_DRAWER_WIDTH : 0 }}
     >
-      <div className="h-full flex flex-col" style={{ width: DRAWER_WIDTH }}>
+      <div className="h-full flex flex-col" style={{ width: MONITOR_DRAWER_WIDTH }}>
         <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between flex-shrink-0">
           <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{t('monitor.title')}</h3>
           <button
@@ -94,23 +93,23 @@ export function MonitorDrawer() {
         {isConnected ? (
           <div className="flex-1 overflow-y-auto min-h-0">
             <CollapsibleSection
-              title={t('monitor.systemInfo', '系统信息')}
+              title={t('monitor.systemInfo')}
               icon={<Activity size={13} />}
-              storageKey="vibeshell-monitor-section-system"
+              storageKey={STORAGE_KEYS.MONITOR_SECTION_SYSTEM}
             >
               <MonitorInfo />
             </CollapsibleSection>
             <CollapsibleSection
-              title={t('monitor.processes', '进程')}
+              title={t('monitor.processes')}
               icon={<Cpu size={13} />}
-              storageKey="vibeshell-monitor-section-processes"
+              storageKey={STORAGE_KEYS.MONITOR_SECTION_PROCESSES}
             >
               <ProcessList />
             </CollapsibleSection>
             <CollapsibleSection
-              title={t('monitor.disks', '磁盘')}
+              title={t('monitor.disks')}
               icon={<HardDrive size={13} />}
-              storageKey="vibeshell-monitor-section-disks"
+              storageKey={STORAGE_KEYS.MONITOR_SECTION_DISKS}
               defaultOpen={false}
             >
               <DiskList />
@@ -122,10 +121,10 @@ export function MonitorDrawer() {
               <Server size={22} className="text-muted-foreground/40" />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">{t('monitor.noConnection', '暂无活跃连接')}</p>
-              <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-                {t('monitor.noConnectionHint', '连接到服务器后即可查看实时监控数据')}
-              </p>
+            <p className="text-xs font-medium text-muted-foreground">{t('monitor.noConnection')}</p>
+            <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+              {t('monitor.noConnectionHint')}
+            </p>
             </div>
           </div>
         )}

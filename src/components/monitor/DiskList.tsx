@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useMonitorData } from '@/hooks/use-monitor';
+import { MONITOR_COLORS, MONITOR_DISK_WARN_THRESHOLD, MONITOR_DISK_DANGER_THRESHOLD } from '@/constants';
 import type { DiskInfo } from '@/types';
 
 /** 磁盘列表 — 显示磁盘使用率 */
@@ -47,7 +48,7 @@ export function DiskList() {
             const totalNum = parseDiskSize(d.size);
             const availNum = parseDiskSize(d.avail);
             const usedPct = totalNum > 0 ? Math.round(((totalNum - availNum) / totalNum) * 100) : 0;
-            const barColor = usedPct > 90 ? '#ef4444' : usedPct > 70 ? '#f59e0b' : '#22c55e';
+            const barColor = usedPct > MONITOR_DISK_DANGER_THRESHOLD ? MONITOR_COLORS.danger : usedPct > MONITOR_DISK_WARN_THRESHOLD ? MONITOR_COLORS.warn : MONITOR_COLORS.normal;
             return (
               <tr key={i} className="hover:bg-muted/30">
                 <td className="px-3 py-1 text-foreground truncate max-w-0">{d.path}</td>

@@ -8,6 +8,14 @@ import { GeneralSettings } from './GeneralSettings';
 import { SshSettings } from './SshSettings';
 import { BackupSettings } from './BackupSettings';
 import { AboutSettings } from './AboutSettings';
+import {
+  DEFAULT_SSH_PORT,
+  DEFAULT_MONITOR_INTERVAL,
+  DEFAULT_HEARTBEAT_INTERVAL,
+  DEFAULT_RECONNECT_MAX_RETRIES,
+  DEFAULT_RECONNECT_INITIAL_DELAY,
+  DEFAULT_RECONNECT_MAX_DELAY,
+} from '@/constants';
 
 const settingsSections = ['general', 'ssh', 'backup', 'about'] as const;
 type Section = (typeof settingsSections)[number];
@@ -48,13 +56,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     saveSshDefaults({
       hostname: updated.hostname || '',
       username: updated.username || '',
-      port: parseInt(updated.port || '22', 10),
-      monitorInterval: parseInt(updated.monitorInterval || '4', 10),
-      heartbeatInterval: parseInt(updated.heartbeatInterval || '10', 10),
+      port: parseInt(updated.port || String(DEFAULT_SSH_PORT), 10),
+      monitorInterval: parseInt(updated.monitorInterval || String(DEFAULT_MONITOR_INTERVAL), 10),
+      heartbeatInterval: parseInt(updated.heartbeatInterval || String(DEFAULT_HEARTBEAT_INTERVAL), 10),
       reconnectEnabled: updated.reconnectEnabled !== 'false',
-      reconnectMaxRetries: parseInt(updated.reconnectMaxRetries || '10', 10),
-      reconnectInitialDelay: parseInt(updated.reconnectInitialDelay || '1', 10),
-      reconnectMaxDelay: parseInt(updated.reconnectMaxDelay || '30', 10),
+      reconnectMaxRetries: parseInt(updated.reconnectMaxRetries || String(DEFAULT_RECONNECT_MAX_RETRIES), 10),
+      reconnectInitialDelay: parseInt(updated.reconnectInitialDelay || String(DEFAULT_RECONNECT_INITIAL_DELAY), 10),
+      reconnectMaxDelay: parseInt(updated.reconnectMaxDelay || String(DEFAULT_RECONNECT_MAX_DELAY), 10),
     });
     triggerToast();
   };

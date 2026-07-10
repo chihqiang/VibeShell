@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { DeleteDialog } from '@/components/ui';
 import { ImportKeyDialog } from '@/components/keys';
 import { PanelHeader } from '@/components/layout/SidePanel';
+import { COPY_FEEDBACK_DELAY } from '@/constants';
 
 /** 密钥管理侧边栏面板 */
 export function KeySidePanel() {
@@ -116,12 +117,13 @@ export function KeySidePanel() {
 }
 
 function KeySideRow({ keyEntry: k, onDelete }: { keyEntry: KeyEntry; onDelete: () => void }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const copyFingerprint = () => {
     navigator.clipboard.writeText(k.fingerprint).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_DELAY);
     });
   };
 
@@ -139,7 +141,7 @@ function KeySideRow({ keyEntry: k, onDelete }: { keyEntry: KeyEntry; onDelete: (
       <button
         onClick={copyFingerprint}
         className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
-        title="Copy fingerprint"
+        title={t('common.copyFingerprint')}
       >
         {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
       </button>
