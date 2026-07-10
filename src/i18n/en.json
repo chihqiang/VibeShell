@@ -47,8 +47,6 @@
     "testConnection": "Test Connection"
   },
   "sftp": {
-    "title": "SFTP File Manager",
-    "remote": "Remote",
     "upload": "Upload",
     "uploadFolder": "Upload Folder",
     "download": "Download",
@@ -87,6 +85,7 @@
     "recursive": "Apply recursively",
     "refresh": "Refresh",
     "empty": "Directory is empty",
+    "editPath": "Edit path",
     "cantReadDir": "Could not read directory contents",
     "dropToUpload": "Drag and drop files here to upload",
     "transfers": "Transfers",
@@ -109,16 +108,21 @@
     "transferDownload": "Download",
     "transferCancelled": "Cancelled",
     "transferClearCompleted": "Clear completed",
-    "transferIdle": "No transfers"
+    "transferIdle": "No transfers",
+    "loadFileError": "Failed to load file"
   },
   "terminal": {
-    "closeTab": "Close Tab",
-    "closeTabConfirm": "Close tab \"{{name}}\"? Unsaved data may be lost.",
     "connectingToHost": "Connecting to host...",
     "connectedSuccess": "Connected successfully",
     "disconnected": "Connection disconnected",
     "reconnecting": "Reconnecting...",
-    "connectFailed": "Connection failed"
+    "connectFailed": "Connection failed",
+    "reconnectMaxRetries": "Max retries reached. Please reconnect manually.",
+    "reconnectRetry": "Auto reconnect attempt {{retry}}/{{max}}...",
+    "searchPlaceholder": "Search...",
+    "searchCaseSensitive": "Case sensitive",
+    "searchPrevious": "Previous",
+    "searchNext": "Next"
   },
   "tab": {
     "closeConfirmTitle": "Close Tab",
@@ -127,19 +131,19 @@
     "closeOtherTabs": "Close Others",
     "closeAllTabs": "Close All",
     "reconnect": "Reconnect",
-    "duplicateTab": "Duplicate Tab"
+    "duplicateTab": "Duplicate Tab",
+    "copyHostInfo": "Copy Host Info"
   },
   "settings": {
     "title": "Settings",
     "language": "Language",
-    "appearance": "Appearance",
     "theme": "Theme",
     "themeSelect": "Select theme...",
     "dark": "Dark",
     "light": "Light",
+    "auto": "Auto",
     "general": "General",
     "ssh": "SSH Settings",
-
     "defaultPort": "Default Port",
     "defaultHostname": "Default Hostname",
     "defaultUsername": "Default Username",
@@ -199,30 +203,20 @@
     "killConfirmMessage": "Are you sure you want to run kill -9 {{pid}} to terminate process \"{{command}}\"?"
   },
   "quickConnect": {
-    "title": "Quick Connect",
     "hostname": "Hostname",
     "port": "Port",
     "username": "Username",
     "password": "Password",
-    "connect": "Connect",
-    "clear": "Clear",
-    "recent": "Recent",
-    "tableName": "Name",
-    "tableAccount": "Account",
-    "empty": "No quick connects"
+    "recent": "Recent"
   },
   "dashboard": {
-    "welcome": "Quick Connect",
-    "subtitle": "Type user@host:port to connect instantly — no save needed",
-    "subtitleNew": "Type an SSH command to connect — password or key supported",
+    "welcome": "Welcome",
     "placeholder": "ssh root@192.168.1.1  or  root:password@192.168.1.1:22",
     "formatHint1": "With password: root:password@192.168.1.1:22",
     "formatHint2": "With key: ssh -i ~/.ssh/id_rsa root@192.168.1.1",
     "formatHint3": "Custom port: ssh -p 2222 root@192.168.1.1",
     "defaultUser": "default",
-    "advanced": "Auth Settings",
     "usernameRequired": "Username required. Format: user@host",
-    "recentCleared": "Recent connections cleared",
     "emptyHint": "No recent connections yet. Add hosts in the sidebar, or type an address above to connect quickly.",
     "justNow": "just now",
     "minutesAgo": "{{count}} min ago",
@@ -236,6 +230,8 @@
     "saved": "Saved",
     "close": "Close",
     "copied": "Copied to clipboard",
+    "copySshCommand": "Copy SSH Command",
+    "copyFingerprint": "Copy fingerprint",
     "loading": "Loading...",
     "error": "Error",
     "quit": "Quit",
@@ -243,5 +239,15 @@
     "day": "d",
     "hour": "h",
     "minute": "m"
+  },
+  "statusbar": {
+    "hosts": "{{count}} hosts",
+    "connected": "{{count}} connected"
+  },
+  "topbar": {
+    "searchPlaceholder": "Search hosts...",
+    "close": "Close",
+    "minimize": "Minimize",
+    "maximize": "Maximize"
   }
 }

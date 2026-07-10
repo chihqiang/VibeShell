@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Pencil } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils';
 
 interface PathBreadcrumbProps {
   path: string;
@@ -8,7 +9,8 @@ interface PathBreadcrumbProps {
   className?: string;
 }
 
-export default function PathBreadcrumb({ path, onNavigate, className }: PathBreadcrumbProps) {
+export function PathBreadcrumb({ path, onNavigate, className }: PathBreadcrumbProps) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(path);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +44,10 @@ export default function PathBreadcrumb({ path, onNavigate, className }: PathBrea
       <input
         ref={inputRef}
         value={editValue}
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        autoComplete="off"
         onChange={(e) => setEditValue(e.target.value)}
         onBlur={commitEdit}
         onKeyDown={(e) => {
@@ -80,7 +86,7 @@ export default function PathBreadcrumb({ path, onNavigate, className }: PathBrea
       <button
         onClick={() => setEditing(true)}
         className="ml-1 p-0.5 text-muted-foreground/0 group-hover:text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded flex-shrink-0"
-        title="Edit path"
+        title={t('sftp.editPath')}
       >
         <Pencil size={10} />
       </button>

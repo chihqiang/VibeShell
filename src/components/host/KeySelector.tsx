@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, FileKey, Upload } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils';
 import { Input } from '@/components/ui/input';
-import type { KeyEntry } from '@/apis/types/keys';
+import type { KeyEntry } from '@/types/key';
 
-export default function KeySelector({
+export function KeySelector({
   selectedKey,
   allKeys,
   keyOpen,

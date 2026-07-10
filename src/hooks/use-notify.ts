@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { info, error as logError } from '@/lib/log';
+import { info, error as logError } from '@/utils/log';
 
 export function useNotify() {
   const { toast } = useToast();

@@ -44,6 +44,13 @@
   border-color: hsl(var(--border));
 }
 
+/* Disable auto-capitalization on all input/textarea — macOS WKWebView
+   defaults to capitalizing the first letter, which corrupts user input. */
+input,
+textarea {
+  text-transform: none;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: hsl(var(--background));
@@ -121,6 +128,11 @@ body {
   display: none;
 }
 
+/* Vertical text for side button labels */
+.writing-vertical-rl {
+  writing-mode: vertical-rl;
+}
+
 /* Thin custom scrollbar */
 * {
   scrollbar-width: thin;
@@ -146,6 +158,13 @@ body {
    rows (e.g. after resizing or toggling the SFTP panel). */
 .xterm {
   height: 100%;
+}
+
+/* Disable auto-capitalization / auto-correction / spell-check on xterm's
+   hidden input textarea — macOS WKWebView defaults to capitalizing the
+   first letter of each sentence, which corrupts terminal input. */
+.xterm textarea {
+  text-transform: none !important;
 }
 
 /* Dialog / overlay entrance animation */

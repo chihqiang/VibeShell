@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { backupData, restoreData } from '@/apis/api/backup';
+import { backupData, restoreData } from '@/services/backupService';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNotify } from '@/hooks/use-notify';

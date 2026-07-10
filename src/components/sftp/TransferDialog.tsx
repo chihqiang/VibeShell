@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { X, RotateCw, Square, LoaderCircle, CheckCircle2, AlertCircle, Upload, Download, Inbox } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { TransferItem } from '@/lib/types';
+import { TransferRow } from './TransferRow';
+import type { TransferItem } from '@/types';
 
 interface TransferDialogProps {
   open: boolean;
@@ -67,99 +67,15 @@ export function TransferDialog({
                 </tr>
               </thead>
               <tbody>
-                {transfers.map((item) => {
-                  const pct = item.total > 0 ? Math.round((item.current / item.total) * 100) : 0;
-                  return (
-                    <tr key={item.id} className="border-b border-border/50 hover:bg-muted/20">
-                      <td className="px-3 h-8 truncate max-w-xs" title={item.error || item.name}>
-                        <span className="truncate">{item.name}</span>
-                      </td>
-                      <td className="px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all duration-300',
-                                item.status === 'completed' && 'bg-green-500',
-                                item.status === 'failed' && 'bg-destructive',
-                                (item.status === 'uploading' || item.status === 'downloading') && 'bg-primary',
-                                item.status === 'pending' && 'bg-muted-foreground/30',
-                              )}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className="text-muted-foreground w-14 text-right tabular-nums">
-                            {item.total > 0 ? `${pct}%` : '--'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3">
-                        <span
-                          className="text-muted-foreground"
-                          title={item.direction === 'download' ? t('sftp.transferDownload') : t('sftp.transferUpload')}
-                        >
-                          {item.direction === 'download' ? <Download size={12} /> : <Upload size={12} />}
-                        </span>
-                      </td>
-                      <td className="px-3">
-                        <span
-                          className={cn(
-                            'flex items-center gap-1 capitalize',
-                            item.status === 'completed' && 'text-green-500',
-                            item.status === 'failed' && 'text-destructive',
-                            (item.status === 'uploading' || item.status === 'downloading') && 'text-primary',
-                            item.status === 'pending' && 'text-muted-foreground',
-                          )}
-                        >
-                          {item.status === 'uploading' && <LoaderCircle size={11} className="animate-spin" />}
-                          {item.status === 'completed' && <CheckCircle2 size={11} />}
-                          {item.status === 'failed' && <AlertCircle size={11} />}
-                          {item.status === 'pending' && <LoaderCircle size={11} className="opacity-50" />}
-                          {t(`sftp.transferStatus_${item.status}`)}
-                        </span>
-                        {item.status === 'failed' && item.error && (
-                          <div className="text-[11px] text-destructive/70 truncate max-w-36" title={item.error}>
-                            {item.error}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 text-right">
-                        <div className="flex items-center justify-end gap-0.5">
-                          {(item.status === 'uploading' || item.status === 'downloading') && (
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() => onCancel(item.id)}
-                              title={t('sftp.transferCancel')}
-                            >
-                              <Square size={11} />
-                            </Button>
-                          )}
-                          {item.status === 'failed' && (
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() => onRetry(item)}
-                              title={t('sftp.transferRetry')}
-                            >
-                              <RotateCw size={11} />
-                            </Button>
-                          )}
-                          {(item.status === 'completed' || item.status === 'failed') && (
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() => onRemove(item.id)}
-                              title={t('common.close')}
-                            >
-                              <X size={11} />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {transfers.map((item) => (
+                  <TransferRow
+                    key={item.id}
+                    item={item}
+                    onCancel={onCancel}
+                    onRetry={onRetry}
+                    onRemove={onRemove}
+                  />
+                ))}
               </tbody>
             </table>
           )}

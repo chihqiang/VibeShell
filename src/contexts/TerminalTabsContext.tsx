@@ -1,37 +1,15 @@
 import { createContext, useContext, useReducer, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sshDisconnect } from '@/apis/api/ssh';
-import type { HostConfig } from '@/apis/types/hosts';
-import ConfirmDialog from '@/components/sftp/dialogs/ConfirmDialog';
-import type { ConnectionStatus } from '@/lib/types';
+import { sshDisconnect } from '@/services/sshService';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import type { ConnectionStatus } from '@/types/common';
+import type { HostConfig, ConnectConfig } from '@/types/host';
+import type { TerminalTab, QuickTab, TerminalTabData } from '@/types/terminal';
 
-export type { ConnectionStatus };
+export type { ConnectionStatus, ConnectConfig, TerminalTab, QuickTab, TerminalTabData };
 
-export interface ConnectConfig {
-  hostname: string;
-  port: number;
-  username: string;
-  password: string | null;
-  privateKeyPath: string | null;
-}
-
-interface BaseTab {
-  id: string;
-  status: ConnectionStatus;
-  title: string;
-}
-
-export interface QuickTab extends BaseTab {
-  type: 'quick';
-}
-
-export interface TerminalTabData extends BaseTab {
-  type: 'terminal';
-  host?: HostConfig;
-  connectConfig: ConnectConfig;
-}
-
-export type TerminalTab = QuickTab | TerminalTabData;
+/** Quick Connect 标签页默认标题 */
+const QUICK_TAB_TITLE = 'Quick Connect';
 
 interface TerminalTabsContextValue {
   tabs: TerminalTab[];
@@ -53,7 +31,7 @@ function createInitialTab(): QuickTab {
     id: crypto.randomUUID(),
     type: 'quick' as const,
     status: 'disconnected',
-    title: 'Quick Connect',
+    title: QUICK_TAB_TITLE,
   };
 }
 
@@ -87,7 +65,7 @@ function createInitialState(): TabsState {
 function reducer(state: TabsState, action: TabsAction): TabsState {
   switch (action.type) {
     case 'ADD_QUICK_TAB': {
-      const tab: TerminalTab = { id: action.id, type: 'quick', status: 'disconnected', title: 'Quick Connect' };
+      const tab: TerminalTab = { id: action.id, type: 'quick', status: 'disconnected', title: QUICK_TAB_TITLE };
       const tabMap = new Map(state.tabMap);
       tabMap.set(action.id, tab);
       return { ...state, tabMap, activeTabId: action.id };
@@ -252,10 +230,16 @@ export function TerminalTabsProvider({ children }: { children: ReactNode }) {
 
   const closeAllTabs = useCallback(() => {
     const s = stateRef.current;
+    // Disconnect all terminal SSH connections in parallel
     for (const tab of s.tabMap.values()) {
-      performClose(tab.id);
+      if (tab?.type === 'terminal') {
+        sshDisconnect({ tabId: tab.id }).catch(() => {});
+      }
     }
-  }, [performClose]);
+    // Replace all tabs with a single fresh quick tab
+    const newTab = createInitialTab();
+    dispatch({ type: 'REPLACE_ALL', tabs: [newTab], activeTabId: newTab.id });
+  }, []);
 
   const closeAllOtherTabs = useCallback(
     (tabId: string) => {

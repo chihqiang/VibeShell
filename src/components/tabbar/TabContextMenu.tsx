@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Copy } from 'lucide-react';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useNotify } from '@/hooks/use-notify';
-import { buildSshCommand } from '@/lib/utils';
+import { buildSshCommand } from '@/utils';
 
 interface TabContextMenuProps {
   tabId: string | null;
@@ -11,7 +11,7 @@ interface TabContextMenuProps {
   onReconnect?: (tabId: string) => void;
 }
 
-export default function TabContextMenu({ tabId, position, onClose, onReconnect }: TabContextMenuProps) {
+export function TabContextMenu({ tabId, position, onClose, onReconnect }: TabContextMenuProps) {
   const { t } = useTranslation();
   const { tabs, closeTab, closeAllOtherTabs, closeAllTabs, addQuickTab, addTerminalTab } = useTerminalTabs();
   const { notify } = useNotify();
@@ -54,7 +54,7 @@ export default function TabContextMenu({ tabId, position, onClose, onReconnect }
               className="flex items-center gap-2 w-full h-8 px-3 text-sm text-left hover:bg-muted transition-colors cursor-pointer"
             >
               <Copy size={13} />
-              {t('tab.copyHostInfo', '复制主机信息')}
+              {t('tab.copyHostInfo')}
             </button>
             <div className="border-t border-border my-1" />
             <button

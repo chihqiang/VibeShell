@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, X, ChevronUp, ChevronDown, CaseSensitive } from 'lucide-react';
 import type { SearchAddon } from '@xterm/addon-search';
 
@@ -7,7 +8,8 @@ interface TerminalSearchBarProps {
   onClose: () => void;
 }
 
-export default function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarProps) {
+export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,9 +47,13 @@ export default function TerminalSearchBar({ searchAddon, onClose }: TerminalSear
       <input
         ref={inputRef}
         value={query}
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        autoComplete="off"
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Search..."
+        placeholder={t('terminal.searchPlaceholder')}
         className="w-40 text-xs bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
       />
       <button
@@ -55,7 +61,7 @@ export default function TerminalSearchBar({ searchAddon, onClose }: TerminalSear
         className={`flex items-center justify-center w-5 h-5 rounded text-xs transition-colors cursor-pointer ${
           caseSensitive ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
         }`}
-        title="Case sensitive"
+        title={t('terminal.searchCaseSensitive')}
       >
         <CaseSensitive size={13} />
       </button>
@@ -64,7 +70,7 @@ export default function TerminalSearchBar({ searchAddon, onClose }: TerminalSear
         onClick={() => doSearch('prev')}
         disabled={!query}
         className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer"
-        title="Previous"
+        title={t('terminal.searchPrevious')}
       >
         <ChevronUp size={13} />
       </button>
@@ -72,14 +78,14 @@ export default function TerminalSearchBar({ searchAddon, onClose }: TerminalSear
         onClick={() => doSearch('next')}
         disabled={!query}
         className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer"
-        title="Next"
+        title={t('terminal.searchNext')}
       >
         <ChevronDown size={13} />
       </button>
       <button
         onClick={onClose}
         className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-        title="Close"
+        title={t('common.close')}
       >
         <X size={13} />
       </button>

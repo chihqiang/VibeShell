@@ -1,6 +1,7 @@
 import { createContext, useState, useCallback, useMemo, useRef, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/cn';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { TOAST_DEFAULT_DURATION, TOAST_DISMISS_DELAY } from '@/constants/app';
 
 interface ToastItem {
   id: number;
@@ -19,7 +20,7 @@ interface ToastContextValue {
   dismissToast: (id: number) => void;
 }
 
-const DISMISS_DELAY = 200;
+const DISMISS_DELAY = TOAST_DISMISS_DELAY;
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const ToastContext = createContext<ToastContextValue>({
@@ -46,7 +47,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback(
     (message: string, options?: ToastOptions) => {
       const id = nextId.current++;
-      const duration = options?.duration ?? 3000;
+      const duration = options?.duration ?? TOAST_DEFAULT_DURATION;
       const type = options?.type ?? 'info';
       setItems((prev) => [...prev, { id, message, leaving: false, type }]);
       setTimeout(() => dismissToast(id), duration);

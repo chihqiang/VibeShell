@@ -15,35 +15,27 @@ import {
   RefreshCw,
   ListTodo,
   Upload,
-  Download,
-  FilePlus,
-  FolderPlus,
   ArrowUp as ArrowUpIcon,
   ArrowDown,
 } from 'lucide-react';
-import PathBreadcrumb from '@/components/sftp/PathBreadcrumb';
+import { PathBreadcrumb, ContextMenu, TransferDialog, SftpToolbar } from '@/components/sftp';
 import { Button } from '@/components/ui/button';
-import { FileType } from '@/apis/types/sftp';
-import { expandLocalFiles } from '@/apis/utils/sftp';
-import type { FileEntry } from '@/apis/types/sftp';
-import type { TransferItem } from '@/lib/types';
-import { TransferDialog } from '@/components/sftp/TransferDialog';
-import ContextMenu from '@/components/sftp/ContextMenu';
-import NewFileDialog from '@/components/sftp/dialogs/NewFileDialog';
-import NewFolderDialog from '@/components/sftp/dialogs/NewFolderDialog';
-import { formatSize } from '@/lib/utils';
+import { FileType } from '@/types/sftp';
+import { expandLocalFiles } from '@/services/sftpService';
+import type { FileEntry } from '@/types/sftp';
+import type { TransferItem } from '@/types';
+import { formatSize } from '@/utils';
 import { useNotify } from '@/hooks/use-notify';
+import { TAURI_EVENTS, SFTP_ROW_HEIGHT, SFTP_GRID_COLS, SFTP_FALLBACK_FOLDER_NAME } from '@/constants';
 import {
   sftpListFiles,
   sftpListFilesRecursive,
-  sftpCreateDir,
-  sftpCreateFile,
   sftpUploadFileProgress,
   sftpDownloadFileProgress,
   sftpCancelTransfer,
-} from '@/apis/api/sftp';
+} from '@/services/sftpService';
 
-export default function SftpPanel() {
+export function SftpPanel() {
   const { t } = useTranslation();
   const { notify, notifyError } = useNotify();
   const { start, done } = useNProgress();
@@ -60,11 +52,6 @@ export default function SftpPanel() {
   const [isDragging, setIsDragging] = useState(false);
   const [sortKey, setSortKey] = useState<'name' | 'size' | 'modified'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-
-  const [mkdirOpen, setMkdirOpen] = useState(false);
-  const [mkdirValue, setMkdirValue] = useState('');
-  const [mkfileOpen, setMkfileOpen] = useState(false);
-  const [mkfileValue, setMkfileValue] = useState('');
 
   const [ctxMenu, setCtxMenu] = useState<{
     x: number;
@@ -113,7 +100,7 @@ export default function SftpPanel() {
   const virtualizer = useVirtualizer({
     count: sortedEntries.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 28,
+    estimateSize: () => SFTP_ROW_HEIGHT,
     getItemKey: (index) => sortedEntries[index].path,
   });
 
@@ -192,7 +179,7 @@ export default function SftpPanel() {
       current: number;
       total: number;
       phase: string;
-    }>('sftp://transfer-progress', (event) => {
+    }>(TAURI_EVENTS.SFTP_TRANSFER_PROGRESS, (event) => {
       const { transferId, current, total, phase } = event.payload;
       setTransfers((prev) =>
         prev.map((x) =>
@@ -435,30 +422,12 @@ export default function SftpPanel() {
   );
   uploadRef.current = uploadFilesWithProgress;
 
-  const doUpload = async () => {
-    if (!tabId) return;
-    const src = await open({ multiple: true });
-    if (!src) return;
-    const paths = Array.isArray(src) ? src : [src];
-    if (paths.length === 0) return;
-
-    const { files: allFiles, failures } = await expandLocalFiles(paths, currentPath);
-
-    if (failures.length > 0) {
-      for (const f of failures) {
-        notifyError(t(f.error) || f.error);
-      }
-    }
-
-    uploadFilesWithProgress(allFiles, () => loadDir(currentPath));
-  };
-
   const doUploadFolder = async () => {
     if (!tabId) return;
     const folder = await open({ directory: true });
     if (!folder) return;
 
-    const { files: allFiles, failures } = await expandLocalFiles([folder], currentPath, { fallbackName: 'folder' });
+    const { files: allFiles, failures } = await expandLocalFiles([folder], currentPath, { fallbackName: SFTP_FALLBACK_FOLDER_NAME });
 
     if (failures.length > 0) {
       for (const f of failures) {
@@ -467,34 +436,6 @@ export default function SftpPanel() {
     }
 
     uploadFilesWithProgress(allFiles, () => loadDir(currentPath));
-  };
-
-  const doNewFile = async () => {
-    if (!tabId || !mkfileValue.trim()) return;
-    const rp = currentPath.replace(/\/?$/, '/') + mkfileValue.trim();
-    try {
-      await sftpCreateFile({ tabId, path: rp });
-      notify(t('sftp.newFileSuccess'));
-      setMkfileOpen(false);
-      setMkfileValue('');
-      loadDir(currentPath);
-    } catch (e) {
-      notifyError(`${t('sftp.newFileFailed')}: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  };
-
-  const doMkdir = async () => {
-    if (!tabId || !mkdirValue.trim()) return;
-    const newDir = currentPath.replace(/\/?$/, '/') + mkdirValue.trim();
-    try {
-      await sftpCreateDir({ tabId, path: newDir });
-      notify(t('sftp.newFolderSuccess'));
-      setMkdirOpen(false);
-      setMkdirValue('');
-      loadDir(currentPath);
-    } catch (e) {
-      notifyError(`${t('sftp.newFolderFailed')}: ${e instanceof Error ? e.message : String(e)}`);
-    }
   };
 
   return (
@@ -526,7 +467,7 @@ export default function SftpPanel() {
           size="icon-xs"
           onClick={() => setTransferDialogOpen(true)}
           className="relative"
-          title="Transfers"
+          title={t('sftp.transfers')}
         >
           <ListTodo size={12} />
           {activeTransferCount > 0 && (
@@ -541,52 +482,29 @@ export default function SftpPanel() {
         {loading && <LoaderCircle size={12} className="text-primary animate-spin flex-shrink-0 ml-1" />}
       </div>
 
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-border bg-secondary/10 flex-shrink-0">
-        <Button variant="ghost" size="xs" onClick={doUpload}>
-          <Upload size={13} /> {t('sftp.upload')}
-        </Button>
-        <Button variant="ghost" size="xs" onClick={doUploadFolder}>
-          <FolderPlus size={13} /> {t('sftp.uploadFolder')}
-        </Button>
-        <div className="w-px h-4 bg-border" />
-        <Button
-          variant="ghost"
-          size="xs"
-          disabled={selected.size === 0}
-          onClick={() => {
-            const selectedEntries = sortedEntries.filter((e) => selected.has(e.path));
-            for (const entry of selectedEntries) {
-              handleDownload(entry);
-            }
-          }}
-        >
-          <Download size={13} /> {t('sftp.download')}
-        </Button>
-        <div className="w-px h-4 bg-border" />
-        <Button
-          variant="ghost"
-          size="xs"
-          onClick={() => {
-            setMkfileValue('');
-            setMkfileOpen(true);
-          }}
-        >
-          <FilePlus size={13} /> {t('sftp.newFile')}
-        </Button>
-        <Button
-          variant="ghost"
-          size="xs"
-          onClick={() => {
-            setMkdirValue('');
-            setMkdirOpen(true);
-          }}
-        >
-          <FolderPlus size={13} /> {t('sftp.newFolder')}
-        </Button>
-      </div>
+      <SftpToolbar
+        tabId={tabId}
+        currentPath={currentPath}
+        onRefresh={() => loadDir(currentPath)}
+        onUpload={(paths) => {
+          expandLocalFiles(paths, currentPath).then(({ files: allFiles }) => {
+            uploadFilesWithProgress(allFiles, () => loadDir(currentPath));
+          });
+        }}
+        onUploadFolder={doUploadFolder}
+        onDownload={() => {
+          const selectedEntries = sortedEntries.filter((e) => selected.has(e.path));
+          for (const entry of selectedEntries) {
+            handleDownload(entry);
+          }
+        }}
+        downloadDisabled={selected.size === 0}
+        activeTransferCount={activeTransferCount}
+        onShowTransfers={() => setTransferDialogOpen(true)}
+      />
 
       <div className="flex-1 flex flex-col min-h-0 text-xs">
-        <div className="grid grid-cols-[1fr_70px_90px_100px_140px] bg-secondary/10 border-b border-border flex-shrink-0">
+        <div className="grid bg-secondary/10 border-b border-border flex-shrink-0" style={{ gridTemplateColumns: SFTP_GRID_COLS }}>
           <button
             onClick={() => toggleSort('name')}
             className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer"
@@ -639,8 +557,8 @@ export default function SftpPanel() {
                     onClick={(e) => handleClick(entry.path, e)}
                     onDoubleClick={() => handleDoubleClick(entry)}
                     onContextMenu={(e) => handleContextMenu(e, entry)}
-                    className={`grid grid-cols-[1fr_70px_90px_100px_140px] cursor-pointer transition-colors absolute left-0 right-0 top-0 h-7 ${selected.has(entry.path) ? 'bg-primary/15 border-l-2 border-l-primary' : 'hover:bg-muted/60'}`}
-                    style={{ transform: `translateY(${vItem.start}px)` }}
+                    className={`grid cursor-pointer transition-colors absolute left-0 right-0 top-0 h-7 ${selected.has(entry.path) ? 'bg-primary/15 border-l-2 border-l-primary' : 'hover:bg-muted/60'}`}
+                    style={{ transform: `translateY(${vItem.start}px)`, gridTemplateColumns: SFTP_GRID_COLS }}
                   >
                     <div className="px-3 flex items-center gap-1.5 truncate">
                       {entry.file_type === FileType.Directory ? (
@@ -687,7 +605,7 @@ export default function SftpPanel() {
         transfers={transfers}
         onCancel={(id) => {
           sftpCancelTransfer({ transferId: id }).catch((e) => notifyError(e));
-          setTransfers((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'failed', error: 'Cancelled' } : x)));
+          setTransfers((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'failed', error: t('sftp.transferCancelled') } : x)));
         }}
         onRetry={(item) => {
           setTransfers((prev) =>
@@ -727,20 +645,6 @@ export default function SftpPanel() {
         }
       />
 
-      <NewFileDialog
-        open={mkfileOpen}
-        onOpenChange={setMkfileOpen}
-        value={mkfileValue}
-        onValueChange={setMkfileValue}
-        onConfirm={doNewFile}
-      />
-      <NewFolderDialog
-        open={mkdirOpen}
-        onOpenChange={setMkdirOpen}
-        value={mkdirValue}
-        onValueChange={setMkdirValue}
-        onConfirm={doMkdir}
-      />
     </div>
   );
 }

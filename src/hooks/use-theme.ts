@@ -1,7 +1,9 @@
 import { useCallback, useEffect } from 'react';
-import { useStorage } from '@/lib/storage';
+import { useStorage } from '@/utils/storage';
+import { STORAGE_KEYS } from '@/constants/storage-keys';
+import type { Theme } from '@/types/common';
 
-export type Theme = 'dark' | 'light' | 'auto';
+export type { Theme };
 
 export const themeDisplayName: Record<Theme, string> = {
   dark: 'Dark',
@@ -11,7 +13,6 @@ export const themeDisplayName: Record<Theme, string> = {
 
 export const themeOptions: Theme[] = ['dark', 'light', 'auto'];
 
-const STORAGE_KEY = 'vibeshell-theme';
 const DEFAULT_THEME: Theme = 'dark';
 
 function isValidTheme(t: string): t is Theme {
@@ -38,7 +39,7 @@ function applyTheme(theme: Theme) {
 }
 
 export function useTheme() {
-  const [theme, persistTheme] = useStorage<Theme>(STORAGE_KEY, DEFAULT_THEME);
+  const [theme, persistTheme] = useStorage<Theme>(STORAGE_KEYS.THEME, DEFAULT_THEME);
   const actualTheme = isValidTheme(theme) ? theme : DEFAULT_THEME;
 
   useEffect(() => {

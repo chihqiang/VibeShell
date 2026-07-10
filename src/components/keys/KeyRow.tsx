@@ -1,14 +1,14 @@
 import { FileKey, Lock, Trash2, Copy, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
-import type { KeyEntry } from '@/apis/types/keys';
+import type { KeyEntry } from '@/types/key';
 
 interface KeyRowProps {
   keyEntry: KeyEntry;
   onDelete: () => void;
 }
 
-export default function KeyRow({ keyEntry: k, onDelete }: KeyRowProps) {
+export function KeyRow({ keyEntry: k, onDelete }: KeyRowProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
