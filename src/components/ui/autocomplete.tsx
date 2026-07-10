@@ -64,6 +64,10 @@ export default function Autocomplete({ value, onChange, options, placeholder, cl
         ref={inputRef}
         type="text"
         value={value}
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        autoComplete="off"
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);

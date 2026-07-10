@@ -33,6 +33,8 @@ export function EditDialog({
             value={content}
             onChange={(e) => onContentChange(e.target.value)}
             className="w-full h-64 rounded-lg border border-input bg-background p-3 text-xs font-mono text-foreground outline-none resize-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+            autoCapitalize="off"
+            autoCorrect="off"
             spellCheck={false}
           />
         </div>

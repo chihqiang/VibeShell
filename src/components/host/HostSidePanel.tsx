@@ -241,25 +241,37 @@ export function HostSidePanel() {
             className="absolute right-2 top-8 z-50 w-32 bg-popover border border-border rounded-lg shadow-lg py-0.5"
           >
             <button
-              onClick={() => openTerminal(host)}
+              onClick={(e) => {
+                e.stopPropagation();
+                openTerminal(host);
+              }}
               className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <Terminal size={12} /> {t('connection.openTerminal')}
             </button>
             <button
-              onClick={() => openEditDialog(host)}
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditDialog(host);
+              }}
               className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <Pencil size={12} /> {t('connection.edit')}
             </button>
             <button
-              onClick={() => handleCopySsh(host)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopySsh(host);
+              }}
               className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <Copy size={12} /> {t('common.copySshCommand')}
             </button>
             <button
-              onClick={() => handleDelete(host)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(host);
+              }}
               className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-destructive hover:bg-destructive/5 transition-colors cursor-pointer"
             >
               <Trash2 size={12} /> {t('connection.delete')}

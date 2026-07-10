@@ -164,6 +164,9 @@ export function ImportKeyDialog({ open, onClose, onImported }: Props) {
               <span className="text-xs text-muted-foreground">{t('sidebar.keyContent')}</span>
               <textarea
                 value={keyContent}
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 onChange={(e) => setKeyContent(e.target.value)}
                 className="w-full h-24 text-xs font-mono bg-muted border border-border rounded-md px-3 py-2 resize-none outline-none focus:border-primary transition-colors"
                 placeholder={t('sidebar.keyContentPlaceholder')}

@@ -266,6 +266,16 @@ const Terminal = memo(function Terminal({
         fitAddon.fit();
       }
 
+      // Disable macOS/iOS auto-capitalization, auto-correction, and spell
+      // checking on xterm's hidden textarea — otherwise the first letter of
+      // each typed word gets auto-capitalized in Tauri's WKWebView.
+      if (term.textarea) {
+        term.textarea.setAttribute('autocapitalize', 'off');
+        term.textarea.setAttribute('autocorrect', 'off');
+        term.textarea.setAttribute('spellcheck', 'false');
+        term.textarea.setAttribute('autocomplete', 'off');
+      }
+
       termRef.current = term;
 
       // Flush any output queued before the terminal was ready

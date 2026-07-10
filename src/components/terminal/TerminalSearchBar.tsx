@@ -47,6 +47,10 @@ export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarPro
       <input
         ref={inputRef}
         value={query}
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        autoComplete="off"
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={t('terminal.searchPlaceholder')}

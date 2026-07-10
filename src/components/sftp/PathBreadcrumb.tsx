@@ -44,6 +44,10 @@ export function PathBreadcrumb({ path, onNavigate, className }: PathBreadcrumbPr
       <input
         ref={inputRef}
         value={editValue}
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        autoComplete="off"
         onChange={(e) => setEditValue(e.target.value)}
         onBlur={commitEdit}
         onKeyDown={(e) => {
