@@ -199,7 +199,7 @@ export function HostSidePanel() {
     return (
       <div
         key={host.id}
-        className="group flex items-center gap-2 h-8 px-3 cursor-pointer hover:bg-muted/60 transition-colors relative"
+        className="group flex items-center gap-2 h-8 px-3 cursor-pointer hover:bg-muted/70 hover:shadow-sm transition-all duration-150 relative"
         onClick={() => openTerminal(host)}
       >
         <div
@@ -208,10 +208,7 @@ export function HostSidePanel() {
             connected ? 'bg-green-500/15' : 'bg-muted',
           )}
         >
-          <Server
-            size={11}
-            className={cn(connected ? 'text-green-500' : 'text-muted-foreground')}
-          />
+          <Server size={11} className={cn(connected ? 'text-green-500' : 'text-muted-foreground')} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -238,14 +235,14 @@ export function HostSidePanel() {
         {menuOpenId === host.id && (
           <div
             ref={menuRef}
-            className="absolute right-2 top-8 z-50 w-32 bg-popover border border-border rounded-lg shadow-lg py-0.5"
+            className="absolute right-2 top-8 z-50 w-32 bg-popover/90 backdrop-blur-md border border-border rounded-lg shadow-xl py-0.5"
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 openTerminal(host);
               }}
-              className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted/80 transition-all duration-150 cursor-pointer"
             >
               <Terminal size={12} /> {t('connection.openTerminal')}
             </button>
@@ -254,7 +251,7 @@ export function HostSidePanel() {
                 e.stopPropagation();
                 openEditDialog(host);
               }}
-              className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted/80 transition-all duration-150 cursor-pointer"
             >
               <Pencil size={12} /> {t('connection.edit')}
             </button>
@@ -263,7 +260,7 @@ export function HostSidePanel() {
                 e.stopPropagation();
                 handleCopySsh(host);
               }}
-              className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-foreground hover:bg-muted/80 transition-all duration-150 cursor-pointer"
             >
               <Copy size={12} /> {t('common.copySshCommand')}
             </button>
@@ -272,7 +269,7 @@ export function HostSidePanel() {
                 e.stopPropagation();
                 handleDelete(host);
               }}
-              className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-destructive hover:bg-destructive/5 transition-colors cursor-pointer"
+              className="flex items-center gap-2 w-full h-7 px-2.5 text-xs text-destructive hover:bg-destructive/5 transition-all duration-150 cursor-pointer"
             >
               <Trash2 size={12} /> {t('connection.delete')}
             </button>

@@ -427,7 +427,9 @@ export function SftpPanel() {
     const folder = await open({ directory: true });
     if (!folder) return;
 
-    const { files: allFiles, failures } = await expandLocalFiles([folder], currentPath, { fallbackName: SFTP_FALLBACK_FOLDER_NAME });
+    const { files: allFiles, failures } = await expandLocalFiles([folder], currentPath, {
+      fallbackName: SFTP_FALLBACK_FOLDER_NAME,
+    });
 
     if (failures.length > 0) {
       for (const f of failures) {
@@ -441,9 +443,9 @@ export function SftpPanel() {
   return (
     <div ref={panelRef} className="h-full flex flex-col relative overflow-hidden">
       {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/5 backdrop-blur-md border-2 border-dashed border-primary rounded-lg">
           <div className="flex flex-col items-center gap-2 text-primary">
-            <Upload size={32} />
+            <Upload size={32} className="animate-bounce" />
             <span className="text-sm font-medium">{t('sftp.dropToUpload')}</span>
           </div>
         </div>
@@ -504,7 +506,10 @@ export function SftpPanel() {
       />
 
       <div className="flex-1 flex flex-col min-h-0 text-xs">
-        <div className="grid bg-secondary/10 border-b border-border flex-shrink-0" style={{ gridTemplateColumns: SFTP_GRID_COLS }}>
+        <div
+          className="grid bg-secondary/20 border-b-2 border-b-border/50 flex-shrink-0"
+          style={{ gridTemplateColumns: SFTP_GRID_COLS }}
+        >
           <button
             onClick={() => toggleSort('name')}
             className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer"
@@ -557,7 +562,7 @@ export function SftpPanel() {
                     onClick={(e) => handleClick(entry.path, e)}
                     onDoubleClick={() => handleDoubleClick(entry)}
                     onContextMenu={(e) => handleContextMenu(e, entry)}
-                    className={`grid cursor-pointer transition-colors absolute left-0 right-0 top-0 h-7 ${selected.has(entry.path) ? 'bg-primary/15 border-l-2 border-l-primary' : 'hover:bg-muted/60'}`}
+                    className={`grid cursor-pointer transition-colors duration-100 absolute left-0 right-0 top-0 h-7 ${selected.has(entry.path) ? 'bg-primary/15 border-l-2 border-l-primary shadow-[inset_0_0_0_1px_rgba(var(--primary-rgb,59,130,246),0.1)]' : 'hover:bg-muted/50'}`}
                     style={{ transform: `translateY(${vItem.start}px)`, gridTemplateColumns: SFTP_GRID_COLS }}
                   >
                     <div className="px-3 flex items-center gap-1.5 truncate">
@@ -605,7 +610,9 @@ export function SftpPanel() {
         transfers={transfers}
         onCancel={(id) => {
           sftpCancelTransfer({ transferId: id }).catch((e) => notifyError(e));
-          setTransfers((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'failed', error: t('sftp.transferCancelled') } : x)));
+          setTransfers((prev) =>
+            prev.map((x) => (x.id === id ? { ...x, status: 'failed', error: t('sftp.transferCancelled') } : x)),
+          );
         }}
         onRetry={(item) => {
           setTransfers((prev) =>
@@ -644,7 +651,6 @@ export function SftpPanel() {
           setTransfers((prev) => prev.filter((x) => x.status !== 'completed' && x.status !== 'failed'))
         }
       />
-
     </div>
   );
 }

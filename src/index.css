@@ -36,6 +36,9 @@
   --animate-fade-out-down: fadeOutDown 0.2s ease-in;
   --animate-fade-in: fade-in 0.15s ease-out;
   --animate-slide-in: slide-in 0.2s ease-out;
+  --animate-slide-in-right: slide-in-right 0.25s ease-out;
+  --animate-glow-pulse: glow-pulse 2s ease-in-out infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
 }
 
 *,
@@ -119,6 +122,51 @@ body {
   }
 }
 
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 4px currentColor;
+  }
+  50% {
+    box-shadow:
+      0 0 8px currentColor,
+      0 0 12px currentColor;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* Glass morphism utility */
+.glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-color: hsl(var(--secondary) / 0.8);
+}
+
+.glass-popover {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background-color: hsl(var(--popover) / 0.85);
+}
+
 /* Hide scrollbar but keep functionality */
 .scrollbar-none {
   scrollbar-width: none;
@@ -171,7 +219,7 @@ body {
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(4px);
+    transform: scale(0.95) translateY(8px);
   }
   to {
     opacity: 1;
@@ -179,7 +227,7 @@ body {
   }
 }
 .animate-dialog-in {
-  animation: dialog-in 0.16s ease-out;
+  animation: dialog-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes overlay-in {

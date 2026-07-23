@@ -14,9 +14,4 @@ export {
   buildSshCommand,
 } from './ssh';
 export { logMessage, trace, debug, info, warn, error } from './log';
-export {
-  terminalThemes,
-  getStoredThemeId,
-  setStoredThemeId,
-  getTerminalTheme,
-} from './terminal-themes';
+export { terminalThemes, getStoredThemeId, setStoredThemeId, getTerminalTheme } from './terminal-themes';

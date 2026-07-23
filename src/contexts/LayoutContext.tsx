@@ -39,15 +39,12 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
   const [monitorOpen, setMonitorOpenState] = useStorage(STORAGE_KEYS.MONITOR_OPEN, true);
   const [sftpOpen, setSftpOpen] = useStorage(STORAGE_KEYS.SFTP_OPEN, false);
 
-  const toggleView = useCallback(
-    (view: ActivityView) => {
-      setActiveViewState((prev) => {
-        if (prev === view) return null;
-        return view;
-      });
-    },
-    [],
-  );
+  const toggleView = useCallback((view: ActivityView) => {
+    setActiveViewState((prev) => {
+      if (prev === view) return null;
+      return view;
+    });
+  }, []);
 
   const setActiveView = useCallback((view: ActivityView | null) => {
     setActiveViewState(view);
@@ -61,10 +58,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
     setMonitorOpenState(!monitorOpen);
   }, [monitorOpen, setMonitorOpenState]);
 
-  const setMonitorOpen = useCallback(
-    (open: boolean) => setMonitorOpenState(open),
-    [setMonitorOpenState],
-  );
+  const setMonitorOpen = useCallback((open: boolean) => setMonitorOpenState(open), [setMonitorOpenState]);
 
   const toggleSftp = useCallback(() => {
     setSftpOpen(!sftpOpen);

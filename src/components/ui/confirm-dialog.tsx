@@ -35,8 +35,10 @@ export function ConfirmDialog({
         </DialogHeader>
         {message && <div className="px-5 py-4 text-sm text-muted-foreground">{message}</div>}
         <DialogFooter>
-          <DialogClose className="h-8 px-2.5 inline-flex items-center justify-center rounded-lg border border-transparent text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground cursor-pointer">
-            {cancelLabel ?? t('common.cancel')}
+          <DialogClose asChild>
+            <Button variant="outline" size="sm">
+              {cancelLabel ?? t('common.cancel')}
+            </Button>
           </DialogClose>
           <Button
             size="sm"

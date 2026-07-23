@@ -135,8 +135,10 @@ export function ChmodDialog({
         </div>
         {error && <p className="px-5 pb-1 text-xs text-red-500">{error}</p>}
         <DialogFooter>
-          <DialogClose className="h-8 px-2.5 inline-flex items-center justify-center rounded-lg border border-transparent text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground cursor-pointer">
-            {t('common.cancel')}
+          <DialogClose asChild>
+            <Button variant="outline" size="sm">
+              {t('common.cancel')}
+            </Button>
           </DialogClose>
           <Button size="sm" onClick={onConfirm}>
             {t('common.confirm')}

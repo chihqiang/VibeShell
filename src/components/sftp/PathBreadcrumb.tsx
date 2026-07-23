@@ -76,7 +76,7 @@ export function PathBreadcrumb({ path, onNavigate, className }: PathBreadcrumbPr
           <ChevronRight size={11} className="text-muted-foreground/50 flex-shrink-0" />
           <button
             onClick={() => onNavigate(buildPath(i))}
-            className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors cursor-pointer px-0.5 truncate"
+            className="text-xs font-mono text-muted-foreground hover:text-primary hover:bg-muted/50 transition-all duration-150 cursor-pointer px-1 py-0.5 rounded truncate"
             title={seg}
           >
             {seg}

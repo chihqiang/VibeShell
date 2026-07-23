@@ -50,16 +50,16 @@ export function ProcessList() {
         </thead>
         <tbody>
           {processes.map((p, i) => (
-            <tr key={i} className="group hover:bg-muted/30">
-              <td className="px-3 py-0.5 text-right tabular-nums text-muted-foreground">{p.cpu}%</td>
-              <td className="px-2 py-0.5 text-right tabular-nums text-muted-foreground">{p.mem}%</td>
-              <td className="px-2 py-0.5 text-foreground truncate max-w-0">{p.command}</td>
-              <td className="px-2 py-0.5 text-right tabular-nums text-muted-foreground">{p.pid}</td>
-              <td className="px-1 py-0.5">
+            <tr key={i} className="group hover:bg-muted/40 transition-colors duration-100">
+              <td className="px-3 py-1 text-right tabular-nums text-muted-foreground">{p.cpu}%</td>
+              <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{p.mem}%</td>
+              <td className="px-2 py-1 text-foreground truncate max-w-0">{p.command}</td>
+              <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{p.pid}</td>
+              <td className="px-1 py-1">
                 <button
                   onClick={() => setConfirmKill({ pid: p.pid, command: p.command })}
                   disabled={killingPid === p.pid}
-                  className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer disabled:opacity-30"
+                  className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150 cursor-pointer disabled:opacity-30"
                   title={`${KILL_COMMAND} ${p.pid}`}
                 >
                   <Skull size={12} />

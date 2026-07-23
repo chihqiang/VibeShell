@@ -14,14 +14,7 @@ interface TransferRowProps {
 }
 
 /** 传输行 — TransferTable 和 TransferDialog 的共享渲染 */
-export function TransferRow({
-  item,
-  onCancel,
-  onRetry,
-  onRemove,
-  iconSize = 11,
-  rowHeight = 'h-8',
-}: TransferRowProps) {
+export function TransferRow({ item, onCancel, onRetry, onRemove, iconSize = 11, rowHeight = 'h-8' }: TransferRowProps) {
   const { t } = useTranslation();
   const pct = item.total > 0 ? Math.round((item.current / item.total) * 100) : 0;
 
@@ -35,14 +28,18 @@ export function TransferRow({
           <div className={cn('flex-1 rounded-full overflow-hidden', iconSize <= 10 ? 'h-1.5' : 'h-2', 'bg-secondary')}>
             <div
               className={cn(
-                'h-full rounded-full transition-all duration-300',
+                'h-full rounded-full transition-all duration-300 relative',
                 item.status === 'completed' && 'bg-green-500',
                 item.status === 'failed' && 'bg-destructive',
                 (item.status === 'uploading' || item.status === 'downloading') && 'bg-primary',
                 item.status === 'pending' && 'bg-muted-foreground/30',
               )}
               style={{ width: `${pct}%` }}
-            />
+            >
+              {(item.status === 'uploading' || item.status === 'downloading') && (
+                <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" />
+              )}
+            </div>
           </div>
           <span className="text-muted-foreground w-14 text-right tabular-nums">
             {item.total > 0 ? `${pct}%` : '--'}
@@ -82,32 +79,17 @@ export function TransferRow({
       <td className="px-3 text-right">
         <div className="flex items-center justify-end gap-0.5">
           {(item.status === 'uploading' || item.status === 'downloading') && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onCancel(item.id)}
-              title={t('sftp.transferCancel')}
-            >
+            <Button variant="ghost" size="icon-xs" onClick={() => onCancel(item.id)} title={t('sftp.transferCancel')}>
               <Square size={iconSize} />
             </Button>
           )}
           {item.status === 'failed' && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onRetry(item)}
-              title={t('sftp.transferRetry')}
-            >
+            <Button variant="ghost" size="icon-xs" onClick={() => onRetry(item)} title={t('sftp.transferRetry')}>
               <RotateCw size={iconSize} />
             </Button>
           )}
           {(item.status === 'completed' || item.status === 'failed') && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onRemove(item.id)}
-              title={t('common.close')}
-            >
+            <Button variant="ghost" size="icon-xs" onClick={() => onRemove(item.id)} title={t('common.close')}>
               <X size={iconSize} />
             </Button>
           )}

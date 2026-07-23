@@ -22,7 +22,7 @@ function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) 
   return (
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
-      className={cn('fixed inset-0 z-50 bg-black/50 animate-overlay-in', className)}
+      className={cn('fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-overlay-in', className)}
       {...props}
     />
   );
@@ -40,7 +40,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-popover text-sm text-popover-foreground ring-1 ring-border shadow-2xl outline-none sm:max-w-md animate-dialog-in',
+          'fixed top-1/2 left-1/2 z-50 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-popover text-sm text-popover-foreground ring-1 ring-border shadow-[0_20px_60px_-12px_rgba(0,0,0,0.5)] outline-none sm:max-w-md animate-dialog-in',
           className,
         )}
         {...props}
@@ -49,7 +49,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="absolute top-4 right-4 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all duration-150 cursor-pointer"
           >
             <X size={14} />
           </DialogPrimitive.Close>
@@ -74,7 +74,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="dialog-footer"
       className={cn(
-        'flex items-center justify-between px-5 py-4 border-t border-border bg-muted/50 rounded-b-xl',
+        'flex items-center justify-between px-5 py-4 border-t border-border bg-muted/30 rounded-b-xl',
         className,
       )}
       {...props}
