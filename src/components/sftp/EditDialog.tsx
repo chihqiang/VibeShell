@@ -12,15 +12,7 @@ interface EditDialogProps {
   onSave: () => void;
 }
 
-export function EditDialog({
-  open,
-  onOpenChange,
-  content,
-  onContentChange,
-  saving,
-  path,
-  onSave,
-}: EditDialogProps) {
+export function EditDialog({ open, onOpenChange, content, onContentChange, saving, path, onSave }: EditDialogProps) {
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -32,15 +24,17 @@ export function EditDialog({
           <textarea
             value={content}
             onChange={(e) => onContentChange(e.target.value)}
-            className="w-full h-64 rounded-lg border border-input bg-background p-3 text-xs font-mono text-foreground outline-none resize-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+            className="w-full h-64 rounded-lg border border-input bg-background p-3 text-xs font-mono text-foreground outline-none resize-none transition-all duration-200 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
           />
         </div>
         <DialogFooter>
-          <DialogClose className="h-8 px-2.5 inline-flex items-center justify-center rounded-lg border border-transparent text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground cursor-pointer">
-            {t('common.cancel')}
+          <DialogClose asChild>
+            <Button variant="outline" size="sm">
+              {t('common.cancel')}
+            </Button>
           </DialogClose>
           <Button size="sm" onClick={onSave} disabled={saving}>
             {saving ? t('sftp.saving') : t('common.save')}

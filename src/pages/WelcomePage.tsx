@@ -168,7 +168,7 @@ export function WelcomePage() {
       <div className="flex-1 flex flex-col px-6 py-6">
         <div className="w-full max-w-4xl mx-auto space-y-4">
           {/* 快速连接 — 全宽 */}
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm ring-1 ring-border/50">
             <div className="flex items-center gap-2">
               <Input
                 value={quickInput}
@@ -186,10 +186,7 @@ export function WelcomePage() {
 
             {showPreview && parsed && (
               <div className="flex flex-wrap items-center gap-1.5 px-1 animate-fade-in">
-                <ParsedChip
-                  icon={<User size={10} />}
-                  label={parsed.username || t('dashboard.defaultUser')}
-                />
+                <ParsedChip icon={<User size={10} />} label={parsed.username || t('dashboard.defaultUser')} />
                 <ChevronRight size={10} className="text-muted-foreground/40" />
                 <ParsedChip icon={<Globe size={10} />} label={`${parsed.hostname}:${parsed.port}`} />
                 {parsed.password && <ParsedChip icon={<Lock size={10} />} label="••••••" highlight />}
@@ -201,15 +198,9 @@ export function WelcomePage() {
 
             {!showPreview && (
               <div className="space-y-1 px-1">
-                <p className="text-[11px] text-muted-foreground/70">
-                  {t('dashboard.formatHint1')}
-                </p>
-                <p className="text-[11px] text-muted-foreground/70">
-                  {t('dashboard.formatHint2')}
-                </p>
-                <p className="text-[11px] text-muted-foreground/70">
-                  {t('dashboard.formatHint3')}
-                </p>
+                <p className="text-[11px] text-muted-foreground/70">{t('dashboard.formatHint1')}</p>
+                <p className="text-[11px] text-muted-foreground/70">{t('dashboard.formatHint2')}</p>
+                <p className="text-[11px] text-muted-foreground/70">{t('dashboard.formatHint3')}</p>
               </div>
             )}
           </div>
@@ -241,8 +232,8 @@ export function WelcomePage() {
                           key={host.id}
                           onClick={() => handleConnectSaved(host)}
                           className={cn(
-                            'group flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all cursor-pointer',
-                            'border-border hover:border-primary/40 hover:bg-muted/50 hover:shadow-sm',
+                            'group flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-200 cursor-pointer',
+                            'border-border hover:border-primary/30 hover:bg-muted/50 hover:shadow-md',
                           )}
                         >
                           <div
@@ -261,9 +252,7 @@ export function WelcomePage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-medium text-foreground truncate">{host.name}</span>
-                              {isConnected && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
-                              )}
+                              {isConnected && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />}
                             </div>
                             <span className="text-[10px] text-muted-foreground/70 truncate block font-mono">
                               {host.username}@{host.hostname}:{host.port}
@@ -285,9 +274,7 @@ export function WelcomePage() {
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/50">
                     <Server size={24} className="text-muted-foreground/30" />
                   </div>
-                  <p className="text-center text-xs text-muted-foreground max-w-xs">
-                    {t('dashboard.emptyHint')}
-                  </p>
+                  <p className="text-center text-xs text-muted-foreground max-w-xs">{t('dashboard.emptyHint')}</p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="xs" className="gap-1.5" onClick={() => setActiveView('hosts')}>
                       <Server size={13} />
@@ -304,7 +291,7 @@ export function WelcomePage() {
 
             {/* 右侧：系统信息 */}
             <div className="w-64 flex-shrink-0 space-y-3">
-              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Info size={13} />
                   {APP_NAME}
@@ -320,7 +307,7 @@ export function WelcomePage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-4 space-y-2.5">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-2.5 shadow-sm">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Monitor size={13} />
                   {t('settings.aboutSysInfo')}

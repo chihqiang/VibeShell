@@ -88,6 +88,15 @@ const TabBarItem = memo(
             : 'bg-red-500'
         : 'bg-transparent';
 
+    const statusShadow =
+      tab.type === 'terminal'
+        ? tab.status === 'connected'
+          ? '0 0 4px #22c55e'
+          : tab.status === 'connecting'
+            ? '0 0 4px #eab308'
+            : '0 0 4px #ef4444'
+        : undefined;
+
     return (
       <div
         draggable
@@ -111,10 +120,12 @@ const TabBarItem = memo(
           dragIdRef.current = null;
           onDrop();
         }}
-        className={`group flex items-center gap-1.5 h-full px-4 text-xs border-r border-border cursor-pointer select-none shrink-0 transition-colors relative ${
-          active ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        className={`group flex items-center gap-1.5 h-full px-4 text-xs border-r border-border cursor-pointer select-none shrink-0 transition-all duration-200 relative ${
+          active
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
         } ${dragOver ? 'border-l-2 border-l-primary' : ''}`}
-        style={active ? { boxShadow: 'inset 0 -1.5px 0 hsl(var(--primary))' } : undefined}
+        style={active ? { boxShadow: 'inset 0 -2px 0 hsl(var(--primary)), 0 1px 3px -1px rgba(0,0,0,0.1)' } : undefined}
         onClick={onSelect}
         onContextMenu={onContextMenu}
         onMouseDown={(e) => {
@@ -124,7 +135,9 @@ const TabBarItem = memo(
           }
         }}
       >
-        {tab.type === 'terminal' && <span className={`w-2 h-2 rounded-full ${statusColor}`} />}
+        {tab.type === 'terminal' && (
+          <span className={`w-2 h-2 rounded-full ${statusColor}`} style={{ boxShadow: statusShadow }} />
+        )}
         <span className="truncate max-w-40">{displayTitle}</span>
         <button
           onClick={(e) => {

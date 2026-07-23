@@ -16,8 +16,6 @@ import {
   TERM_MIN_FONT_SIZE,
   TERM_MAX_FONT_SIZE,
   TERM_FONT_FAMILY,
-  TERM_OVERLAY_BG,
-  TERM_OVERLAY_BLUR,
   STORAGE_KEYS,
   DOM_EVENTS,
   TAURI_EVENTS,
@@ -63,7 +61,7 @@ interface TerminalProps {
   status?: ConnectionStatus;
   active?: boolean;
   className?: string;
-  onReconnect?: () => void;
+  onReconnect?: (tabId: string) => void;
 }
 
 interface SshOutputEvent {
@@ -514,9 +512,13 @@ const Terminal = memo(function Terminal({
       {isConnecting && (
         <div
           className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 animate-overlay-in"
-          style={{ backgroundColor: TERM_OVERLAY_BG, backdropFilter: TERM_OVERLAY_BLUR }}
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
         >
-          <Loader2 size={28} className="animate-spin text-yellow-400" />
+          <Loader2
+            size={28}
+            className="animate-spin text-yellow-400"
+            style={{ filter: 'drop-shadow(0 0 6px rgba(250,204,21,0.5))' }}
+          />
           <span className="text-xs text-yellow-400/90 font-medium">
             {hadConnectionRef.current ? t('terminal.reconnecting') : t('terminal.connectingToHost')}
           </span>
@@ -527,14 +529,18 @@ const Terminal = memo(function Terminal({
       {isDisconnected && (
         <div
           className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 animate-overlay-in"
-          style={{ backgroundColor: TERM_OVERLAY_BG, backdropFilter: TERM_OVERLAY_BLUR }}
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
         >
-          <WifiOff size={28} className="text-red-400/80" />
+          <WifiOff
+            size={28}
+            className="text-red-400/80"
+            style={{ filter: 'drop-shadow(0 0 8px rgba(248,113,113,0.4))' }}
+          />
           <span className="text-xs text-red-400/80 font-medium">{t('terminal.disconnected')}</span>
-          {onReconnect && (
+          {onReconnect && tabId && (
             <button
-              onClick={onReconnect}
-              className="flex items-center gap-1.5 mt-1 px-4 py-1.5 rounded-lg bg-primary/90 hover:bg-primary text-primary-foreground text-xs font-medium transition-colors cursor-pointer"
+              onClick={() => onReconnect(tabId)}
+              className="flex items-center gap-1.5 mt-1 px-4 py-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-primary text-primary-foreground text-xs font-medium shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
             >
               <RotateCw size={13} />
               {t('tab.reconnect')}

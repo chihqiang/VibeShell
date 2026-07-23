@@ -10,7 +10,19 @@ import { TabBar } from '@/components/tabbar';
 import { SftpBottomPanel } from '@/components/sftp';
 import { useNotify } from '@/hooks/use-notify';
 import { getSshDefaults } from '@/services/configService';
-import { BOTTOM_PANEL_MIN_HEIGHT, BOTTOM_PANEL_DEFAULT_HEIGHT, DOM_EVENTS, TAURI_EVENTS, ANSI_RED, ANSI_YELLOW, ANSI_RESET, ANSI_NEWLINE, DEFAULT_RECONNECT_MAX_RETRIES, DEFAULT_RECONNECT_INITIAL_DELAY, DEFAULT_RECONNECT_MAX_DELAY } from '@/constants';
+import {
+  BOTTOM_PANEL_MIN_HEIGHT,
+  BOTTOM_PANEL_DEFAULT_HEIGHT,
+  DOM_EVENTS,
+  TAURI_EVENTS,
+  ANSI_RED,
+  ANSI_YELLOW,
+  ANSI_RESET,
+  ANSI_NEWLINE,
+  DEFAULT_RECONNECT_MAX_RETRIES,
+  DEFAULT_RECONNECT_INITIAL_DELAY,
+  DEFAULT_RECONNECT_MAX_DELAY,
+} from '@/constants';
 import { STORAGE_KEYS } from '@/constants/storage-keys';
 import { useStorage } from '@/utils/storage';
 import { useLayout } from '@/contexts/LayoutContext';
@@ -258,18 +270,14 @@ export function EditorArea() {
               status={tab.status}
               active={tab.id === activeTabId}
               className={tab.id !== activeTabId ? 'hidden' : undefined}
-              onReconnect={() => handleReconnect(tab.id)}
+              onReconnect={handleReconnect}
             />
           ) : null,
         )}
       </div>
 
       {isTerminalConnected && (
-        <SftpBottomPanel
-          show={sftpOpen}
-          height={bottomHeight}
-          onResizeStart={handleResizeStart}
-        />
+        <SftpBottomPanel show={sftpOpen} height={bottomHeight} onResizeStart={handleResizeStart} />
       )}
     </div>
   );

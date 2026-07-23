@@ -16,7 +16,10 @@ export function StatusBar() {
   const [hosts, setHosts] = useState<HostConfig[]>([]);
 
   useEffect(() => {
-    const reload = () => listHosts().then(setHosts).catch(() => {});
+    const reload = () =>
+      listHosts()
+        .then(setHosts)
+        .catch(() => {});
     reload();
     window.addEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
     return () => window.removeEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
@@ -49,29 +52,38 @@ export function StatusBar() {
         : APP_NAME;
 
   return (
-    <footer className="flex-shrink-0 h-6 flex items-center px-2 bg-primary text-primary-foreground text-[11px] select-none gap-1">
+    <footer className="flex-shrink-0 h-6 flex items-center px-2 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[11px] select-none gap-1 shadow-[0_-1px_3px_-1px_rgba(0,0,0,0.15)]">
       {/* 左侧：连接状态 */}
       <div className="flex items-center gap-1.5 px-1.5 h-full">
-        <span className={cn('w-2 h-2 rounded-full', statusColor)} />
+        <span
+          className={cn('w-2 h-2 rounded-full', statusColor)}
+          style={{
+            boxShadow: isConnected
+              ? '0 0 6px #22c55e'
+              : isConnecting
+                ? '0 0 6px #eab308'
+                : isTerminal
+                  ? '0 0 6px #ef4444'
+                  : undefined,
+          }}
+        />
         <span className="font-medium">{statusText}</span>
       </div>
 
-      <div className="w-px h-3 bg-primary-foreground/20" />
+      <div className="w-px h-3 bg-primary-foreground/15" />
 
       {/* 主机统计 */}
-      <button className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-colors cursor-pointer">
+      <button className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer">
         <Server size={11} />
         <span>{t('statusbar.hosts', { count: hosts.length })}</span>
       </button>
 
-      <div className="w-px h-3 bg-primary-foreground/20" />
+      <div className="w-px h-3 bg-primary-foreground/15" />
 
       {/* 连接统计 */}
-      <button className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-colors cursor-pointer">
+      <button className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer">
         {connectedCount > 0 ? <Wifi size={11} /> : <WifiOff size={11} />}
-        <span>
-          {t('statusbar.connected', { count: connectedCount })}
-        </span>
+        <span>{t('statusbar.connected', { count: connectedCount })}</span>
       </button>
 
       <div className="flex-1" />
@@ -82,7 +94,7 @@ export function StatusBar() {
           <button
             onClick={toggleSftp}
             className={cn(
-              'flex items-center gap-1 px-1.5 h-full hover:bg-primary-foreground/10 transition-colors cursor-pointer',
+              'flex items-center gap-1 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer',
               sftpOpen && 'bg-primary-foreground/15',
             )}
             title={SFTP_LABEL}
@@ -91,12 +103,12 @@ export function StatusBar() {
             <span>{SFTP_LABEL}</span>
           </button>
 
-          <div className="w-px h-3 bg-primary-foreground/20" />
+          <div className="w-px h-3 bg-primary-foreground/15" />
 
           <button
             onClick={toggleMonitor}
             className={cn(
-              'flex items-center gap-1 px-1.5 h-full hover:bg-primary-foreground/10 transition-colors cursor-pointer',
+              'flex items-center gap-1 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer',
               monitorOpen && 'bg-primary-foreground/15',
             )}
             title={t('monitor.title')}

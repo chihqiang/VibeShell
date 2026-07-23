@@ -31,16 +31,14 @@ export function ActivityBar() {
         onClick={() => toggleView(item.id)}
         title={t(item.labelKey)}
         className={cn(
-          'flex items-center justify-center w-10 h-10 rounded-lg transition-colors cursor-pointer relative group',
-          isActive
-            ? 'text-foreground'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+          'flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 cursor-pointer relative group',
+          isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70',
         )}
       >
         {isActive && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-primary" />
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-primary shadow-[1px_0_4px_rgba(0,0,0,0.15)]" />
         )}
-        <span className="transition-transform group-hover:scale-110">{item.icon}</span>
+        <span className="transition-transform duration-200 group-hover:scale-110">{item.icon}</span>
       </button>
     );
   };
@@ -57,11 +55,11 @@ export function ActivityBar() {
           onClick={() => setSettingsOpen(true)}
           title={t('settings.title')}
           className={cn(
-            'flex items-center justify-center w-10 h-10 rounded-lg transition-colors cursor-pointer relative group',
-            'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            'flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 cursor-pointer relative group',
+            'text-muted-foreground hover:text-foreground hover:bg-muted/70',
           )}
         >
-          <span className="transition-transform group-hover:scale-110">
+          <span className="transition-transform duration-200 group-hover:scale-110">
             <Settings size={22} />
           </span>
         </button>

@@ -81,7 +81,12 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
             />
           </Field>
           <Field label={t('quickConnect.port')} compact>
-            <NumberInput value={value.port} onChange={(v) => updateField('port', v)} placeholder={String(DEFAULT_SSH_PORT)} compact />
+            <NumberInput
+              value={value.port}
+              onChange={(v) => updateField('port', v)}
+              placeholder={String(DEFAULT_SSH_PORT)}
+              compact
+            />
           </Field>
           <Field label={t('quickConnect.username')} compact>
             <Input
@@ -126,7 +131,11 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
           />
         </Field>
         <Field label={t('connection.port')}>
-          <NumberInput value={value.port} onChange={(v) => updateField('port', v)} placeholder={String(DEFAULT_SSH_PORT)} />
+          <NumberInput
+            value={value.port}
+            onChange={(v) => updateField('port', v)}
+            placeholder={String(DEFAULT_SSH_PORT)}
+          />
         </Field>
       </div>
 

@@ -31,7 +31,10 @@ pub struct TabSession {
     pub cancel: Arc<AtomicBool>,
     pub buffer: Arc<Mutex<String>>,
     /// Timestamp of the last `ssh_write` call from the frontend.
-    pub last_activity: Arc<Mutex<Instant>>,
+    /// Protected by the outer `Mutex<TabSession>` — no extra lock needed
+    /// on the write path; the heartbeat thread uses `try_lock()` so it
+    /// never blocks terminal I/O.
+    pub last_activity: Instant,
     /// Wake condvar — notified by `cleanup_session`/`disconnect` so threads
     /// blocked on long-interval sleeps can respond immediately.
     pub wake_cvar: Arc<Condvar>,
@@ -324,7 +327,6 @@ pub fn connect(
     let cancel = Arc::new(AtomicBool::new(false));
     let buffer = Arc::new(Mutex::new(String::new()));
     let fail_count = Arc::new(AtomicU32::new(0));
-    let last_activity = Arc::new(Mutex::new(Instant::now()));
     let wake_mutex = Arc::new(Mutex::new(()));
     let wake_cvar = Arc::new(Condvar::new());
     let uid_cache = Arc::new(Mutex::new(HashMap::new()));
@@ -337,7 +339,7 @@ pub fn connect(
         username: username.to_string(),
         cancel: cancel.clone(),
         buffer: buffer.clone(),
-        last_activity: last_activity.clone(),
+        last_activity: Instant::now(),
         wake_cvar: wake_cvar.clone(),
         uid_cache: uid_cache.clone(),
         gid_cache: gid_cache.clone(),
@@ -374,7 +376,6 @@ pub fn connect(
         handle.clone(),
         cancel.clone(),
         fail_count,
-        last_activity,
         wake_mutex,
         wake_cvar,
         heartbeat_interval_secs,
@@ -506,7 +507,7 @@ fn spawn_reader(
             } else {
                 let Ok(guard) = wake_mutex.lock() else { break };
                 let Ok((_guard, _timeout)) =
-                    wake_cvar.wait_timeout(guard, Duration::from_millis(500))
+                    wake_cvar.wait_timeout(guard, Duration::from_millis(50))
                 else {
                     break;
                 };
@@ -593,7 +594,6 @@ fn start_heartbeat(
     handle: SessionHandle,
     cancel: Arc<AtomicBool>,
     fail_count: Arc<AtomicU32>,
-    last_activity: Arc<Mutex<Instant>>,
     wake_mutex: Arc<Mutex<()>>,
     wake_cvar: Arc<Condvar>,
     interval_secs: u64,
@@ -617,13 +617,9 @@ fn start_heartbeat(
                 return;
             }
 
-            // Check idle timeout
-            {
-                let idle = last_activity
-                    .lock()
-                    .map(|t| t.elapsed() >= SESSION_IDLE_TIMEOUT)
-                    .unwrap_or(false);
-                if idle {
+            // Check idle timeout via try_lock (never blocks terminal I/O)
+            if let Ok(inner) = handle.try_lock() {
+                if inner.last_activity.elapsed() >= SESSION_IDLE_TIMEOUT {
                     log::info!(
                         "[heartbeat] tab={}: idle {:?}, auto-cleanup",
                         tid,
@@ -680,16 +676,14 @@ fn start_heartbeat(
 pub fn write(tab_id: &str, data: &str) -> Result<(), String> {
     let handle = get(tab_id)?;
     let mut inner = handle.lock().map_err(|e| e.to_string())?;
-    // Refresh activity timestamp so idle-timeout is pushed back
-    if let Ok(mut t) = inner.last_activity.lock() {
-        *t = Instant::now();
-    }
+    // Refresh activity timestamp so idle-timeout is pushed back.
+    inner.last_activity = Instant::now();
     // Switch to blocking mode with a short timeout so write_all completes
     // fully without returning WouldBlock (session is non-blocking by default).
     inner.session.set_blocking(true);
     inner.session.set_timeout(5_000);
     let result = inner.channel.write_all(data.as_bytes());
-    // Restore non-blocking mode for the reader thread
+    // Restore non-blocking mode for the reader thread.
     inner.session.set_blocking(false);
     result.map_err(|e| {
         log::error!("Write failed: {}", e);

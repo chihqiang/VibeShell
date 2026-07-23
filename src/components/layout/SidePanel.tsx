@@ -4,11 +4,7 @@ import { cn } from '@/utils';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useStorage } from '@/utils/storage';
 import { STORAGE_KEYS } from '@/constants/storage-keys';
-import {
-  SIDE_PANEL_MIN_WIDTH,
-  SIDE_PANEL_MAX_WIDTH,
-  SIDE_PANEL_DEFAULT_WIDTH,
-} from '@/constants/layout';
+import { SIDE_PANEL_MIN_WIDTH, SIDE_PANEL_MAX_WIDTH, SIDE_PANEL_DEFAULT_WIDTH } from '@/constants/layout';
 import { HostSidePanel } from '@/components/host';
 import { KeySidePanel } from '@/components/keys';
 
@@ -101,16 +97,17 @@ export function SidePanel() {
 /** 面板头部 — 标题 + 关闭按钮 */
 export function PanelHeader({ title, onClose }: { title: string; onClose?: () => void }) {
   return (
-    <div className="flex-shrink-0 flex items-center justify-between px-3 h-9 border-b border-border/60">
+    <div className="flex-shrink-0 flex items-center justify-between px-3 h-9 border-b border-border/60 relative">
       <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{title}</h3>
       {onClose && (
         <button
           onClick={onClose}
-          className="flex items-center justify-center size-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          className="flex items-center justify-center size-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all duration-150 cursor-pointer"
         >
           <X size={14} />
         </button>
       )}
+      <div className="absolute bottom-0 left-3 right-3 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
     </div>
   );
 }

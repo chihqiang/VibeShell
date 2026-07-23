@@ -128,7 +128,10 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('heartbeatInterval', isNaN(num) || num < 1 ? String(DEFAULT_HEARTBEAT_INTERVAL) : String(num));
+              updateField(
+                'heartbeatInterval',
+                isNaN(num) || num < 1 ? String(DEFAULT_HEARTBEAT_INTERVAL) : String(num),
+              );
             }}
             placeholder={String(DEFAULT_HEARTBEAT_INTERVAL)}
             className="mt-1"
@@ -157,7 +160,10 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('reconnectMaxRetries', isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_MAX_RETRIES) : String(num));
+              updateField(
+                'reconnectMaxRetries',
+                isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_MAX_RETRIES) : String(num),
+              );
             }}
             placeholder={String(DEFAULT_RECONNECT_MAX_RETRIES)}
             className="mt-1"
@@ -173,7 +179,10 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('reconnectInitialDelay', isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_INITIAL_DELAY) : String(num));
+              updateField(
+                'reconnectInitialDelay',
+                isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_INITIAL_DELAY) : String(num),
+              );
             }}
             placeholder={String(DEFAULT_RECONNECT_INITIAL_DELAY)}
             className="mt-1"
@@ -190,7 +199,10 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             onChange={(e) => {
               const v = e.target.value.replace(/\D/g, '');
               const num = parseInt(v, 10);
-              updateField('reconnectMaxDelay', isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_MAX_DELAY) : String(num));
+              updateField(
+                'reconnectMaxDelay',
+                isNaN(num) || num < 1 ? String(DEFAULT_RECONNECT_MAX_DELAY) : String(num),
+              );
             }}
             placeholder={String(DEFAULT_RECONNECT_MAX_DELAY)}
             className="mt-1"

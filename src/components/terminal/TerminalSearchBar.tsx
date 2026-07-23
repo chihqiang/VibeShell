@@ -42,7 +42,7 @@ export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarPro
   };
 
   return (
-    <div className="absolute top-2 right-3 z-20 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-popover border border-border shadow-lg">
+    <div className="absolute top-2 right-3 z-20 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-popover/90 backdrop-blur-md border border-border shadow-xl">
       <Search size={13} className="text-muted-foreground flex-shrink-0" />
       <input
         ref={inputRef}
@@ -58,8 +58,8 @@ export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarPro
       />
       <button
         onClick={() => setCaseSensitive(!caseSensitive)}
-        className={`flex items-center justify-center w-5 h-5 rounded text-xs transition-colors cursor-pointer ${
-          caseSensitive ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        className={`flex items-center justify-center w-5 h-5 rounded text-xs transition-all duration-150 cursor-pointer ${
+          caseSensitive ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
         }`}
         title={t('terminal.searchCaseSensitive')}
       >
@@ -69,7 +69,7 @@ export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarPro
       <button
         onClick={() => doSearch('prev')}
         disabled={!query}
-        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer"
+        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 disabled:opacity-30 transition-all duration-150 cursor-pointer"
         title={t('terminal.searchPrevious')}
       >
         <ChevronUp size={13} />
@@ -77,14 +77,14 @@ export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarPro
       <button
         onClick={() => doSearch('next')}
         disabled={!query}
-        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer"
+        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 disabled:opacity-30 transition-all duration-150 cursor-pointer"
         title={t('terminal.searchNext')}
       >
         <ChevronDown size={13} />
       </button>
       <button
         onClick={onClose}
-        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+        className="flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all duration-150 cursor-pointer"
         title={t('common.close')}
       >
         <X size={13} />

@@ -1,16 +1,20 @@
 import { readFileSync, writeFileSync } from 'fs';
 
-const version = process.argv[2] || JSON.parse(readFileSync('package.json', 'utf8')).version;
-const log = [];
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 
-// Update package.json when version explicitly provided
-if (process.argv[2]) {
-  const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-  const old = pkg.version;
-  pkg.version = version;
-  writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-  log.push(`  package.json          ${old} → ${version}`);
+let version = process.argv[2];
+if (!version) {
+  // Auto-increment patch: 0.0.3 → 0.0.4
+  const parts = pkg.version.split('.').map(Number);
+  parts[2] = (parts[2] || 0) + 1;
+  version = parts.join('.');
 }
+
+const old = pkg.version;
+pkg.version = version;
+writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+
+const log = [`  package.json          ${old} → ${version}`];
 
 // Update tauri.conf.json
 const conf = readFileSync('src-tauri/tauri.conf.json', 'utf8');
@@ -25,3 +29,6 @@ writeFileSync('src-tauri/Cargo.toml', cargo.replace(/^version\s*=\s*"[^"]+"/m, `
 log.push(`  Cargo.toml            ${oldCargo} → ${version}`);
 
 console.log(`\nVersion bumped to ${version}\n${log.join('\n')}\n`);
+
+console.log(`\n please run \`npm install\` to update the lockfile\n`);
+  

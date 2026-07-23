@@ -9,13 +9,7 @@ interface NumberInputProps {
 }
 
 /** 数字输入框 — 自动过滤非数字字符 */
-export function NumberInput({
-  value,
-  onChange,
-  placeholder,
-  compact,
-  className,
-}: NumberInputProps) {
+export function NumberInput({ value, onChange, placeholder, compact, className }: NumberInputProps) {
   return (
     <Input
       value={value || ''}

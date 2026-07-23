@@ -163,7 +163,10 @@ function GlobalSearch() {
 
   return (
     <div ref={containerRef} className="relative flex-1 max-w-md">
-      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <Search
+        size={13}
+        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+      />
       <Input
         type="text"
         value={query}
@@ -179,7 +182,7 @@ function GlobalSearch() {
       />
 
       {open && query && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-64 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-64 overflow-y-auto rounded-lg border border-border bg-popover/90 backdrop-blur-md shadow-xl">
           {filtered.length === 0 ? (
             <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
               <Search size={13} className="opacity-40" />
@@ -195,8 +198,8 @@ function GlobalSearch() {
                 }}
                 onMouseEnter={() => setFocusIdx(i)}
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 text-left transition-colors cursor-pointer',
-                  i === focusIdx ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted',
+                  'w-full flex items-center gap-2 px-3 py-2 text-left transition-all duration-150 cursor-pointer',
+                  i === focusIdx ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/80',
                 )}
               >
                 <Server size={13} className="flex-shrink-0 opacity-60" />

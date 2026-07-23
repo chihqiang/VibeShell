@@ -48,17 +48,24 @@ export function DiskList() {
             const totalNum = parseDiskSize(d.size);
             const availNum = parseDiskSize(d.avail);
             const usedPct = totalNum > 0 ? Math.round(((totalNum - availNum) / totalNum) * 100) : 0;
-            const barColor = usedPct > MONITOR_DISK_DANGER_THRESHOLD ? MONITOR_COLORS.danger : usedPct > MONITOR_DISK_WARN_THRESHOLD ? MONITOR_COLORS.warn : MONITOR_COLORS.normal;
+            const barColor =
+              usedPct > MONITOR_DISK_DANGER_THRESHOLD
+                ? MONITOR_COLORS.danger
+                : usedPct > MONITOR_DISK_WARN_THRESHOLD
+                  ? MONITOR_COLORS.warn
+                  : MONITOR_COLORS.normal;
             return (
-              <tr key={i} className="hover:bg-muted/30">
+              <tr key={i} className="hover:bg-muted/30 transition-colors duration-100">
                 <td className="px-3 py-1 text-foreground truncate max-w-0">{d.path}</td>
                 <td className="px-2 py-1">
                   <div className="flex items-center gap-1.5">
-                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="flex-1 h-1.5 rounded-full bg-muted/30 overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-500"
+                        className="h-full rounded-full transition-all duration-500 relative"
                         style={{ width: `${usedPct}%`, backgroundColor: barColor }}
-                      />
+                      >
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/15 to-transparent" />
+                      </div>
                     </div>
                     <span className="text-[10px] tabular-nums text-muted-foreground w-7 text-right">{usedPct}%</span>
                   </div>

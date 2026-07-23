@@ -52,8 +52,10 @@ export function PromptDialog({
           />
         </div>
         <DialogFooter>
-          <DialogClose className="h-8 px-2.5 inline-flex items-center justify-center rounded-lg border border-transparent text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground cursor-pointer">
-            {t('common.cancel')}
+          <DialogClose asChild>
+            <Button variant="outline" size="sm">
+              {t('common.cancel')}
+            </Button>
           </DialogClose>
           <Button size="sm" onClick={onConfirm}>
             {t(confirmKey)}

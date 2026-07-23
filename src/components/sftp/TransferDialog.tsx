@@ -68,13 +68,7 @@ export function TransferDialog({
               </thead>
               <tbody>
                 {transfers.map((item) => (
-                  <TransferRow
-                    key={item.id}
-                    item={item}
-                    onCancel={onCancel}
-                    onRetry={onRetry}
-                    onRemove={onRemove}
-                  />
+                  <TransferRow key={item.id} item={item} onCancel={onCancel} onRetry={onRetry} onRemove={onRemove} />
                 ))}
               </tbody>
             </table>

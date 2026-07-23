@@ -129,7 +129,9 @@ export function AboutSettings() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-xs text-muted-foreground">{APP_NAME} v{info.appVersion || '...'}</span>
+            <span className="text-xs text-muted-foreground">
+              {APP_NAME} v{info.appVersion || '...'}
+            </span>
             <div className="flex items-center gap-2">
               <a
                 href={GITHUB_URL}

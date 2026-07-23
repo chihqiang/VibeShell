@@ -2,7 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMonitorData } from '@/hooks/use-monitor';
 import { formatUptime, parsePercent, formatSize } from '@/utils';
-import { MONITOR_MAX_HISTORY, MONITOR_WARN_THRESHOLD, MONITOR_DANGER_THRESHOLD, MONITOR_COLORS, SPARKLINE_WIDTH, SPARKLINE_HEIGHT } from '@/constants';
+import {
+  MONITOR_MAX_HISTORY,
+  MONITOR_WARN_THRESHOLD,
+  MONITOR_DANGER_THRESHOLD,
+  MONITOR_COLORS,
+  SPARKLINE_WIDTH,
+  SPARKLINE_HEIGHT,
+} from '@/constants';
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null;
@@ -11,15 +18,29 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const h = SPARKLINE_HEIGHT;
   const step = w / (MONITOR_MAX_HISTORY - 1);
   const points = data.map((v, i) => `${i * step},${h - (v / max) * h}`).join(' ');
+  const fillPoints = `0,${h} ${points} ${w},${h}`;
+  const fillId = `sparkline-fill-${color.replace('#', '')}`;
   return (
     <svg width={w} height={h} className="flex-shrink-0" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon fill={`url(#${fillId})`} points={fillPoints} />
       <polyline fill="none" stroke={color} strokeWidth="1.5" points={points} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
 
 function Bar({ label, value, text, history }: { label: string; value: number; text: string; history?: number[] }) {
-  const color = value > MONITOR_DANGER_THRESHOLD ? MONITOR_COLORS.danger : value > MONITOR_WARN_THRESHOLD ? MONITOR_COLORS.warn : MONITOR_COLORS.normal;
+  const color =
+    value > MONITOR_DANGER_THRESHOLD
+      ? MONITOR_COLORS.danger
+      : value > MONITOR_WARN_THRESHOLD
+        ? MONITOR_COLORS.warn
+        : MONITOR_COLORS.normal;
 
   return (
     <div>
@@ -30,11 +51,13 @@ function Bar({ label, value, text, history }: { label: string; value: number; te
           <span className="text-foreground font-mono">{text || '—'}</span>
         </div>
       </div>
-      <div className="h-2 rounded-full overflow-hidden border border-border/60">
+      <div className="h-2 rounded-full overflow-hidden border border-border/60 bg-muted/30">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="h-full rounded-full transition-all duration-500 relative"
           style={{ width: `${Math.min(value, 100)}%`, backgroundColor: color }}
-        />
+        >
+          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/15 to-transparent" />
+        </div>
       </div>
     </div>
   );

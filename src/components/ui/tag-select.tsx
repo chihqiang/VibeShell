@@ -98,10 +98,10 @@ export default function TagSelect({
                   key={item}
                   onClick={() => toggle(item)}
                   className={cn(
-                    'rounded-full px-3 py-1 text-xs font-medium transition-colors cursor-pointer',
+                    'rounded-full px-3 py-1 text-xs font-medium transition-all duration-150 cursor-pointer',
                     pending.includes(item)
-                      ? 'bg-primary text-primary-foreground'
-                      : 'border border-input text-muted-foreground hover:border-muted-foreground hover:text-foreground',
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'border border-input text-muted-foreground hover:border-muted-foreground hover:text-foreground hover:bg-muted/50',
                   )}
                 >
                   {item}
