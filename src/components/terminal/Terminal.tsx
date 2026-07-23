@@ -61,7 +61,7 @@ interface TerminalProps {
   status?: ConnectionStatus;
   active?: boolean;
   className?: string;
-  onReconnect?: () => void;
+  onReconnect?: (tabId: string) => void;
 }
 
 interface SshOutputEvent {
@@ -537,9 +537,9 @@ const Terminal = memo(function Terminal({
             style={{ filter: 'drop-shadow(0 0 8px rgba(248,113,113,0.4))' }}
           />
           <span className="text-xs text-red-400/80 font-medium">{t('terminal.disconnected')}</span>
-          {onReconnect && (
+          {onReconnect && tabId && (
             <button
-              onClick={onReconnect}
+              onClick={() => onReconnect(tabId)}
               className="flex items-center gap-1.5 mt-1 px-4 py-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-primary text-primary-foreground text-xs font-medium shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
             >
               <RotateCw size={13} />

@@ -270,7 +270,7 @@ export function EditorArea() {
               status={tab.status}
               active={tab.id === activeTabId}
               className={tab.id !== activeTabId ? 'hidden' : undefined}
-              onReconnect={() => handleReconnect(tab.id)}
+              onReconnect={handleReconnect}
             />
           ) : null,
         )}
