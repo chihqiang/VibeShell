@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Area, AreaChart } from 'recharts';
 import { useMonitorData } from '@/hooks/use-monitor';
 import { formatUptime, parsePercent, formatSize } from '@/utils';
 import {
@@ -13,24 +14,28 @@ import {
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null;
-  const max = Math.max(...data, 1);
-  const w = SPARKLINE_WIDTH;
-  const h = SPARKLINE_HEIGHT;
-  const step = w / (MONITOR_MAX_HISTORY - 1);
-  const points = data.map((v, i) => `${i * step},${h - (v / max) * h}`).join(' ');
-  const fillPoints = `0,${h} ${points} ${w},${h}`;
-  const fillId = `sparkline-fill-${color.replace('#', '')}`;
+  const chartData = data.map((v) => ({ v }));
+  const gradientId = `sg-${color.replace('#', '')}`;
   return (
-    <svg width={w} height={h} className="flex-shrink-0" preserveAspectRatio="none">
+    <AreaChart width={SPARKLINE_WIDTH} height={SPARKLINE_HEIGHT} data={chartData}>
       <defs>
-        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <polygon fill={`url(#${fillId})`} points={fillPoints} />
-      <polyline fill="none" stroke={color} strokeWidth="1.5" points={points} vectorEffect="non-scaling-stroke" />
-    </svg>
+      <Area
+        type="monotone"
+        dataKey="v"
+        stroke={color}
+        strokeWidth={1.5}
+        fill={`url(#${gradientId})`}
+        isAnimationActive={true}
+        animationDuration={400}
+        dot={false}
+        activeDot={false}
+      />
+    </AreaChart>
   );
 }
 
@@ -109,23 +114,28 @@ export function MonitorInfo() {
   const data = monitorData ?? { ip: '', uptime: '', load: '', cpu: '', memory: '', swap: '', net_io: '' };
 
   return (
-    <div className="p-4 space-y-3 text-xs">
-      <div className="rounded-lg bg-muted/20 px-3 py-2 space-y-1.5">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">IP</span>
-          <span className="text-foreground font-mono truncate ml-2 text-right">{data.ip || '—'}</span>
+    <div className="p-3 space-y-3 text-xs">
+      {/* 系统信息卡片 */}
+      <div className="rounded-lg border border-border/60 bg-card px-3 py-2.5 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">IP</span>
+          <span className="text-foreground font-mono text-xs">{data.ip || '—'}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">{t('monitor.uptime')}</span>
-          <span className="text-foreground font-mono ml-2 text-right">
+        <div className="h-px bg-border/30" />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">{t('monitor.uptime')}</span>
+          <span className="text-foreground font-mono text-xs">
             {formatUptime(data.uptime, uptimeLabels) || '—'}
           </span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">{t('monitor.load')}</span>
-          <span className="text-foreground font-mono ml-2 text-right">{data.load || '—'}</span>
+        <div className="h-px bg-border/30" />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">{t('monitor.load')}</span>
+          <span className="text-foreground font-mono text-xs">{data.load || '—'}</span>
         </div>
       </div>
+
+      {/* 资源使用率 */}
       <Bar label="CPU" value={parsePercent(data.cpu)} text={data.cpu ? `${data.cpu}%` : '—'} history={cpuHistory} />
       <Bar
         label={t('monitor.memory')}
@@ -134,17 +144,21 @@ export function MonitorInfo() {
         history={memHistory}
       />
       <Bar label={t('monitor.swap')} value={parsePercent(data.swap)} text={data.swap || '—'} />
+
+      {/* 网络 IO 卡片 */}
       {data.net_io &&
         (() => {
           const [rx, tx] = data.net_io.split('|');
           const rxNum = parseInt(rx, 10) || 0;
           const txNum = parseInt(tx, 10) || 0;
           return (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t('monitor.netIO')}</span>
-              <span className="text-foreground font-mono ml-2 text-right">
-                ↓{formatSize(rxNum)} ↑{formatSize(txNum)}
-              </span>
+            <div className="rounded-lg border border-border/60 bg-card px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-[11px]">{t('monitor.netIO')}</span>
+                <span className="text-foreground font-mono text-xs">
+                  ↓{formatSize(rxNum)} ↑{formatSize(txNum)}
+                </span>
+              </div>
             </div>
           );
         })()}
