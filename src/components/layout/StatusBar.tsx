@@ -52,7 +52,7 @@ export function StatusBar() {
         : APP_NAME;
 
   return (
-    <footer className="flex-shrink-0 h-6 flex items-center px-2 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[11px] select-none gap-1 shadow-[0_-1px_3px_-1px_rgba(0,0,0,0.15)]">
+    <footer className="flex-shrink-0 h-7 flex items-center px-2 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[11px] select-none gap-1 shadow-[0_-1px_3px_-1px_rgba(0,0,0,0.15)]">
       {/* 左侧：连接状态 */}
       <div className="flex items-center gap-1.5 px-1.5 h-full">
         <span

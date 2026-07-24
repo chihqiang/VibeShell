@@ -215,7 +215,7 @@ export function HostSidePanel() {
             <span className="text-xs text-foreground truncate">{host.name}</span>
             {connected && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />}
           </div>
-          <span className="text-[10px] text-muted-foreground/70 truncate block font-mono">
+          <span className="text-xs text-muted-foreground/70 truncate block font-mono">
             {host.username}@{host.hostname}
           </span>
         </div>
@@ -227,7 +227,7 @@ export function HostSidePanel() {
             e.stopPropagation();
             setMenuOpenId(menuOpenId === host.id ? null : host.id);
           }}
-          className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+          className="p-1 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
         >
           <MoreVertical size={13} />
         </button>

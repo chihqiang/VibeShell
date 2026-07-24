@@ -331,7 +331,7 @@ function ParsedChip({ icon, label, highlight }: { icon: React.ReactNode; label: 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 h-5 px-2 rounded text-[11px] font-mono',
+        'inline-flex items-center gap-1 h-6 px-2.5 rounded text-xs font-mono',
         highlight ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-muted text-muted-foreground',
       )}
     >

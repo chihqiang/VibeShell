@@ -59,10 +59,10 @@ export function ProcessList() {
                 <button
                   onClick={() => setConfirmKill({ pid: p.pid, command: p.command })}
                   disabled={killingPid === p.pid}
-                  className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150 cursor-pointer disabled:opacity-30"
+                  className="flex items-center justify-center w-6 h-6 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150 cursor-pointer disabled:opacity-30"
                   title={`${KILL_COMMAND} ${p.pid}`}
                 >
-                  <Skull size={12} />
+                  <Skull size={14} />
                 </button>
               </td>
             </tr>
