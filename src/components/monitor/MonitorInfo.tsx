@@ -17,21 +17,25 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const chartData = data.map((v) => ({ v }));
   const gradientId = `sg-${color.replace('#', '')}`;
   return (
-    <AreaChart width={SPARKLINE_WIDTH} height={SPARKLINE_HEIGHT} data={chartData}>
+    <AreaChart
+      width={SPARKLINE_WIDTH}
+      height={SPARKLINE_HEIGHT}
+      data={chartData}
+      margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+    >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
       <Area
-        type="monotone"
+        type="linear"
         dataKey="v"
         stroke={color}
         strokeWidth={1.5}
         fill={`url(#${gradientId})`}
-        isAnimationActive={true}
-        animationDuration={400}
+        isAnimationActive={false}
         dot={false}
         activeDot={false}
       />
