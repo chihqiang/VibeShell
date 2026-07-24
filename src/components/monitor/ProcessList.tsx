@@ -50,7 +50,10 @@ export function ProcessList() {
         </thead>
         <tbody>
           {processes.map((p, i) => (
-            <tr key={i} className="group hover:bg-muted/40 border-b border-border/20 even:bg-muted/10 transition-colors duration-100">
+            <tr
+              key={i}
+              className="group hover:bg-muted/40 border-b border-border/20 even:bg-muted/10 transition-colors duration-100"
+            >
               <td className="px-3 py-1 text-right tabular-nums text-muted-foreground">{p.cpu}%</td>
               <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{p.mem}%</td>
               <td className="px-2 py-1 text-foreground truncate max-w-0">{p.command}</td>

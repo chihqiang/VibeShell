@@ -128,9 +128,7 @@ export function MonitorInfo() {
         <div className="h-px bg-border/30" />
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-[11px]">{t('monitor.uptime')}</span>
-          <span className="text-foreground font-mono text-xs">
-            {formatUptime(data.uptime, uptimeLabels) || '—'}
-          </span>
+          <span className="text-foreground font-mono text-xs">{formatUptime(data.uptime, uptimeLabels) || '—'}</span>
         </div>
         <div className="h-px bg-border/30" />
         <div className="flex items-center justify-between">

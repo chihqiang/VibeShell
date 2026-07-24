@@ -55,7 +55,10 @@ export function DiskList() {
                   ? MONITOR_COLORS.warn
                   : MONITOR_COLORS.normal;
             return (
-              <tr key={i} className="hover:bg-muted/30 border-b border-border/20 even:bg-muted/10 transition-colors duration-100">
+              <tr
+                key={i}
+                className="hover:bg-muted/30 border-b border-border/20 even:bg-muted/10 transition-colors duration-100"
+              >
                 <td className="px-3 py-1 text-foreground truncate max-w-0">{d.path}</td>
                 <td className="px-2 py-1">
                   <div className="flex items-center gap-1.5">
