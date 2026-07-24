@@ -40,17 +40,20 @@ export function ProcessList() {
     <div className="pb-1">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="text-muted-foreground">
-            <th className="text-left px-3 py-1 font-medium w-[42px]">CPU%</th>
-            <th className="text-left px-2 py-1 font-medium w-[42px]">MEM%</th>
-            <th className="text-left px-2 py-1 font-medium">{t('monitor.command')}</th>
-            <th className="text-right px-2 py-1 font-medium w-[40px]">PID</th>
-            <th className="w-[28px]"></th>
+          <tr className="bg-muted/20 text-muted-foreground">
+            <th className="text-left px-3 py-1.5 font-medium rounded-l-lg">CPU%</th>
+            <th className="text-left px-2 py-1.5 font-medium">MEM%</th>
+            <th className="text-left px-2 py-1.5 font-medium">{t('monitor.command')}</th>
+            <th className="text-right px-2 py-1.5 font-medium">PID</th>
+            <th className="rounded-r-lg"></th>
           </tr>
         </thead>
         <tbody>
           {processes.map((p, i) => (
-            <tr key={i} className="group hover:bg-muted/40 transition-colors duration-100">
+            <tr
+              key={i}
+              className="group hover:bg-muted/40 border-b border-border/20 even:bg-muted/10 transition-colors duration-100"
+            >
               <td className="px-3 py-1 text-right tabular-nums text-muted-foreground">{p.cpu}%</td>
               <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{p.mem}%</td>
               <td className="px-2 py-1 text-foreground truncate max-w-0">{p.command}</td>
@@ -59,10 +62,10 @@ export function ProcessList() {
                 <button
                   onClick={() => setConfirmKill({ pid: p.pid, command: p.command })}
                   disabled={killingPid === p.pid}
-                  className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150 cursor-pointer disabled:opacity-30"
+                  className="flex items-center justify-center w-6 h-6 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150 cursor-pointer disabled:opacity-30"
                   title={`${KILL_COMMAND} ${p.pid}`}
                 >
-                  <Skull size={12} />
+                  <Skull size={14} />
                 </button>
               </td>
             </tr>

@@ -27,7 +27,7 @@ export function AuthToggle({
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
-            {method === 'password' ? <Lock size={10} /> : <KeyRound size={10} />}
+            {method === 'password' ? <Lock size={12} /> : <KeyRound size={12} />}
             {method === 'password' ? t('connection.passwordAuth') : t('connection.keyAuth')}
           </button>
         ))}

@@ -36,11 +36,11 @@ export function DiskList() {
     <div className="pb-1">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="text-muted-foreground">
-            <th className="text-left px-3 py-1 font-medium">{t('monitor.diskPath')}</th>
-            <th className="text-left px-2 py-1 font-medium w-[80px]">{t('monitor.diskUsage', '使用率')}</th>
-            <th className="text-right px-2 py-1 font-medium w-[48px]">{t('monitor.diskAvail')}</th>
-            <th className="text-right px-3 py-1 font-medium w-[48px]">{t('monitor.diskSize')}</th>
+          <tr className="bg-muted/20 text-muted-foreground">
+            <th className="text-left px-3 py-1.5 font-medium rounded-l-lg">{t('monitor.diskPath')}</th>
+            <th className="text-left px-2 py-1.5 font-medium w-[84px]">{t('monitor.diskUsage')}</th>
+            <th className="text-right px-2 py-1.5 font-medium w-[52px]">{t('monitor.diskAvail')}</th>
+            <th className="text-right px-3 py-1.5 font-medium w-[48px] rounded-r-lg">{t('monitor.diskSize')}</th>
           </tr>
         </thead>
         <tbody>
@@ -55,11 +55,14 @@ export function DiskList() {
                   ? MONITOR_COLORS.warn
                   : MONITOR_COLORS.normal;
             return (
-              <tr key={i} className="hover:bg-muted/30 transition-colors duration-100">
+              <tr
+                key={i}
+                className="hover:bg-muted/30 border-b border-border/20 even:bg-muted/10 transition-colors duration-100"
+              >
                 <td className="px-3 py-1 text-foreground truncate max-w-0">{d.path}</td>
                 <td className="px-2 py-1">
                   <div className="flex items-center gap-1.5">
-                    <div className="flex-1 h-1.5 rounded-full bg-muted/30 overflow-hidden">
+                    <div className="flex-1 h-2 rounded-full bg-muted/30 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-500 relative"
                         style={{ width: `${usedPct}%`, backgroundColor: barColor }}
@@ -67,7 +70,7 @@ export function DiskList() {
                         <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/15 to-transparent" />
                       </div>
                     </div>
-                    <span className="text-[10px] tabular-nums text-muted-foreground w-7 text-right">{usedPct}%</span>
+                    <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">{usedPct}%</span>
                   </div>
                 </td>
                 <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{d.avail}</td>
