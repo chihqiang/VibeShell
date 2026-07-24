@@ -110,19 +110,21 @@ export function MonitorInfo() {
 
   return (
     <div className="p-4 space-y-3 text-xs">
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">IP</span>
-        <span className="text-foreground font-mono truncate ml-2 text-right">{data.ip || '—'}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">{t('monitor.uptime')}</span>
-        <span className="text-foreground font-mono ml-2 text-right">
-          {formatUptime(data.uptime, uptimeLabels) || '—'}
-        </span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-muted-foreground">{t('monitor.load')}</span>
-        <span className="text-foreground font-mono ml-2 text-right">{data.load || '—'}</span>
+      <div className="rounded-lg bg-muted/20 px-3 py-2 space-y-1.5">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">IP</span>
+          <span className="text-foreground font-mono truncate ml-2 text-right">{data.ip || '—'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">{t('monitor.uptime')}</span>
+          <span className="text-foreground font-mono ml-2 text-right">
+            {formatUptime(data.uptime, uptimeLabels) || '—'}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">{t('monitor.load')}</span>
+          <span className="text-foreground font-mono ml-2 text-right">{data.load || '—'}</span>
+        </div>
       </div>
       <Bar label="CPU" value={parsePercent(data.cpu)} text={data.cpu ? `${data.cpu}%` : '—'} history={cpuHistory} />
       <Bar

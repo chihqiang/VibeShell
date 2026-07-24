@@ -40,17 +40,17 @@ export function ProcessList() {
     <div className="pb-1">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="text-muted-foreground">
-            <th className="text-left px-3 py-1 font-medium w-[42px]">CPU%</th>
-            <th className="text-left px-2 py-1 font-medium w-[42px]">MEM%</th>
-            <th className="text-left px-2 py-1 font-medium">{t('monitor.command')}</th>
-            <th className="text-right px-2 py-1 font-medium w-[40px]">PID</th>
-            <th className="w-[28px]"></th>
+          <tr className="bg-muted/20 text-muted-foreground">
+            <th className="text-left px-3 py-1.5 font-medium rounded-l-lg">CPU%</th>
+            <th className="text-left px-2 py-1.5 font-medium">MEM%</th>
+            <th className="text-left px-2 py-1.5 font-medium">{t('monitor.command')}</th>
+            <th className="text-right px-2 py-1.5 font-medium">PID</th>
+            <th className="rounded-r-lg"></th>
           </tr>
         </thead>
         <tbody>
           {processes.map((p, i) => (
-            <tr key={i} className="group hover:bg-muted/40 transition-colors duration-100">
+            <tr key={i} className="group hover:bg-muted/40 border-b border-border/20 transition-colors duration-100">
               <td className="px-3 py-1 text-right tabular-nums text-muted-foreground">{p.cpu}%</td>
               <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{p.mem}%</td>
               <td className="px-2 py-1 text-foreground truncate max-w-0">{p.command}</td>
