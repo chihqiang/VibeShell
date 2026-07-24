@@ -162,7 +162,7 @@ function GlobalSearch() {
   };
 
   return (
-    <div ref={containerRef} className="relative flex-1 max-w-md">
+    <div ref={containerRef} className="relative w-72 mx-auto">
       <Search
         size={13}
         className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -178,7 +178,7 @@ function GlobalSearch() {
         onFocus={() => query && setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder={t('topbar.searchPlaceholder')}
-        className="h-6 pl-8 pr-3 text-xs bg-muted/50 border-none"
+        className="h-7 pl-8 pr-3 text-xs bg-muted/50 border border-border/60 rounded-lg"
       />
 
       {open && query && (
