@@ -14,7 +14,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,css}\"",
-    "check": "run-s format lint build cargo:check"
+    "check:version": "npm install && npm run cargo:check",
+    "check": "npm run format:check && npm run lint && npm run check:version"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

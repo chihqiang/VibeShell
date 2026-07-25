@@ -237,56 +237,46 @@ pub fn list_local_files_recursive(path: &str) -> Result<Vec<(String, String, u64
     }
 }
 
-/// Collect files recursively by trying to `read_dir` each entry.
-/// This avoids stat/lstat/d_type entirely — if read_dir succeeds it is a directory,
-/// if it fails with ENOTDIR it is a regular file.
+/// Collect files recursively, using `metadata().is_dir()` to determine
+/// directories (one stat syscall per entry) instead of trying `read_dir`
+/// first (which opens and scans a directory handle just for probing).
 fn collect_files_via_readdir(
     dir: &Path,
     base: &Path,
     result: &mut Vec<(String, String, u64)>,
 ) -> Result<(), String> {
-    let entries =
-        fs::read_dir(dir).map_err(|e| format!("Failed to read dir '{}': {}", dir.display(), e))?;
+    let dir_entries =
+        fs::read_dir(dir).map_err(|e| format!("Failed to read directory '{}': {}", dir.display(), e))?;
 
-    for entry in entries {
+    for entry in dir_entries {
         let entry =
-            entry.map_err(|e| format!("Failed to read entry in '{}': {}", dir.display(), e))?;
+            entry.map_err(|e| format!("Failed to read entry '{}': {}", dir.display(), e))?;
         let path = entry.path();
+        let file_type = entry.file_type().map_err(|e| {
+            format!("Failed to get file type for '{}': {}", path.display(), e)
+        })?;
 
-        // Try read_dir — if it succeeds this IS a directory (and we can access it)
-        match fs::read_dir(&path) {
-            Ok(_) => {
+        if file_type.is_dir() {
+            if fs::read_dir(&path).is_ok() {
                 collect_files_via_readdir(&path, base, result)?;
+            } else {
+                // Directory exists but cannot be read — skip contents
+                log::warn!(
+                    "Warning: cannot read directory '{}', skipping files inside",
+                    path.display()
+                );
             }
-            Err(_) => {
-                // read_dir failed — could be ENOTDIR (regular file) or EACCES (inaccessible dir)
-                // Use metadata as fallback to distinguish
-                match fs::metadata(&path) {
-                    Ok(meta) if meta.is_dir() => {
-                        // Directory but can't read contents — skip
-                        log::warn!(
-                            "Warning: cannot read directory '{}', skipping files inside",
-                            path.display()
-                        );
-                    }
-                    Ok(meta) if meta.is_file() => {
-                        // Regular file (or symlink to file)
-                        let relative = path
-                            .strip_prefix(base)
-                            .unwrap_or(&path)
-                            .to_string_lossy()
-                            .to_string();
-                        result.push((relative, path.to_string_lossy().to_string(), meta.len()));
-                    }
-                    Ok(_) => {
-                        // Symlink or other special type — skip
-                    }
-                    Err(e) => {
-                        // Can't access at all — skip
-                        log::warn!("Warning: cannot stat '{}', skipping: {}", path.display(), e);
-                    }
-                }
+        } else if file_type.is_file() {
+            if let Ok(meta) = fs::metadata(&path) {
+                let relative = path
+                    .strip_prefix(base)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .to_string();
+                result.push((relative, path.to_string_lossy().to_string(), meta.len()));
             }
+        } else {
+            // Symlink, socket, etc. — skip (metadata follows the link, not useful here)
         }
     }
     Ok(())
@@ -796,9 +786,22 @@ fn chmod_recursive(
     uid: Option<u32>,
     gid: Option<u32>,
 ) -> Result<(), String> {
-    let mut stack = vec![dir.to_path_buf()];
+    use std::collections::HashSet;
+    const MAX_DEPTH: usize = 50;
+    let mut visited: HashSet<PathBuf> = HashSet::new();
+    let mut stack: Vec<(PathBuf, usize)> = vec![(dir.to_path_buf(), 0)];
 
-    while let Some(current) = stack.pop() {
+    while let Some((current, depth)) = stack.pop() {
+        // Canonicalize path to detect symlink cycles across different path text.
+        let canon = sftp.realpath(&current).unwrap_or_else(|_| current.clone());
+        if !visited.insert(canon) {
+            continue;
+        }
+        if depth >= MAX_DEPTH {
+            log::warn!("[chmod] max depth ({}) reached at {}", MAX_DEPTH, current.display());
+            continue;
+        }
+
         set_file_attrs(sftp, &current, mode, uid, gid)?;
 
         let entries = match sftp.readdir(&current) {
@@ -808,7 +811,7 @@ fn chmod_recursive(
 
         for (entry_path, entry_stat) in entries {
             if entry_stat.is_dir() {
-                stack.push(entry_path);
+                stack.push((entry_path, depth + 1));
             } else {
                 set_file_attrs(sftp, &entry_path, mode, uid, gid)?;
             }

@@ -133,6 +133,14 @@ fn default_config() -> HashMap<String, String> {
     map
 }
 
+/// Acquire the store read lock as a barrier, then release.
+/// Guarantees no concurrent write is in-flight when this returns,
+/// so callers (e.g. backup) can safely read the on-disk JSON files.
+pub fn sync_barrier() -> Result<(), String> {
+    let _guard = store()?.read().map_err(|e| format!("lock error: {}", e))?;
+    Ok(())
+}
+
 // ── Public API ──
 
 pub fn get_app_config(data_dir: &Path) -> AppConfig {

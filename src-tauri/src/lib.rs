@@ -53,7 +53,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_os::init())
         .setup(|_app| {
@@ -90,7 +89,6 @@ pub fn run() {
             sftp::sftp_read_file,
             sftp::sftp_write_file,
             sftp::sftp_upload_file_progress,
-            sftp::sftp_upload_file_resume,
             sftp::sftp_download_file_progress,
             sftp::sftp_cancel_transfer,
             sftp::sftp_list_local_files,

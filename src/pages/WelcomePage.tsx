@@ -58,6 +58,7 @@ export function WelcomePage() {
 
   const [quickInput, setQuickInput] = useState('');
   const [connecting, setConnecting] = useState(false);
+  const [defaultUsername, setDefaultUsername] = useState('');
 
   const [sysInfo, setSysInfo] = useState({
     platform: '',
@@ -79,6 +80,9 @@ export function WelcomePage() {
 
   useEffect(() => {
     loadData();
+    getSshDefaults()
+      .then((d) => setDefaultUsername(d.username))
+      .catch(() => {});
     getVersion().then((v) => setSysInfo((prev) => ({ ...prev, appVersion: v })));
     setSysInfo((prev) => ({
       ...prev,
@@ -116,7 +120,7 @@ export function WelcomePage() {
   const handleQuickConnect = async () => {
     if (!parsed?.hostname || connecting) return;
 
-    let username = parsed.username;
+    let username = parsed.username || defaultUsername;
     if (!username) {
       const defaults = await getSshDefaults();
       username = defaults.username;
@@ -186,7 +190,10 @@ export function WelcomePage() {
 
             {showPreview && parsed && (
               <div className="flex flex-wrap items-center gap-1.5 px-1 animate-fade-in">
-                <ParsedChip icon={<User size={10} />} label={parsed.username || t('dashboard.defaultUser')} />
+                <ParsedChip
+                  icon={<User size={10} />}
+                  label={parsed.username || defaultUsername || t('dashboard.defaultUser')}
+                />
                 <ChevronRight size={10} className="text-muted-foreground/40" />
                 <ParsedChip icon={<Globe size={10} />} label={`${parsed.hostname}:${parsed.port}`} />
                 {parsed.password && <ParsedChip icon={<Lock size={10} />} label="••••••" highlight />}

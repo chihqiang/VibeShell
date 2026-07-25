@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
-import { useNotify } from '@/hooks/use-notify';
 import { TAURI_EVENTS } from '@/constants';
 import type { MonitorEvent } from '@/types/monitor';
 
@@ -11,6 +10,9 @@ type ListenerEntry = {
   unlisten: UnlistenFn;
   refCount: number;
   callbacks: Set<(event: MonitorEvent) => void>;
+  /** Set to true when released — the async `listen()` then-handler checks this
+   *  to avoid a stale listener leak if `release()` runs before `listen()` resolves. */
+  cancelled: boolean;
 };
 
 let activeEntry: ListenerEntry | null = null;
@@ -31,14 +33,15 @@ function acquire(tabId: string, cb: (event: MonitorEvent) => void): () => void {
   const callbacks = new Set<(event: MonitorEvent) => void>();
   callbacks.add(cb);
 
-  const entry: ListenerEntry = { tabId, unlisten: () => {}, refCount: 1, callbacks };
+  const entry: ListenerEntry = { tabId, unlisten: () => {}, refCount: 1, callbacks, cancelled: false };
   activeEntry = entry;
 
   listen<MonitorEvent>(TAURI_EVENTS.SSH_MONITOR, (event) => {
     if (event.payload.tab_id !== entry.tabId) return;
     for (const fn of entry.callbacks) fn(event.payload);
   }).then((unlisten) => {
-    if (entry !== activeEntry) {
+    // If the entry was released before listen() resolved, clean up immediately.
+    if (entry.cancelled) {
       unlisten();
       return;
     }
@@ -53,6 +56,7 @@ function release(cb: (event: MonitorEvent) => void) {
   activeEntry.callbacks.delete(cb);
   activeEntry.refCount--;
   if (activeEntry.refCount <= 0) {
+    activeEntry.cancelled = true;
     activeEntry.unlisten();
     activeEntry = null;
   }
@@ -65,7 +69,6 @@ function release(cb: (event: MonitorEvent) => void) {
  */
 export function useMonitorData(): MonitorEvent | null {
   const { tabs, activeTabId } = useTerminalTabs();
-  const { notifyError } = useNotify();
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const tabId = activeTab?.type === 'terminal' && activeTab.status === 'connected' ? activeTab.id : null;
 
@@ -89,7 +92,7 @@ export function useMonitorData(): MonitorEvent | null {
 
     const dispose = acquire(tabId, cb);
     return dispose;
-  }, [tabId, notifyError]);
+  }, [tabId]);
 
   return data;
 }

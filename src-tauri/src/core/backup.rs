@@ -13,6 +13,7 @@ pub fn backup_data(data_dir: &Path, destination: &str) -> Result<(), String> {
         return Err("Data directory does not exist, nothing to backup".to_string());
     }
 
+    store::sync_barrier()?;
     log::info!("[backup] starting backup to {}", destination);
 
     let file = fs::File::create(destination)

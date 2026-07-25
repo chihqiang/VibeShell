@@ -1,3 +1,4 @@
+import { basename } from '@tauri-apps/api/path';
 import { invoke } from '@/utils/invoke';
 import type { SftpListFilesResult, SftpChmodParams, ExpandedFile, ExpandResult } from '@/types/sftp';
 
@@ -67,12 +68,13 @@ export function sftpListLocalFiles(params: { path: string }): Promise<[string, s
 
 // ── 传输操作 ──
 
-/** 上传文件（带进度） */
+/** 上传文件（带进度），设置 resume=true 续传 */
 export function sftpUploadFileProgress(params: {
   tabId: string;
   localPath: string;
   remotePath: string;
   transferId: string;
+  resume?: boolean;
 }): Promise<void> {
   return invoke('sftp_upload_file_progress', params);
 }
@@ -106,7 +108,7 @@ export async function expandLocalFiles(
 
   await Promise.all(
     paths.map(async (p) => {
-      const name = p.split('/').pop() || p.split('\\').pop() || fallbackName;
+      const name = await basename(p).catch(() => fallbackName);
       const baseRc = baseRemotePath.replace(/\/?$/, '/') + name;
       try {
         const filesList = await sftpListLocalFiles({ path: p });
