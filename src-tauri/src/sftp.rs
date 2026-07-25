@@ -272,38 +272,19 @@ pub async fn sftp_upload_file_progress(
     local_path: String,
     remote_path: String,
     transfer_id: String,
+    resume: Option<bool>,
     chunk_size_kb: Option<usize>,
 ) -> Result<u64, String> {
+    let resume = resume.unwrap_or(false);
+    let action = if resume { "upload-resume" } else { "upload" };
     log::info!(
-        "[sftp] tab={}: upload-progress {} -> {} (transfer_id={})",
+        "[sftp] tab={}: {action} {} -> {} (transfer_id={})",
         tab_id, local_path, remote_path, transfer_id
     );
     with_transfer(
-        app_handle, tab_id, transfer_id, chunk_size_kb, "upload-progress",
+        app_handle, tab_id, transfer_id, chunk_size_kb, action,
         move |sftp, chunk_size, cancel, on_progress| {
-            core::sftp::upload_file(sftp, &local_path, &remote_path, false, Some(cancel), on_progress, chunk_size)
-        },
-    )
-    .await
-}
-
-#[tauri::command]
-pub async fn sftp_upload_file_resume(
-    app_handle: tauri::AppHandle,
-    tab_id: String,
-    local_path: String,
-    remote_path: String,
-    transfer_id: String,
-    chunk_size_kb: Option<usize>,
-) -> Result<u64, String> {
-    log::info!(
-        "[sftp] tab={}: upload-resume {} -> {} (transfer_id={})",
-        tab_id, local_path, remote_path, transfer_id
-    );
-    with_transfer(
-        app_handle, tab_id, transfer_id, chunk_size_kb, "upload-resume",
-        move |sftp, chunk_size, cancel, on_progress| {
-            core::sftp::upload_file(sftp, &local_path, &remote_path, true, Some(cancel), on_progress, chunk_size)
+            core::sftp::upload_file(sftp, &local_path, &remote_path, resume, Some(cancel), on_progress, chunk_size)
         },
     )
     .await
@@ -333,14 +314,15 @@ pub async fn sftp_download_file_progress(
 
 #[tauri::command]
 pub fn sftp_cancel_transfer(transfer_id: String) -> Result<(), String> {
-    if let Ok(map) = ACTIVE_TRANSFERS.read() {
-        if let Some(flag) = map.get(&transfer_id) {
-            flag.store(true, Ordering::Relaxed);
-            return Ok(());
-        }
-    }
-    {
-        log::warn!("Transfer not found");
+    let map = ACTIVE_TRANSFERS.read().map_err(|e| {
+        log::error!("Transfer lock poisoned: {}", e);
+        format!("Transfer lock poisoned: {}", e)
+    })?;
+    if let Some(flag) = map.get(&transfer_id) {
+        flag.store(true, Ordering::Relaxed);
+        Ok(())
+    } else {
+        log::warn!("Transfer not found: {}", transfer_id);
         Err("Transfer not found".to_string())
     }
 }
@@ -351,18 +333,10 @@ pub fn sftp_list_local_files(path: String) -> Result<Vec<(String, String, u64)>,
 }
 
 /// Check if a local path is a directory.
+/// Uses `metadata()` directly — avoids opening a directory handle just to
+/// check the type (the previous `read_dir`-first approach was O(n) for large dirs).
 #[tauri::command]
 pub fn sftp_is_directory(path: String) -> Result<bool, String> {
-    // Try read_dir first — if it succeeds, it's a directory
-    if let Ok(mut entries) = std::fs::read_dir(&path) {
-        if let Some(Ok(entry)) = entries.next() {
-            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                return Ok(true);
-            }
-        }
-        return Ok(true);
-    }
-    // Fallback to metadata
     match std::fs::metadata(&path) {
         Ok(m) => Ok(m.is_dir()),
         Err(_) => Ok(false),

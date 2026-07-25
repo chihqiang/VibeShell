@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Minus, Square, Search, Server, Loader2 } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -100,14 +100,23 @@ function GlobalSearch() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const filtered = query
-    ? hosts.filter(
-        (h) =>
-          h.name.toLowerCase().includes(query.toLowerCase()) ||
-          h.hostname.toLowerCase().includes(query.toLowerCase()) ||
-          h.username.toLowerCase().includes(query.toLowerCase()),
-      )
-    : [];
+  const filtered = useMemo(
+    () =>
+      query
+        ? hosts.filter(
+            (h) =>
+              h.name.toLowerCase().includes(query.toLowerCase()) ||
+              h.hostname.toLowerCase().includes(query.toLowerCase()) ||
+              h.username.toLowerCase().includes(query.toLowerCase()),
+          )
+        : [],
+    [hosts, query],
+  );
+
+  // Keep keyboard focus index in bounds when results change
+  useEffect(() => {
+    setFocusIdx((i) => Math.min(i, filtered.length - 1));
+  }, [filtered]);
 
   const connectHost = useCallback(
     async (host: HostConfig) => {

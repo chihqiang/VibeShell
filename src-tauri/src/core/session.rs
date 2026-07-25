@@ -35,10 +35,12 @@ pub struct TabSession {
     /// on the write path; the heartbeat thread uses `try_lock()` so it
     /// never blocks terminal I/O.
     pub last_activity: Instant,
-    /// Wake condvar — notified by `cleanup_session`/`disconnect` so threads
-    /// blocked on long-interval sleeps can respond immediately.
-    pub wake_cvar: Arc<Condvar>,
-    /// Cached UID→username and GID→tagName mappings, populated on first SFTP
+    /// Separate wake channels for reader / monitor / heartbeat threads.
+    /// Each thread sleeps on its own Condvar so `notify_all` only wakes the
+    /// intended thread (avoids thundering-herd from a shared Condvar).
+    pub reader_cvar: Arc<Condvar>,
+    pub monitor_cvar: Arc<Condvar>,
+    pub heartbeat_cvar: Arc<Condvar>,
     /// directory listing so subsequent listings need 0 remote queries.
     pub uid_cache: Arc<Mutex<HashMap<i64, String>>>,
     pub gid_cache: Arc<Mutex<HashMap<i64, String>>>,
@@ -182,8 +184,18 @@ pub fn do_connect(
         })?
 }
 
-fn monitor_script() -> String {
-    let parts = vec![
+/// Generate a platform-appropriate monitor script.
+fn monitor_script(remote_is_linux: bool) -> String {
+    if remote_is_linux {
+        linux_monitor_script()
+    } else {
+        macos_monitor_script()
+    }
+}
+
+/// Linux monitoring: /proc filesystem, top, free, etc.
+fn linux_monitor_script() -> String {
+    vec![
         r#"echo '---IP---'"#,
         r#"(hostname -I 2>/dev/null | awk '{print $1}' || ip -4 addr show scope global 2>/dev/null | awk '/inet /{print $2}' | head -1 || echo '')"#,
         r#"echo '---UPTIME---'"#,
@@ -202,8 +214,31 @@ fn monitor_script() -> String {
         r#"(df -h 2>/dev/null | awk 'NR>1{printf "%s|%s|%s\n", $6, $2, $4}' | grep '^/' || echo '')"#,
         r#"echo '---NET---'"#,
         r#"(cat /proc/net/dev 2>/dev/null | awk 'NR>2{rx+=$2; tx+=$10} END{printf "%d|%d\n", rx, tx}' || echo '')"#,
-    ];
-    parts.join(" && ")
+    ].join("; ")
+}
+
+/// macOS / *BSD monitoring: sysctl, vm_stat, ps, etc.
+fn macos_monitor_script() -> String {
+    vec![
+        r#"echo '---IP---'"#,
+        r#"(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || ifconfig 2>/dev/null | grep 'inet ' | grep -v 127.0.0.1 | awk '{print $2}' | head -1 || echo '')"#,
+        r#"echo '---UPTIME---'"#,
+        r#"(uptime 2>/dev/null | sed 's/.*up //' | sed 's/,.*//' || echo '')"#,
+        r#"echo '---LOAD---'"#,
+        r#"(sysctl -n vm.loadavg 2>/dev/null | awk '{print $2, $3, $4}' || echo '')"#,
+        r#"echo '---CPU---'"#,
+        r#"(top -l 1 -n 0 2>/dev/null | grep 'CPU usage' | awk '{print $3}' | sed 's/%//' || echo '')"#,
+        r#"echo '---MEM---'"#,
+        r#"(vm_stat 2>/dev/null | awk 'BEGIN{total=0;used=0}/^Pages active:/{a=$NF}/^Pages wired down:/{w=$NF}/^page size/{s=$8}END{printf \"%dMB / N/A\\n\", (a+w)*s/1048576}' || echo '')"#,
+        r#"echo '---SWAP---'"#,
+        r#"(sysctl -n vm.swapusage 2>/dev/null | awk '{print $2, $4, $6}' || echo '')"#,
+        r#"echo '---PS---'"#,
+        r#"(ps aux 2>/dev/null | sort -k4 -rn | head -16 | tail -15 | awk '{printf "%s|%s|%s|%s\n", $4, $3, $11, $2}' || echo '')"#,
+        r#"echo '---DF---'"#,
+        r#"(df -h 2>/dev/null | awk 'NR>1{printf "%s|%s|%s\n", $9, $2, $4}' | grep '^/' || echo '')"#,
+        r#"echo '---NET---'"#,
+        r#"(netstat -ib 2>/dev/null | awk 'NR>1{rx+=$7;tx+=$10} END{printf "%d|%d\n", rx, tx}' || echo '')"#,
+    ].join("; ")
 }
 
 fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEvent {
@@ -317,6 +352,23 @@ pub fn connect(
         format!("Shell start failed: {}", e)
     })?;
 
+    // Detect remote OS for platform-appropriate monitoring scripts.
+    // Uses a temporary channel so we don't interfere with the PTY shell.
+    let remote_is_linux = (|| -> bool {
+        let mut ch = match session.channel_session() {
+            Ok(ch) => ch,
+            Err(_) => return true,
+        };
+        if ch.exec("uname -s").is_err() {
+            return true;
+        }
+        let mut out = String::new();
+        ch.read_to_string(&mut out).ok();
+        ch.wait_close().ok();
+        out.trim() == "Linux"
+    })();
+    log::info!("[connect] tab={} remote OS: {}", tab_id, if remote_is_linux { "Linux" } else { "macOS/BSD" });
+
     session.set_blocking(false);
 
     log::info!(
@@ -327,8 +379,13 @@ pub fn connect(
     let cancel = Arc::new(AtomicBool::new(false));
     let buffer = Arc::new(Mutex::new(String::new()));
     let fail_count = Arc::new(AtomicU32::new(0));
-    let wake_mutex = Arc::new(Mutex::new(()));
-    let wake_cvar = Arc::new(Condvar::new());
+    // Three independent wake channels — one per background thread.
+    let reader_mutex = Arc::new(Mutex::new(()));
+    let reader_cvar = Arc::new(Condvar::new());
+    let monitor_mutex = Arc::new(Mutex::new(()));
+    let monitor_cvar = Arc::new(Condvar::new());
+    let heartbeat_mutex = Arc::new(Mutex::new(()));
+    let heartbeat_cvar = Arc::new(Condvar::new());
     let uid_cache = Arc::new(Mutex::new(HashMap::new()));
     let gid_cache = Arc::new(Mutex::new(HashMap::new()));
 
@@ -340,7 +397,9 @@ pub fn connect(
         cancel: cancel.clone(),
         buffer: buffer.clone(),
         last_activity: Instant::now(),
-        wake_cvar: wake_cvar.clone(),
+        reader_cvar: reader_cvar.clone(),
+        monitor_cvar: monitor_cvar.clone(),
+        heartbeat_cvar: heartbeat_cvar.clone(),
         uid_cache: uid_cache.clone(),
         gid_cache: gid_cache.clone(),
     }));
@@ -353,8 +412,8 @@ pub fn connect(
         buffer.clone(),
         cancel.clone(),
         fail_count.clone(),
-        wake_mutex.clone(),
-        wake_cvar.clone(),
+        reader_mutex.clone(),
+        reader_cvar.clone(),
     );
 
     // Start monitor thread
@@ -364,9 +423,10 @@ pub fn connect(
         handle.clone(),
         cancel.clone(),
         fail_count.clone(),
-        wake_mutex.clone(),
-        wake_cvar.clone(),
+        monitor_mutex.clone(),
+        monitor_cvar.clone(),
         monitor_interval_secs,
+        remote_is_linux,
     );
 
     // Start heartbeat thread
@@ -376,8 +436,8 @@ pub fn connect(
         handle.clone(),
         cancel.clone(),
         fail_count,
-        wake_mutex,
-        wake_cvar,
+        heartbeat_mutex,
+        heartbeat_cvar,
         heartbeat_interval_secs,
     );
 
@@ -387,7 +447,9 @@ pub fn connect(
         if let Some(old) = sessions.remove(tab_id) {
             if let Ok(inner) = old.lock() {
                 inner.cancel.store(true, Ordering::Relaxed);
-                inner.wake_cvar.notify_all();
+                inner.reader_cvar.notify_all();
+                inner.monitor_cvar.notify_all();
+                inner.heartbeat_cvar.notify_all();
             }
         }
         sessions.insert(tab_id.to_string(), handle);
@@ -416,7 +478,9 @@ pub fn disconnect(tab_id: &str) -> Result<(), String> {
     if let Some(state) = sessions.remove(tab_id) {
         let inner = state.lock().map_err(|e| e.to_string())?;
         inner.cancel.store(true, Ordering::Relaxed);
-        inner.wake_cvar.notify_all();
+        inner.reader_cvar.notify_all();
+        inner.monitor_cvar.notify_all();
+        inner.heartbeat_cvar.notify_all();
     }
     log::info!(
         "[disconnect] tab={}: removed (remaining sessions: {})",
@@ -426,19 +490,25 @@ pub fn disconnect(tab_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Remove a session from the global map. Safe to call from background threads
-/// after `cancel` has been set — the reader/monitor/heartbeat threads will see
-/// the cancel flag and exit on their next iteration.
+/// Remove a session from the global map. Uses `try_write()` to avoid deadlock:
+/// background threads may hold the inner `Mutex<TabSession>` while calling this,
+/// and the main thread may hold `SESSIONS.write()` while acquiring the inner lock.
+/// If the write lock is contended, defer cleanup — the session is already cancelled
+/// and will be cleaned up on next `disconnect()` or `connect()`.
 fn cleanup_session(tab_id: &str) {
-    if let Ok(mut sessions) = SESSIONS.write() {
+    if let Ok(mut sessions) = SESSIONS.try_write() {
         if let Some(state) = sessions.remove(tab_id) {
             if let Ok(inner) = state.lock() {
                 inner.cancel.store(true, Ordering::Relaxed);
-                inner.wake_cvar.notify_all();
+                inner.reader_cvar.notify_all();
+                inner.monitor_cvar.notify_all();
+                inner.heartbeat_cvar.notify_all();
             }
         }
+        log::info!("[cleanup] tab={}: session removed", tab_id);
+    } else {
+        log::debug!("[cleanup] tab={}: SESSIONS lock busy, deferring cleanup", tab_id);
     }
-    log::info!("[cleanup] tab={}: session removed", tab_id);
 }
 
 // ── Reader thread ──
@@ -521,17 +591,18 @@ fn spawn_reader(
 #[allow(clippy::too_many_arguments)]
 fn start_monitor(
     app_handle: &tauri::AppHandle,
-    tab_id: &str,
+    tab_id: &str, // unused, kept for API consistency
     handle: SessionHandle,
     cancel: Arc<AtomicBool>,
     fail_count: Arc<AtomicU32>,
     wake_mutex: Arc<Mutex<()>>,
     wake_cvar: Arc<Condvar>,
     interval_secs: u64,
+    remote_is_linux: bool,
 ) {
     let app = app_handle.clone();
     let tid = tab_id.to_string();
-    let script = monitor_script();
+    let script = monitor_script(remote_is_linux);
     thread::spawn(move || {
         while !cancel.load(Ordering::Relaxed) {
             // ── Collect monitor data (try_lock to avoid blocking terminal I/O) ──

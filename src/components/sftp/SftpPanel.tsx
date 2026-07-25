@@ -21,19 +21,19 @@ import {
 import { PathBreadcrumb, ContextMenu, TransferDialog, SftpToolbar } from '@/components/sftp';
 import { Button } from '@/components/ui/button';
 import { FileType } from '@/types/sftp';
-import { expandLocalFiles } from '@/services/sftpService';
-import type { FileEntry } from '@/types/sftp';
-import type { TransferItem } from '@/types';
-import { formatSize } from '@/utils';
-import { useNotify } from '@/hooks/use-notify';
-import { TAURI_EVENTS, SFTP_ROW_HEIGHT, SFTP_GRID_COLS, SFTP_FALLBACK_FOLDER_NAME } from '@/constants';
 import {
+  expandLocalFiles,
   sftpListFiles,
   sftpListFilesRecursive,
   sftpUploadFileProgress,
   sftpDownloadFileProgress,
   sftpCancelTransfer,
 } from '@/services/sftpService';
+import type { FileEntry } from '@/types/sftp';
+import type { TransferItem } from '@/types';
+import { formatSize } from '@/utils';
+import { useNotify } from '@/hooks/use-notify';
+import { TAURI_EVENTS, SFTP_ROW_HEIGHT, SFTP_GRID_COLS, SFTP_FALLBACK_FOLDER_NAME } from '@/constants';
 
 export function SftpPanel() {
   const { t } = useTranslation();
@@ -69,6 +69,11 @@ export function SftpPanel() {
   ).length;
 
   const sortedEntries = useMemo(() => {
+    // Backend already returns files sorted as directory-first + name asc.
+    // Skip resorting when the default sort is active.
+    if (sortKey === 'name' && sortDir === 'asc') {
+      return entries;
+    }
     const sorted = [...entries];
     sorted.sort((a, b) => {
       // Directories always first

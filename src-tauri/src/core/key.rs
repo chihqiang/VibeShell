@@ -154,11 +154,8 @@ fn finalize_key_import(
     name: String,
     file_name: String,
     password: Option<String>,
+    content: &str,
 ) -> Result<KeyEntry, String> {
-    let content = fs::read_to_string(dest_path).map_err(|e| {
-        log::error!("Failed to read key: {}", e);
-        format!("Failed to read key: {}", e)
-    })?;
     let fingerprint = match compute_fingerprint(&content, password.as_deref()) {
         Ok(fp) => fp,
         Err(e) => {
@@ -205,12 +202,19 @@ pub fn import_key(
         log::error!("Failed to create keys dir: {}", e);
         format!("Failed to create keys dir: {}", e)
     })?;
-    fs::copy(&expanded, &dest_path).map_err(|e| {
-        log::error!("Failed to copy key: {}", e);
-        format!("Failed to copy key: {}", e)
+
+    // Read source content once, then write to destination — avoids re-reading
+    // the file inside `finalize_key_import` (which previously called `read_to_string`).
+    let content = fs::read_to_string(&expanded).map_err(|e| {
+        log::error!("Failed to read key file: {}", e);
+        format!("Failed to read key file: {}", e)
+    })?;
+    fs::write(&dest_path, &content).map_err(|e| {
+        log::error!("Failed to write key: {}", e);
+        format!("Failed to write key: {}", e)
     })?;
 
-    finalize_key_import(&dest_path, original_name, dest_name, password)
+    finalize_key_import(&dest_path, original_name, dest_name, password, &content)
 }
 
 pub fn import_key_content(
@@ -229,7 +233,7 @@ pub fn import_key_content(
         format!("Failed to write key: {}", e)
     })?;
 
-    finalize_key_import(&dest_path, name, file_name, password)
+    finalize_key_import(&dest_path, name, file_name, password, &content)
 }
 
 pub fn delete_key(id: String) -> Result<(), String> {

@@ -6,7 +6,7 @@ pub mod models;
 pub mod session;
 pub mod sftp;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 /// Shared I/O buffer/chunk size used by sftp transfers and backup zip streaming.
@@ -62,7 +62,9 @@ pub fn log_path() -> PathBuf {
 static HOME_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 /// Cross-platform home directory (replaces unmaintained `dirs` crate).
-pub fn home_dir() -> PathBuf {
+/// Returns a `&'static Path` to avoid an unnecessary `PathBuf::clone()` on
+/// every call — the returned reference lives for the process lifetime.
+pub fn home_dir() -> &'static Path {
     HOME_DIR
         .get_or_init(|| {
             if let Ok(home) = std::env::var("HOME") {
@@ -74,5 +76,5 @@ pub fn home_dir() -> PathBuf {
             }
             PathBuf::from("/")
         })
-        .clone()
+        .as_path()
 }
