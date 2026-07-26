@@ -12,7 +12,7 @@ import { DOM_EVENTS, APP_NAME, SFTP_LABEL } from '@/constants';
 export function StatusBar() {
   const { t } = useTranslation();
   const { tabs, activeTabId } = useTerminalTabs();
-  const { toggleSftp, sftpOpen, toggleMonitor, monitorOpen } = useLayout();
+  const { toggleSftp, sftpOpen, toggleMonitor, monitorOpen, setActiveView } = useLayout();
   const [hosts, setHosts] = useState<HostConfig[]>([]);
 
   useEffect(() => {
@@ -73,7 +73,10 @@ export function StatusBar() {
       <div className="w-px h-3 bg-primary-foreground/15" />
 
       {/* 主机统计 */}
-      <button className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer">
+      <button
+        onClick={() => setActiveView('hosts')}
+        className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer"
+      >
         <Server size={11} />
         <span>{t('statusbar.hosts', { count: hosts.length })}</span>
       </button>
@@ -81,7 +84,10 @@ export function StatusBar() {
       <div className="w-px h-3 bg-primary-foreground/15" />
 
       {/* 连接统计 */}
-      <button className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer">
+      <button
+        onClick={() => setActiveView('hosts')}
+        className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer"
+      >
         {connectedCount > 0 ? <Wifi size={11} /> : <WifiOff size={11} />}
         <span>{t('statusbar.connected', { count: connectedCount })}</span>
       </button>

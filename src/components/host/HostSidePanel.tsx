@@ -19,7 +19,7 @@ import { useLayout } from '@/contexts/LayoutContext';
 import { useNotify } from '@/hooks/use-notify';
 import { listHosts, listTags, deleteHost, saveHost } from '@/services/hostService';
 import { listKeys } from '@/services/keyService';
-import { sshTestConnect } from '@/services/sshService';
+
 import type { HostConfig } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 import { Input } from '@/components/ui/input';
@@ -92,7 +92,8 @@ export function HostSidePanel() {
         (h) =>
           h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           h.hostname.includes(searchQuery) ||
-          h.username.toLowerCase().includes(searchQuery.toLowerCase()),
+          h.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (h.tags && h.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))),
       ),
     [hosts, searchQuery],
   );
@@ -165,7 +166,6 @@ export function HostSidePanel() {
     setMenuOpenId(null);
     try {
       const config = await hostToConnectConfig(host, keys);
-      await sshTestConnect(config);
       addTerminalTab(config, host);
       const now = Date.now();
       await saveHost({ host: { ...host, last_connected_at: now } });

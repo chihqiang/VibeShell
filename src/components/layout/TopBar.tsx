@@ -8,7 +8,6 @@ import { cn, hostToConnectConfig } from '@/utils';
 import { DOM_EVENTS } from '@/constants';
 import { listHosts, saveHost } from '@/services/hostService';
 import { listKeys } from '@/services/keyService';
-import { sshTestConnect } from '@/services/sshService';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useNotify } from '@/hooks/use-notify';
@@ -134,7 +133,6 @@ function GlobalSearch() {
       setConnectingId(host.id);
       try {
         const config = await hostToConnectConfig(host, keys);
-        await sshTestConnect(config);
         addTerminalTab(config, host);
         const now = Date.now();
         await saveHost({ host: { ...host, last_connected_at: now } });
