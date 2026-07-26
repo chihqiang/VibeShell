@@ -532,22 +532,20 @@ pub fn disconnect(tab_id: &str) -> Result<(), String> {
 /// Remove a session from the global map. Uses `try_write()` to avoid deadlock:
 /// background threads may hold the inner `Mutex<TabSession>` while calling this,
 /// and the main thread may hold `SESSIONS.write()` while acquiring the inner lock.
-/// If the write lock is contended, defer cleanup — the session is already cancelled
-/// and will be cleaned up on next `disconnect()` or `connect()`.
+/// Remove the session from the global map, signal all background threads to exit.
+/// Blocks on the write lock — background operations holding the read lock should
+/// finish quickly (they wait on the cancel flag first).
 fn cleanup_session(tab_id: &str) {
-    if let Ok(mut sessions) = SESSIONS.try_write() {
-        if let Some(state) = sessions.remove(tab_id) {
-            if let Ok(inner) = state.lock() {
-                inner.cancel.store(true, Ordering::Relaxed);
-                inner.reader_cvar.notify_all();
-                inner.monitor_cvar.notify_all();
-                inner.heartbeat_cvar.notify_all();
-            }
+    let Ok(mut sessions) = SESSIONS.write() else { return };
+    if let Some(state) = sessions.remove(tab_id) {
+        if let Ok(inner) = state.lock() {
+            inner.cancel.store(true, Ordering::Relaxed);
+            inner.reader_cvar.notify_all();
+            inner.monitor_cvar.notify_all();
+            inner.heartbeat_cvar.notify_all();
         }
-        log::info!("[cleanup] tab={}: session removed", tab_id);
-    } else {
-        log::debug!("[cleanup] tab={}: SESSIONS lock busy, deferring cleanup", tab_id);
     }
+    log::info!("[cleanup] tab={}: session removed", tab_id);
 }
 
 // ── Reader thread ──

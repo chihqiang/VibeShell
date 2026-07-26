@@ -18,7 +18,7 @@ pub fn run() {
         // If creation failed, log_file may still be writable.
         // Attempt to touch it now so that fern::log_file succeeds.
         // If this also fails, we log a warning and skip file logging.
-        let _ = std::fs::OpenOptions::new().create(true).write(true).open(&log_file);
+        let _ = std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(&log_file);
     }
 
     fern::Dispatch::new()

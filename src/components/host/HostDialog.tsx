@@ -122,7 +122,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
                 type="text"
                 value={form.name}
                 onChange={(e) => updateField('name', e.target.value)}
-                placeholder="My Server"
+                placeholder={t('connection.namePlaceholder')}
               />
             </div>
 

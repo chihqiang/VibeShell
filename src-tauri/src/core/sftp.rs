@@ -13,6 +13,7 @@ pub type ProgressFn = dyn Fn(u64, u64, &str) + Send + Sync;
 /// Generic chunked transfer loop, shared by upload and download.
 /// Reads from `reader`, writes to `writer`, calls `on_progress` after each chunk.
 /// Returns total bytes transferred.
+#[allow(clippy::too_many_arguments)]
 fn transfer_loop(
     reader: &mut dyn Read,
     writer: &mut dyn Write,

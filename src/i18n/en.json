@@ -47,6 +47,7 @@
     "hostDeleted": "Host deleted",
     "keyImported": "Key imported",
     "name": "Connection Name",
+    "namePlaceholder": "My Server",
     "connecting": "Connecting...",
     "testConnection": "Test Connection"
   },
@@ -253,6 +254,10 @@
     "day": "d",
     "hour": "h",
     "minute": "m"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "retry": "Try again"
   },
   "statusbar": {
     "hosts": "{{count}} hosts",

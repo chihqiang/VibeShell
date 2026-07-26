@@ -47,6 +47,7 @@
     "hostDeleted": "主机已删除",
     "keyImported": "密钥已导入",
     "name": "连接名称",
+    "namePlaceholder": "我的服务器",
     "connecting": "连接中...",
     "testConnection": "测试连接"
   },
@@ -253,6 +254,10 @@
     "day": "天",
     "hour": "小时",
     "minute": "分钟"
+  },
+  "errorBoundary": {
+    "title": "出现了意外错误",
+    "retry": "重试"
   },
   "statusbar": {
     "hosts": "{{count}} 台主机",
