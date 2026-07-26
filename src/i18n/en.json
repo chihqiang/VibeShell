@@ -42,9 +42,15 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
+    "hostAdded": "Host added",
+    "hostUpdated": "Host updated",
+    "hostDeleted": "Host deleted",
+    "keyImported": "Key imported",
     "name": "Connection Name",
+    "namePlaceholder": "My Server",
     "connecting": "Connecting...",
-    "testConnection": "Test Connection"
+    "testConnection": "Test Connection",
+    "testConnectionSuccess": "Connection successful"
   },
   "sftp": {
     "upload": "Upload",
@@ -101,13 +107,20 @@
     "transferStatus_paused": "Paused",
     "transferStatus_completed": "Completed",
     "transferStatus_failed": "Failed",
+    "transferStatus_cancelled": "Cancelled",
+    "transferAll": "All",
+    "transferActive_": "Active",
+    "transferCompleted": "Completed",
+    "transferFailed_": "Failed/Cancelled",
     "transferCancel": "Cancel",
     "transferRetry": "Retry",
+    "transferResume": "Resume",
     "transferDirection": "Dir",
     "transferUpload": "Upload",
     "transferDownload": "Download",
     "transferCancelled": "Cancelled",
     "transferClearCompleted": "Clear completed",
+    "transferQueued": "Queued",
     "transferIdle": "No transfers",
     "loadFileError": "Failed to load file"
   },
@@ -148,6 +161,9 @@
     "defaultHostname": "Default Hostname",
     "defaultUsername": "Default Username",
     "monitorInterval": "Monitor Interval (sec)",
+    "unsavedChanges": "Unsaved changes",
+    "reset": "Reset",
+    "saveSettings": "Save Settings",
     "monitorIntervalHint": "How often to refresh server stats. Min 1, default 4.",
     "heartbeatInterval": "Heartbeat Interval (sec)",
     "heartbeatIntervalHint": "Connection keepalive check interval. Min 3, default 10.",
@@ -159,7 +175,7 @@
     "reconnectMaxDelay": "Max Delay (sec)",
     "reconnectMaxDelayHint": "Maximum backoff delay. Default 30.",
     "backup": "Backup & Restore",
-    "backupDesc": "Export all hosts, keys (without passwords) to a ZIP file, or restore from a backup. Restored data is merged with existing data — same-ID entries are overwritten.",
+    "backupDesc": "Export all hosts, keys (without passwords) to a JSON file, or restore from a backup. Restored data is merged with existing data — same-ID entries are overwritten.",
     "backupAction": "Export Backup",
     "restoreAction": "Restore Backup",
     "backupSuccess": "✅ Backup successful",
@@ -239,6 +255,10 @@
     "day": "d",
     "hour": "h",
     "minute": "m"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "retry": "Try again"
   },
   "statusbar": {
     "hosts": "{{count}} hosts",

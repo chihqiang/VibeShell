@@ -48,11 +48,6 @@ pub fn data_dir() -> PathBuf {
     home_dir().join(".vibeshell")
 }
 
-/// SSH key storage directory: `$DATA_DIR/keys`
-pub fn keys_path() -> PathBuf {
-    data_dir().join("keys")
-}
-
 /// Daily-rotated log file path: `$DATA_DIR/log/YYYY-MM-DD.log`
 pub fn log_path() -> PathBuf {
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();

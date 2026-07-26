@@ -19,7 +19,7 @@ import { useLayout } from '@/contexts/LayoutContext';
 import { useNotify } from '@/hooks/use-notify';
 import { listHosts, listTags, deleteHost, saveHost } from '@/services/hostService';
 import { listKeys } from '@/services/keyService';
-import { sshTestConnect } from '@/services/sshService';
+
 import type { HostConfig } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 import { Input } from '@/components/ui/input';
@@ -92,7 +92,8 @@ export function HostSidePanel() {
         (h) =>
           h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           h.hostname.includes(searchQuery) ||
-          h.username.toLowerCase().includes(searchQuery.toLowerCase()),
+          h.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (h.tags && h.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))),
       ),
     [hosts, searchQuery],
   );
@@ -165,7 +166,6 @@ export function HostSidePanel() {
     setMenuOpenId(null);
     try {
       const config = await hostToConnectConfig(host, keys);
-      await sshTestConnect(config);
       addTerminalTab(config, host);
       const now = Date.now();
       await saveHost({ host: { ...host, last_connected_at: now } });
@@ -184,6 +184,7 @@ export function HostSidePanel() {
     if (!confirmDeleteId) return;
     try {
       await deleteHost({ id: confirmDeleteId });
+      notify(t('connection.hostDeleted'));
       setHosts((prev) => prev.filter((h) => h.id !== confirmDeleteId));
       setConfirmDeleteId(null);
       window.dispatchEvent(new CustomEvent(DOM_EVENTS.HOSTS_CHANGED));
@@ -201,6 +202,10 @@ export function HostSidePanel() {
         key={host.id}
         className="group flex items-center gap-2 h-8 px-3 cursor-pointer hover:bg-muted/70 hover:shadow-sm transition-all duration-150 relative"
         onClick={() => openTerminal(host)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenuOpenId(host.id);
+        }}
       >
         <div
           className={cn(

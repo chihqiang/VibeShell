@@ -2,6 +2,8 @@ import { basename } from '@tauri-apps/api/path';
 import { invoke } from '@/utils/invoke';
 import type { SftpListFilesResult, SftpChmodParams, ExpandedFile, ExpandResult } from '@/types/sftp';
 
+const EXPAND_CONCURRENCY = 4; // 并发展开的文件数
+
 // ── SFTP 文件操作 ──
 
 /** 列出远程目录文件 */
@@ -94,6 +96,21 @@ export function sftpCancelTransfer(params: { transferId: string }): Promise<void
   return invoke('sftp_cancel_transfer', params);
 }
 
+// ── 并发限制工具 ──
+
+/** 并发限制版 Promise.all，每次最多 concurrency 个任务并行 */
+async function pMap<T, R>(items: T[], fn: (item: T) => Promise<R>, concurrency: number): Promise<R[]> {
+  const results: R[] = [];
+  const queue = items.entries();
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    for (const [i, item] of queue) {
+      results[i] = await fn(item);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 // ── 文件展开工具 ──
 
 /** 展开本地文件路径列表 */
@@ -106,8 +123,9 @@ export async function expandLocalFiles(
   const files: ExpandedFile[] = [];
   const failures: ExpandResult['failures'] = [];
 
-  await Promise.all(
-    paths.map(async (p) => {
+  await pMap(
+    paths,
+    async (p) => {
       const name = await basename(p).catch(() => fallbackName);
       const baseRc = baseRemotePath.replace(/\/?$/, '/') + name;
       try {
@@ -130,7 +148,8 @@ export async function expandLocalFiles(
       } catch (e) {
         failures.push({ name, localPath: p, remotePath: baseRc, error: String(e) });
       }
-    }),
+    },
+    EXPAND_CONCURRENCY,
   );
 
   return { files, failures };

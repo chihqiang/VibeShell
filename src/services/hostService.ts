@@ -1,4 +1,5 @@
 import { invoke } from '@/utils/invoke';
+import { listKeys } from './keyService';
 import type { HostConfig } from '@/types/host';
 import type { HostFormState } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
@@ -56,7 +57,7 @@ export function hostConfigToFormState(host: HostConfig): HostFormState {
     port: host.port,
     username: host.username,
     authMethod: host.auth_method,
-    password: host.auth_method === 'password' ? host.password || '' : '',
+    password: host.password || '',
     privateKeyPath: host.private_key_path || '',
     keyPassphrase: host.auth_method === 'key' ? host.password || '' : '',
     tags: host.tags || [],
@@ -72,16 +73,10 @@ export function formStateToHostPayload(form: HostFormState, existing?: HostConfi
     port: form.port || 22,
     username: form.username,
     auth_method: form.authMethod,
-    password: form.authMethod === 'password' ? form.password : form.keyPassphrase || null,
-    private_key_path: form.authMethod === 'key' ? form.privateKeyPath || null : null,
+    password: form.password,
+    private_key_path: existing?.private_key_path || '',
     tags: form.tags,
     created_at: existing?.created_at || 0,
     updated_at: Date.now(),
   };
-}
-
-// 延迟导入避免循环依赖
-async function listKeys(): Promise<KeyEntry[]> {
-  const { listKeys: fn } = await import('./keyService');
-  return fn();
 }

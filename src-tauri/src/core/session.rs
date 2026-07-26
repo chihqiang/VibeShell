@@ -85,6 +85,24 @@ static SESSIONS: LazyLock<RwLock<HashMap<String, SessionHandle>>> =
 
 // ── do_connect (moved from core/ssh.rs) ──
 
+/// RAII guard that removes a temporary key file on drop, even on panic.
+/// Used when extracting a key from the database to a temp file for ssh2 auth.
+struct TempKeyGuard(Option<PathBuf>);
+
+impl TempKeyGuard {
+    fn new(path: PathBuf) -> Self {
+        Self(Some(path))
+    }
+}
+
+impl Drop for TempKeyGuard {
+    fn drop(&mut self) {
+        if let Some(path) = self.0.take() {
+            std::fs::remove_file(&path).ok();
+        }
+    }
+}
+
 fn expand_path(path: &str) -> PathBuf {
     if path.starts_with('~') {
         core::home_dir().join(&path[2..])
@@ -130,13 +148,34 @@ fn do_connect_inner(
     })?;
 
     if let Some(key_path) = private_key_path {
-        let expanded = expand_path(key_path);
-        session
-            .userauth_pubkey_file(username, None, &expanded, password)
-            .map_err(|e| {
-                log::error!("Key auth failed: {}", e);
-                format!("Key auth failed: {}", e)
-            })?;
+        // Support vibeshell://key/<uuid> -- read key content from SQLite
+        if let Some(key_id) = key_path.strip_prefix("vibeshell://key/") {
+            let content = super::store::get_key_content(key_id)?
+                .ok_or_else(|| format!("Key not found: {}", key_id))?;
+            let tmp_dir = std::env::temp_dir().join("vibeshell_keys");
+            std::fs::create_dir_all(&tmp_dir)
+                .map_err(|e| format!("create temp key dir: {}", e))?;
+            let tmp_path = tmp_dir.join(key_id).to_path_buf();
+            std::fs::write(&tmp_path, &content)
+                .map_err(|e| format!("write temp key: {}", e))?;
+            let _guard = TempKeyGuard::new(tmp_path.clone());
+            let result = session
+                .userauth_pubkey_file(username, None, &tmp_path, password)
+                .map_err(|e| {
+                    log::error!("Key auth failed: {}", e);
+                    format!("Key auth failed: {}", e)
+                });
+            // _guard drops here, removing the temp file
+            result?;
+        } else {
+            let key_file = expand_path(key_path);
+            session
+                .userauth_pubkey_file(username, None, &key_file, password)
+                .map_err(|e| {
+                    log::error!("Key auth failed: {}", e);
+                    format!("Key auth failed: {}", e)
+                })?;
+        };
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);
@@ -493,22 +532,20 @@ pub fn disconnect(tab_id: &str) -> Result<(), String> {
 /// Remove a session from the global map. Uses `try_write()` to avoid deadlock:
 /// background threads may hold the inner `Mutex<TabSession>` while calling this,
 /// and the main thread may hold `SESSIONS.write()` while acquiring the inner lock.
-/// If the write lock is contended, defer cleanup — the session is already cancelled
-/// and will be cleaned up on next `disconnect()` or `connect()`.
+/// Remove the session from the global map, signal all background threads to exit.
+/// Blocks on the write lock — background operations holding the read lock should
+/// finish quickly (they wait on the cancel flag first).
 fn cleanup_session(tab_id: &str) {
-    if let Ok(mut sessions) = SESSIONS.try_write() {
-        if let Some(state) = sessions.remove(tab_id) {
-            if let Ok(inner) = state.lock() {
-                inner.cancel.store(true, Ordering::Relaxed);
-                inner.reader_cvar.notify_all();
-                inner.monitor_cvar.notify_all();
-                inner.heartbeat_cvar.notify_all();
-            }
+    let Ok(mut sessions) = SESSIONS.write() else { return };
+    if let Some(state) = sessions.remove(tab_id) {
+        if let Ok(inner) = state.lock() {
+            inner.cancel.store(true, Ordering::Relaxed);
+            inner.reader_cvar.notify_all();
+            inner.monitor_cvar.notify_all();
+            inner.heartbeat_cvar.notify_all();
         }
-        log::info!("[cleanup] tab={}: session removed", tab_id);
-    } else {
-        log::debug!("[cleanup] tab={}: SESSIONS lock busy, deferring cleanup", tab_id);
     }
+    log::info!("[cleanup] tab={}: session removed", tab_id);
 }
 
 // ── Reader thread ──

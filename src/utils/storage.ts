@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** 判断两个值是否类型相同 */
-function isSameType(a: unknown, b: unknown): boolean {
+/** 判断两个值的结构是否兼容（键集合和类型一致） */
+function isShapeCompatible(a: unknown, b: unknown): boolean {
   if (a === null || b === null) return a === null && b === null;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
   if (typeof a !== typeof b) return false;
   if (typeof a === 'object' && typeof b === 'object') {
+    const aKeys = Object.keys(a as Record<string, unknown>);
     const bKeys = Object.keys(b as Record<string, unknown>);
+    // 双向检查：键集合必须完全相同
+    if (aKeys.length !== bKeys.length) return false;
     return bKeys.every((k) => k in (a as Record<string, unknown>));
   }
   return true;
@@ -18,7 +21,7 @@ export function getStorage<T>(key: string, defaultValue: T): T {
     const raw = localStorage.getItem(key);
     if (raw === null) return defaultValue;
     const parsed: unknown = JSON.parse(raw);
-    if (!isSameType(parsed, defaultValue)) return defaultValue;
+    if (!isShapeCompatible(parsed, defaultValue)) return defaultValue;
     return parsed as T;
   } catch {
     return defaultValue;
@@ -35,7 +38,9 @@ export function useStorage<T>(key: string, defaultValue: T): [T, (value: T) => v
   const [value, setValue] = useState<T>(() => getStorage(key, defaultValue));
 
   const defaultRef = useRef(defaultValue);
-  defaultRef.current = defaultValue;
+  useEffect(() => {
+    defaultRef.current = defaultValue;
+  }, [defaultValue]);
 
   useEffect(() => {
     const handler = (e: StorageEvent) => {

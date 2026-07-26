@@ -20,7 +20,7 @@ export type ImportMode = 'file' | 'paste';
 export type TransferDirection = 'upload' | 'download';
 
 /** 传输状态 */
-export type TransferStatus = 'pending' | 'uploading' | 'downloading' | 'paused' | 'completed' | 'failed';
+export type TransferStatus = 'pending' | 'uploading' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled';
 
 /** SFTP 传输进度阶段 */
 export type SftpProgressPhase = 'uploading' | 'downloading';

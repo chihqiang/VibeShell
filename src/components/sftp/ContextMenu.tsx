@@ -67,7 +67,9 @@ export function ContextMenu({
   } = useFileActions(entry, tabId, onClose, onRefresh, onDownload, hostname, port, username);
 
   const dialogOpenRef = useRef(false);
-  dialogOpenRef.current = dialogOpen;
+  useEffect(() => {
+    dialogOpenRef.current = dialogOpen;
+  }, [dialogOpen]);
 
   useEffect(() => {
     if (!ctxMenu) return;

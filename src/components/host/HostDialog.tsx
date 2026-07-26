@@ -14,6 +14,8 @@ import type { HostConfig } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 import { getSshDefaults } from '@/services/configService';
 import { useNotify } from '@/hooks/use-notify';
+import { sshTestConnect } from '@/services/sshService';
+
 import { DEFAULT_SSH_PORT } from '@/constants';
 interface HostDialogProps {
   open: boolean;
@@ -27,7 +29,7 @@ export { type HostConfig };
 
 export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDialogProps) {
   const { t } = useTranslation();
-  const { notifyError } = useNotify();
+  const { notify, notifyError } = useNotify();
   const editing = !!host;
   const [form, setForm] = useState<HostFormState>(() =>
     host
@@ -46,6 +48,26 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
   );
   const [saving, setSaving] = useState(false);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const portValid = form.port >= 1 && form.port <= 65535;
+
+  async function handleTestConnect() {
+    setTesting(true);
+    try {
+      const banner = await sshTestConnect({
+        hostname: form.hostname,
+        port: form.port || DEFAULT_SSH_PORT,
+        username: form.username,
+        password: form.authMethod === 'password' ? form.password || null : null,
+        privateKeyPath: form.authMethod === 'key' ? form.privateKeyPath || null : null,
+      });
+      notify(`${t('connection.testConnectionSuccess')}: ${banner}`);
+    } catch (e) {
+      notifyError(e);
+    } finally {
+      setTesting(false);
+    }
+  }
 
   // Fetch SSH defaults and fill form when opening for new host
   useEffect(() => {
@@ -84,6 +106,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
     setSaving(true);
     try {
       await saveHost({ host: formStateToHostPayload(form, host) });
+      notify(editing ? t('connection.hostUpdated') : t('connection.hostAdded'));
       onClose();
     } catch (e) {
       notifyError(e);
@@ -120,7 +143,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
                 type="text"
                 value={form.name}
                 onChange={(e) => updateField('name', e.target.value)}
-                placeholder="My Server"
+                placeholder={t('connection.namePlaceholder')}
               />
             </div>
 
@@ -147,17 +170,27 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
           </div>
 
           <DialogFooter>
-            <div className="flex gap-2 ml-auto">
-              <Button variant="outline" size="sm" onClick={onClose}>
-                {t('connection.cancel')}
-              </Button>
+            <div className="flex gap-2">
               <Button
+                variant="outline"
                 size="sm"
-                disabled={!form.name || !form.hostname || !form.username || saving}
-                onClick={handleSave}
+                onClick={handleTestConnect}
+                disabled={testing || !form.hostname || saving}
               >
-                {saving ? t('common.loading') : t('connection.save')}
+                {testing ? t('common.loading') : t('connection.testConnection')}
               </Button>
+              <div className="flex gap-2 ml-auto">
+                <Button variant="outline" size="sm" onClick={onClose}>
+                  {t('connection.cancel')}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!form.name || !form.hostname || !form.username || !portValid || saving}
+                  onClick={handleSave}
+                >
+                  {saving ? t('common.loading') : t('connection.save')}
+                </Button>
+              </div>
             </div>
           </DialogFooter>
         </DialogContent>

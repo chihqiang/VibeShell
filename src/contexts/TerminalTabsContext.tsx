@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, useMemo, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sshDisconnect } from '@/services/sshService';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -163,7 +163,10 @@ function reducer(state: TabsState, action: TabsAction): TabsState {
 export function TerminalTabsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, null, createInitialState);
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
   const { t } = useTranslation();
 
   const tabs = useMemo(() => Array.from(state.tabMap.values()), [state.tabMap]);

@@ -8,9 +8,52 @@ use std::sync::Mutex;
 use super::models::FileEntry;
 use super::CHUNK_SIZE;
 
-
-
 pub type ProgressFn = dyn Fn(u64, u64, &str) + Send + Sync;
+
+/// Generic chunked transfer loop, shared by upload and download.
+/// Reads from `reader`, writes to `writer`, calls `on_progress` after each chunk.
+/// Returns total bytes transferred.
+#[allow(clippy::too_many_arguments)]
+fn transfer_loop(
+    reader: &mut dyn Read,
+    writer: &mut dyn Write,
+    total_size: u64,
+    cancel: Option<&AtomicBool>,
+    on_progress: &ProgressFn,
+    phase: &'static str,
+    buf_size: usize,
+    read_error_label: &'static str,
+    write_error_label: &'static str,
+) -> Result<u64, String> {
+    let mut buf = vec![0u8; buf_size];
+    let mut transferred: u64 = 0;
+
+    loop {
+        if let Some(c) = cancel {
+            if c.load(Ordering::Relaxed) {
+                return Ok(transferred);
+            }
+        }
+
+        let n = reader.read(&mut buf).map_err(|e| {
+            log::error!("Failed to read {}: {}", read_error_label, e);
+            format!("Failed to read {}: {}", read_error_label, e)
+        })?;
+        if n == 0 {
+            break;
+        }
+
+        writer.write_all(&buf[..n]).map_err(|e| {
+            log::error!("Failed to write {}: {}", write_error_label, e);
+            format!("Failed to write {}: {}", write_error_label, e)
+        })?;
+
+        transferred += n as u64;
+        on_progress(transferred, total_size, phase);
+    }
+
+    Ok(transferred)
+}
 
 fn open_remote(
     sftp: &ssh2::Sftp,
@@ -109,33 +152,19 @@ pub fn upload_file(
     ensure_remote_dir(sftp, remote_path)?;
     let mut remote_file = open_remote(sftp, remote_path, resume, remote_offset)?;
 
-    let buf_size = chunk_size.unwrap_or(CHUNK_SIZE);
-    let mut buf = vec![0u8; buf_size];
-    let mut transferred = remote_offset;
+    let bytes = transfer_loop(
+        &mut local_file,
+        &mut remote_file,
+        local_file_size,
+        cancel,
+        on_progress,
+        "uploading",
+        chunk_size.unwrap_or(CHUNK_SIZE),
+        "local file",
+        "remote file",
+    )?;
 
-    loop {
-        if let Some(c) = cancel {
-            if c.load(Ordering::Relaxed) {
-                return Ok(transferred);
-            }
-        }
-
-        let n = local_file.read(&mut buf).map_err(|e| {
-            log::error!("Failed to read local file: {}", e);
-            format!("Failed to read local file: {}", e)
-        })?;
-        if n == 0 {
-            break;
-        }
-        remote_file.write_all(&buf[..n]).map_err(|e| {
-            log::error!("Failed to write remote file: {}", e);
-            format!("Failed to write remote file: {}", e)
-        })?;
-        transferred += n as u64;
-        on_progress(transferred, local_file_size, "uploading");
-    }
-
-    Ok(transferred)
+    Ok(remote_offset + bytes)
 }
 
 /// Download a file in chunks, calling `on_progress` after each chunk.
@@ -170,33 +199,17 @@ pub fn download_file_chunked(
         format!("Failed to create local file: {}", e)
     })?;
 
-    let buf_size = chunk_size.unwrap_or(CHUNK_SIZE);
-    let mut buf = vec![0u8; buf_size];
-    let mut transferred: u64 = 0;
-
-    loop {
-        if let Some(c) = cancel {
-            if c.load(Ordering::Relaxed) {
-                return Ok(transferred);
-            }
-        }
-
-        let n = remote_file.read(&mut buf).map_err(|e| {
-            log::error!("Failed to read remote file: {}", e);
-            format!("Failed to read remote file: {}", e)
-        })?;
-        if n == 0 {
-            break;
-        }
-        local_file.write_all(&buf[..n]).map_err(|e| {
-            log::error!("Failed to write local file: {}", e);
-            format!("Failed to write local file: {}", e)
-        })?;
-        transferred += n as u64;
-        on_progress(transferred, remote_size, "downloading");
-    }
-
-    Ok(transferred)
+    transfer_loop(
+        &mut remote_file,
+        &mut local_file,
+        remote_size,
+        cancel,
+        on_progress,
+        "downloading",
+        chunk_size.unwrap_or(CHUNK_SIZE),
+        "remote file",
+        "local file",
+    )
 }
 
 /// Recursively list all files (not directories) under a path.
