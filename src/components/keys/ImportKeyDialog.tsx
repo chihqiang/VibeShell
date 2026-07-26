@@ -18,7 +18,7 @@ interface Props {
 
 export function ImportKeyDialog({ open, onClose, onImported }: Props) {
   const { t } = useTranslation();
-  const { notifyError } = useNotify();
+  const { notify, notifyError } = useNotify();
   const [mode, setMode] = useState<ImportMode>('file');
   const [name, setName] = useState('');
   const [keyContent, setKeyContent] = useState('');
@@ -31,6 +31,7 @@ export function ImportKeyDialog({ open, onClose, onImported }: Props) {
       const { open: showOpen } = await import('@tauri-apps/plugin-dialog');
       const selected = await showOpen({
         multiple: false,
+        filters: [{ name: 'SSH Keys', extensions: ['pem', 'pub', 'key', 'ppk'] }],
       });
       if (selected) {
         setSelectedFile(selected);
@@ -72,6 +73,7 @@ export function ImportKeyDialog({ open, onClose, onImported }: Props) {
       }
       reset();
       onImported?.(result);
+      notify(t('connection.keyImported'));
       onClose();
     } catch (e) {
       notifyError(e);
@@ -92,6 +94,8 @@ export function ImportKeyDialog({ open, onClose, onImported }: Props) {
     reset();
     onClose();
   }
+
+  const canSubmit = name && (mode === 'file' ? selectedFile : keyContent);
 
   return (
     <Dialog
@@ -191,7 +195,7 @@ export function ImportKeyDialog({ open, onClose, onImported }: Props) {
             <Button variant="outline" size="sm" onClick={handleClose}>
               {t('connection.cancel')}
             </Button>
-            <Button size="sm" onClick={handleImport} disabled={!name || importing}>
+            <Button size="sm" onClick={handleImport} disabled={!canSubmit || importing}>
               {importing ? t('common.loading') : t('sidebar.importKey')}
             </Button>
           </div>

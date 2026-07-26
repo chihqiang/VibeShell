@@ -27,7 +27,7 @@ export { type HostConfig };
 
 export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDialogProps) {
   const { t } = useTranslation();
-  const { notifyError } = useNotify();
+  const { notify, notifyError } = useNotify();
   const editing = !!host;
   const [form, setForm] = useState<HostFormState>(() =>
     host
@@ -46,6 +46,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
   );
   const [saving, setSaving] = useState(false);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const portValid = form.port >= 1 && form.port <= 65535;
 
   // Fetch SSH defaults and fill form when opening for new host
   useEffect(() => {
@@ -84,6 +85,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
     setSaving(true);
     try {
       await saveHost({ host: formStateToHostPayload(form, host) });
+      notify(editing ? t('connection.hostUpdated') : t('connection.hostAdded'));
       onClose();
     } catch (e) {
       notifyError(e);
@@ -153,7 +155,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
               </Button>
               <Button
                 size="sm"
-                disabled={!form.name || !form.hostname || !form.username || saving}
+                disabled={!form.name || !form.hostname || !form.username || !portValid || saving}
                 onClick={handleSave}
               >
                 {saving ? t('common.loading') : t('connection.save')}

@@ -184,6 +184,7 @@ export function HostSidePanel() {
     if (!confirmDeleteId) return;
     try {
       await deleteHost({ id: confirmDeleteId });
+      notify(t('connection.hostDeleted'));
       setHosts((prev) => prev.filter((h) => h.id !== confirmDeleteId));
       setConfirmDeleteId(null);
       window.dispatchEvent(new CustomEvent(DOM_EVENTS.HOSTS_CHANGED));
@@ -201,6 +202,10 @@ export function HostSidePanel() {
         key={host.id}
         className="group flex items-center gap-2 h-8 px-3 cursor-pointer hover:bg-muted/70 hover:shadow-sm transition-all duration-150 relative"
         onClick={() => openTerminal(host)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenuOpenId(host.id);
+        }}
       >
         <div
           className={cn(

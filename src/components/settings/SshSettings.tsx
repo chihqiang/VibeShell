@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import {
   DEFAULT_SSH_PORT,
   DEFAULT_MONITOR_INTERVAL,
@@ -11,62 +12,50 @@ import {
   DEFAULT_RECONNECT_MAX_RETRIES,
   DEFAULT_RECONNECT_INITIAL_DELAY,
   DEFAULT_RECONNECT_MAX_DELAY,
-  SETTINGS_DEBOUNCE_MS,
 } from '@/constants';
 
 interface SshSettingsProps {
   defaults: Record<string, string>;
-  onSave: (key: string, value: string) => void;
+  onSave: (values: Record<string, string>) => void;
 }
 
 export function SshSettings({ defaults, onSave }: SshSettingsProps) {
   const { t } = useTranslation();
-  // Local form state — syncs from props, debounces saves
   const [form, setForm] = useState<Record<string, string>>(defaults);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const firstRender = useRef(true);
+  const [hasChanges, setHasChanges] = useState(false);
+  const defaultsRef = useRef(defaults);
 
-  // Sync external defaults into local form when they change (e.g. initial load)
+  // Sync from props when defaults change (initial load)
   useEffect(() => {
     setForm(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(defaults)]);
-
-  // Debounced save — flushes to backend 600ms after last keystroke
-  const debouncedSave = useCallback(
-    (updated: Record<string, string>) => {
-      if (firstRender.current) {
-        firstRender.current = false;
-        return;
-      }
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        for (const key of Object.keys(updated)) {
-          if (updated[key] !== defaults[key]) {
-            onSave(key, updated[key]);
-          }
-        }
-      }, SETTINGS_DEBOUNCE_MS);
-    },
-    [defaults, onSave],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+    setHasChanges(false);
+    defaultsRef.current = defaults;
+  }, [defaults]);
 
   const updateField = (key: string, value: string) => {
     const updated = { ...form, [key]: value };
     setForm(updated);
-    debouncedSave(updated);
+    setHasChanges(updated[key] !== defaultsRef.current[key]);
+  };
+
+  const handleSave = () => {
+    onSave(form);
+    defaultsRef.current = { ...form };
+    setHasChanges(false);
+  };
+
+  const handleReset = () => {
+    setForm(defaultsRef.current);
+    setHasChanges(false);
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('settings.ssh')}</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>{t('settings.ssh')}</span>
+          {hasChanges && <span className="text-xs text-amber-500 font-normal">{t('settings.unsavedChanges')}</span>}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -210,6 +199,16 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
           <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.reconnectMaxDelayHint')}</p>
         </div>
       </CardContent>
+      <CardFooter className="border-t border-border px-6 py-3">
+        <div className="flex gap-2 ml-auto">
+          <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasChanges}>
+            {t('settings.reset')}
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={!hasChanges}>
+            {t('settings.saveSettings')}
+          </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 }

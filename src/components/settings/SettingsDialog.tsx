@@ -50,19 +50,18 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     });
   }, [open]);
 
-  const handleSshSave = (key: string, value: string) => {
-    const updated = { ...sshDefaults, [key]: value };
-    setSshDefaults(updated);
+  const handleSshSave = (values: Record<string, string>) => {
+    setSshDefaults(values);
     saveSshDefaults({
-      hostname: updated.hostname || '',
-      username: updated.username || '',
-      port: parseInt(updated.port || String(DEFAULT_SSH_PORT), 10),
-      monitorInterval: parseInt(updated.monitorInterval || String(DEFAULT_MONITOR_INTERVAL), 10),
-      heartbeatInterval: parseInt(updated.heartbeatInterval || String(DEFAULT_HEARTBEAT_INTERVAL), 10),
-      reconnectEnabled: updated.reconnectEnabled !== 'false',
-      reconnectMaxRetries: parseInt(updated.reconnectMaxRetries || String(DEFAULT_RECONNECT_MAX_RETRIES), 10),
-      reconnectInitialDelay: parseInt(updated.reconnectInitialDelay || String(DEFAULT_RECONNECT_INITIAL_DELAY), 10),
-      reconnectMaxDelay: parseInt(updated.reconnectMaxDelay || String(DEFAULT_RECONNECT_MAX_DELAY), 10),
+      hostname: values.hostname || '',
+      username: values.username || '',
+      port: parseInt(values.port || String(DEFAULT_SSH_PORT), 10),
+      monitorInterval: parseInt(values.monitorInterval || String(DEFAULT_MONITOR_INTERVAL), 10),
+      heartbeatInterval: parseInt(values.heartbeatInterval || String(DEFAULT_HEARTBEAT_INTERVAL), 10),
+      reconnectEnabled: values.reconnectEnabled !== 'false',
+      reconnectMaxRetries: parseInt(values.reconnectMaxRetries || String(DEFAULT_RECONNECT_MAX_RETRIES), 10),
+      reconnectInitialDelay: parseInt(values.reconnectInitialDelay || String(DEFAULT_RECONNECT_INITIAL_DELAY), 10),
+      reconnectMaxDelay: parseInt(values.reconnectMaxDelay || String(DEFAULT_RECONNECT_MAX_DELAY), 10),
     });
     triggerToast();
   };
@@ -105,9 +104,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               {active === 'about' && <AboutSettings />}
             </div>
           </div>
+          {/* Toast 放在 Dialog 内部，关闭 Dialog 时随内容一起消失 */}
+          <Toast message={t('common.saved')} trigger={toastCount} />
         </DialogContent>
       </Dialog>
-      <Toast message={t('common.saved')} trigger={toastCount} />
     </>
   );
 }

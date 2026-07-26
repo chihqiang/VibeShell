@@ -25,7 +25,6 @@ import type { HostConfig } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 import { hostToConnectConfig, cn, parseSshCommand } from '@/utils';
 import { fetchHostsAndKeys, saveHost } from '@/services/hostService';
-import { sshTestConnect } from '@/services/sshService';
 import { useNotify } from '@/hooks/use-notify';
 import { getSshDefaults } from '@/services/configService';
 import { Input } from '@/components/ui/input';
@@ -139,7 +138,6 @@ export function WelcomePage() {
         password: parsed.password,
         privateKeyPath: parsed.privateKeyPath,
       };
-      await sshTestConnect(config);
       if (activeTabId) {
         convertTabToTerminal(activeTabId, config);
       }
@@ -154,7 +152,6 @@ export function WelcomePage() {
   const handleConnectSaved = async (host: HostConfig) => {
     try {
       const config = await hostToConnectConfig(host, keys);
-      await sshTestConnect(config);
       if (activeTabId) {
         convertTabToTerminal(activeTabId, config, host);
       }
