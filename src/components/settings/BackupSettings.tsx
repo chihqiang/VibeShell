@@ -18,8 +18,8 @@ export function BackupSettings() {
     try {
       const { save } = await import('@tauri-apps/plugin-dialog');
       const path = await save({
-        defaultPath: `vibeshell-backup-${new Date().toISOString().slice(0, 10)}.zip`,
-        filters: [{ name: 'ZIP', extensions: ['zip'] }],
+        defaultPath: `vibeshell-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        filters: [{ name: 'JSON', extensions: ['json'] }],
       });
       if (!path) {
         setBackupLoading(false);
@@ -40,7 +40,7 @@ export function BackupSettings() {
     try {
       const { open } = await import('@tauri-apps/plugin-dialog');
       const path = await open({
-        filters: [{ name: 'ZIP', extensions: ['zip'] }],
+        filters: [{ name: 'JSON', extensions: ['json'] }],
         multiple: false,
       });
       if (!path) {

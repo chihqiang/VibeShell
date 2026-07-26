@@ -159,7 +159,7 @@
     "reconnectMaxDelay": "Max Delay (sec)",
     "reconnectMaxDelayHint": "Maximum backoff delay. Default 30.",
     "backup": "Backup & Restore",
-    "backupDesc": "Export all hosts, keys (without passwords) to a ZIP file, or restore from a backup. Restored data is merged with existing data — same-ID entries are overwritten.",
+    "backupDesc": "Export all hosts, keys (without passwords) to a JSON file, or restore from a backup. Restored data is merged with existing data — same-ID entries are overwritten.",
     "backupAction": "Export Backup",
     "restoreAction": "Restore Backup",
     "backupSuccess": "✅ Backup successful",

@@ -159,7 +159,7 @@
     "reconnectMaxDelay": "最大延迟（秒）",
     "reconnectMaxDelayHint": "重连退避的最大等待时间。默认 30。",
     "backup": "备份与恢复",
-    "backupDesc": "备份当前所有主机配置、密钥（不含密码）到 ZIP 文件，或从备份中恢复数据。恢复时会将备份数据与现有数据合并，相同 ID 的条目会被覆盖。",
+    "backupDesc": "备份当前所有主机配置、密钥（不含密码）到 JSON 文件，或从备份中恢复数据。恢复时会将备份数据与现有数据合并，相同 ID 的条目会被覆盖。",
     "backupAction": "导出备份",
     "restoreAction": "恢复备份",
     "backupSuccess": "✅ 备份成功",
