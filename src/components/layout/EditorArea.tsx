@@ -44,9 +44,15 @@ export function EditorArea() {
   const dragHeightRef = useRef(0);
 
   const tabsRef = useRef(tabs);
-  tabsRef.current = tabs;
+  useEffect(() => {
+    tabsRef.current = tabs;
+  }, [tabs]);
+
   const activeTabIdRef = useRef(activeTabId);
-  activeTabIdRef.current = activeTabId;
+  useEffect(() => {
+    activeTabIdRef.current = activeTabId;
+  }, [activeTabId]);
+
   const retryCount = useRef(new Map<string, number>());
   const reconnectTimer = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const writeToTerminal = (tabId: string, text: string) => {

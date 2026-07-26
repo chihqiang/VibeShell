@@ -27,9 +27,9 @@ export default tseslint.config(
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
-      // react-hooks v7 实验性规则，现有代码中大量合理使用，暂时关闭
+      // react-hooks v7 实验性规则，逐项评估后选择性开启
       "react-hooks/set-state-in-effect": "off",
-      "react-hooks/refs": "off",
+      "react-hooks/refs": "warn", // 能捕获 ref 使用不当
       "react-hooks/immutability": "off",
       "react-hooks/purity": "off",
     },

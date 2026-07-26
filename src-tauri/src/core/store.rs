@@ -360,7 +360,6 @@ pub fn delete_key(id: String) -> Result<KeyEntry, String> {
 }
 
 /// Read key content by ID. Used by session.rs when connecting with a vibeshell://key/ reference.
-#[allow(dead_code)]
 pub fn get_key_content(id: &str) -> Result<Option<String>, String> {
     let conn = db()?;
     let result: Result<String, _> = conn.query_row(
@@ -380,7 +379,7 @@ pub fn get_key_content(id: &str) -> Result<Option<String>, String> {
 pub fn get_ssh_defaults() -> Result<SshDefaults, String> {
     let conn = db()?;
     let mut stmt = conn
-        .prepare("SELECT key, value FROM config")
+        .prepare("SELECT key, value FROM config WHERE key LIKE 'ssh_defaults_%'")
         .map_err(|e| format!("get_ssh_defaults prepare: {}", e))?;
 
     let mut cfg: HashMap<String, String> = HashMap::new();
@@ -465,6 +464,9 @@ pub fn import_hosts(hosts: &[HostConfig]) -> Result<(), String> {
         return Ok(());
     }
     let conn = db()?;
+    conn.execute_batch("BEGIN")
+        .map_err(|e| format!("import hosts begin transaction: {}", e))?;
+    let result = (|| -> Result<(), String> {
     for host in hosts {
         let tags_json =
             serde_json::to_string(&host.tags).map_err(|e| format!("serialize tags: {}", e))?;
@@ -523,7 +525,15 @@ pub fn import_hosts(hosts: &[HostConfig]) -> Result<(), String> {
             .map_err(|e| format!("import host insert: {}", e))?;
         }
     }
-    Ok(())
+        Ok(())
+    })();
+    if result.is_ok() {
+    conn.execute_batch("COMMIT")
+        .map_err(|e| format!("import hosts commit: {}", e))?;
+    } else {
+        conn.execute_batch("ROLLBACK").ok();
+    }
+    result
 }
 
 pub fn import_keys(keys: &[KeyEntry]) -> Result<(), String> {
@@ -531,6 +541,9 @@ pub fn import_keys(keys: &[KeyEntry]) -> Result<(), String> {
         return Ok(());
     }
     let conn = db()?;
+    conn.execute_batch("BEGIN")
+        .map_err(|e| format!("import keys begin transaction: {}", e))?;
+    let result = (|| -> Result<(), String> {
     for entry in keys {
         let existing_imported: Option<i64> = conn
             .query_row(
@@ -577,7 +590,15 @@ pub fn import_keys(keys: &[KeyEntry]) -> Result<(), String> {
             .map_err(|e| format!("import key insert: {}", e))?;
         }
     }
-    Ok(())
+        Ok(())
+    })();
+    if result.is_ok() {
+    conn.execute_batch("COMMIT")
+        .map_err(|e| format!("import keys commit: {}", e))?;
+    } else {
+        conn.execute_batch("ROLLBACK").ok();
+    }
+    result
 }
 
 pub fn import_config(config: HashMap<String, String>) -> Result<(), String> {
@@ -585,6 +606,9 @@ pub fn import_config(config: HashMap<String, String>) -> Result<(), String> {
         return Ok(());
     }
     let conn = db()?;
+    conn.execute_batch("BEGIN")
+        .map_err(|e| format!("import config begin transaction: {}", e))?;
+    let result = (|| -> Result<(), String> {
     for (k, v) in config {
         conn.execute(
             "INSERT INTO config (key, value) VALUES (?1, ?2)
@@ -593,7 +617,15 @@ pub fn import_config(config: HashMap<String, String>) -> Result<(), String> {
         )
         .map_err(|e| format!("import config: {}", e))?;
     }
-    Ok(())
+        Ok(())
+    })();
+    if result.is_ok() {
+    conn.execute_batch("COMMIT")
+        .map_err(|e| format!("import config commit: {}", e))?;
+    } else {
+        conn.execute_batch("ROLLBACK").ok();
+    }
+    result
 }
 
 // ── Backup export / import ──

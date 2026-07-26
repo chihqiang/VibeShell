@@ -1,11 +1,13 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { info, error as logError } from '@/utils/log';
 
 export function useNotify() {
   const { toast } = useToast();
   const toastRef = useRef(toast);
-  toastRef.current = toast;
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
 
   const notify = useCallback((message: string, feedback?: boolean) => {
     info(message);

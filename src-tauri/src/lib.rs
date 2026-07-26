@@ -15,6 +15,10 @@ pub fn run() {
     let log_file = core::log_path();
     if let Some(parent) = log_file.parent() {
         std::fs::create_dir_all(parent).ok();
+        // If creation failed, log_file may still be writable.
+        // Attempt to touch it now so that fern::log_file succeeds.
+        // If this also fails, we log a warning and skip file logging.
+        let _ = std::fs::OpenOptions::new().create(true).write(true).open(&log_file);
     }
 
     fern::Dispatch::new()
@@ -32,13 +36,13 @@ pub fn run() {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("Warning: failed to open {}: {}", log_file.display(), e);
-                return;
-            }
+                // Fallback: create the file fresh to avoid app crash
+                std::fs::File::create(&log_file)
+                    .expect("cannot create log file")
+            },
         })
         .apply()
-        .unwrap_or_else(|e| {
-            eprintln!("Warning: failed to initialize logger: {}", e);
-        });
+        .unwrap_or_else(|e| eprintln!("Warning: failed to initialize logger: {}", e));
 
     log::info!("vibeshell starting, data_dir={}", data_dir.display());
 

@@ -15,7 +15,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,css}\"",
     "check:version": "npm install && npm run cargo:check",
-    "check": "npm run format:check && npm run lint && npm run check:version"
+    "check": "npm run format:check & npm run lint & npm run check:version & wait"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

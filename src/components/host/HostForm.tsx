@@ -33,7 +33,7 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
 
   const handleSelectKey = async (entry: KeyEntry) => {
     const { getKeysPath } = await import('@/services/configService');
-    updateField('privateKeyPath', `${await getKeysPath()}/${entry.file_name}`);
+    updateField('privateKeyPath', `${getKeysPath()}/${entry.file_name}`);
     updateField('keyPassphrase', entry.password || '');
     setKeyOpen(false);
   };

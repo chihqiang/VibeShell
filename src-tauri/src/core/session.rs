@@ -85,6 +85,24 @@ static SESSIONS: LazyLock<RwLock<HashMap<String, SessionHandle>>> =
 
 // ── do_connect (moved from core/ssh.rs) ──
 
+/// RAII guard that removes a temporary key file on drop, even on panic.
+/// Used when extracting a key from the database to a temp file for ssh2 auth.
+struct TempKeyGuard(Option<PathBuf>);
+
+impl TempKeyGuard {
+    fn new(path: PathBuf) -> Self {
+        Self(Some(path))
+    }
+}
+
+impl Drop for TempKeyGuard {
+    fn drop(&mut self) {
+        if let Some(path) = self.0.take() {
+            std::fs::remove_file(&path).ok();
+        }
+    }
+}
+
 fn expand_path(path: &str) -> PathBuf {
     if path.starts_with('~') {
         core::home_dir().join(&path[2..])
@@ -131,32 +149,33 @@ fn do_connect_inner(
 
     if let Some(key_path) = private_key_path {
         // Support vibeshell://key/<uuid> -- read key content from SQLite
-        let key_file = if let Some(key_id) = key_path.strip_prefix("vibeshell://key/") {
+        if let Some(key_id) = key_path.strip_prefix("vibeshell://key/") {
             let content = super::store::get_key_content(key_id)?
                 .ok_or_else(|| format!("Key not found: {}", key_id))?;
             let tmp_dir = std::env::temp_dir().join("vibeshell_keys");
             std::fs::create_dir_all(&tmp_dir)
                 .map_err(|e| format!("create temp key dir: {}", e))?;
-            let tmp_path = tmp_dir.join(key_id);
+            let tmp_path = tmp_dir.join(key_id).to_path_buf();
             std::fs::write(&tmp_path, &content)
                 .map_err(|e| format!("write temp key: {}", e))?;
-            tmp_path
+            let _guard = TempKeyGuard::new(tmp_path.clone());
+            let result = session
+                .userauth_pubkey_file(username, None, &tmp_path, password)
+                .map_err(|e| {
+                    log::error!("Key auth failed: {}", e);
+                    format!("Key auth failed: {}", e)
+                });
+            // _guard drops here, removing the temp file
+            result?;
         } else {
-            expand_path(key_path)
+            let key_file = expand_path(key_path);
+            session
+                .userauth_pubkey_file(username, None, &key_file, password)
+                .map_err(|e| {
+                    log::error!("Key auth failed: {}", e);
+                    format!("Key auth failed: {}", e)
+                })?;
         };
-
-        let auth_result = session
-            .userauth_pubkey_file(username, None, &key_file, password)
-            .map_err(|e| {
-                log::error!("Key auth failed: {}", e);
-                format!("Key auth failed: {}", e)
-            });
-
-        if key_path.starts_with("vibeshell://key/") {
-            std::fs::remove_file(&key_file).ok();
-        }
-
-        auth_result?;
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);
