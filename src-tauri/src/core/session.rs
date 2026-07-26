@@ -130,13 +130,33 @@ fn do_connect_inner(
     })?;
 
     if let Some(key_path) = private_key_path {
-        let expanded = expand_path(key_path);
-        session
-            .userauth_pubkey_file(username, None, &expanded, password)
+        // Support vibeshell://key/<uuid> -- read key content from SQLite
+        let key_file = if let Some(key_id) = key_path.strip_prefix("vibeshell://key/") {
+            let content = super::store::get_key_content(key_id)?
+                .ok_or_else(|| format!("Key not found: {}", key_id))?;
+            let tmp_dir = std::env::temp_dir().join("vibeshell_keys");
+            std::fs::create_dir_all(&tmp_dir)
+                .map_err(|e| format!("create temp key dir: {}", e))?;
+            let tmp_path = tmp_dir.join(key_id);
+            std::fs::write(&tmp_path, &content)
+                .map_err(|e| format!("write temp key: {}", e))?;
+            tmp_path
+        } else {
+            expand_path(key_path)
+        };
+
+        let auth_result = session
+            .userauth_pubkey_file(username, None, &key_file, password)
             .map_err(|e| {
                 log::error!("Key auth failed: {}", e);
                 format!("Key auth failed: {}", e)
-            })?;
+            });
+
+        if key_path.starts_with("vibeshell://key/") {
+            std::fs::remove_file(&key_file).ok();
+        }
+
+        auth_result?;
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);

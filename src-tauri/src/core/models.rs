@@ -53,6 +53,10 @@ pub struct KeyEntry {
     pub imported_at: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
+    /// PEM 密钥原文。正常 list_keys() 返回时跳过前端不需要看到内容，
+    /// 仅在备份导出和内部认证时使用。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -137,4 +141,14 @@ pub struct MonitorEvent {
     pub net_io: String,
     pub processes: Vec<ProcessInfo>,
     pub disks: Vec<DiskInfo>,
+}
+
+/// 备份/还原用的顶层 JSON 结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackupPayload {
+    pub version: u32,
+    pub exported_at: i64,
+    pub hosts: Vec<HostConfig>,
+    pub keys: Vec<KeyEntry>,
+    pub config: std::collections::HashMap<String, String>,
 }

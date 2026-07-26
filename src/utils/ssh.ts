@@ -10,9 +10,8 @@ import { DEFAULT_SSH_PORT } from '@/constants/app';
 export async function resolvePrivateKeyPath(host: HostConfig, keys: KeyEntry[]): Promise<string | null> {
   let privateKeyPath = host.private_key_path || null;
   if (host.auth_method === 'key' && !privateKeyPath && keys.length > 0) {
-    const { getKeysPath } = await import('@/services/configService');
-    const keysPath = await getKeysPath();
-    privateKeyPath = `${keysPath}/${keys[0].file_name}`;
+    // 使用 vibeshell://key/<id> 协议引用内部密钥
+    privateKeyPath = `vibeshell://key/${keys[0].id}`;
   }
   return privateKeyPath;
 }
