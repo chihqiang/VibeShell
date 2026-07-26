@@ -614,10 +614,18 @@ export function SftpPanel() {
         onOpenChange={setTransferDialogOpen}
         transfers={transfers}
         onCancel={(id) => {
-          sftpCancelTransfer({ transferId: id }).catch((e) => notifyError(e));
-          setTransfers((prev) =>
-            prev.map((x) => (x.id === id ? { ...x, status: 'failed', error: t('sftp.transferCancelled') } : x)),
-          );
+          setTransfers((prev) => {
+            const item = prev.find((x) => x.id === id);
+            // pending → 直接移除，不需要通知后端
+            if (item?.status === 'pending') {
+              return prev.filter((x) => x.id !== id);
+            }
+            // 进行中 → 通知后端取消
+            sftpCancelTransfer({ transferId: id }).catch((e) => notifyError(e));
+            return prev.map((x) =>
+              x.id === id ? { ...x, status: 'cancelled' as const, error: t('sftp.transferCancelled') } : x,
+            );
+          });
         }}
         onRetry={(item) => {
           setTransfers((prev) =>

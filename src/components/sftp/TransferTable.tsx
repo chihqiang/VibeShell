@@ -30,6 +30,8 @@ export function TransferTable({
   );
   const failedItems = transfers.filter((t) => t.status === 'failed');
   const completedItems = transfers.filter((t) => t.status === 'completed');
+  const cancelledItems = transfers.filter((t) => t.status === 'cancelled');
+  const hasCleanable = completedItems.length > 0 || failedItems.length > 0 || cancelledItems.length > 0;
   const activeCount = activeItems.length;
   const failedCount = failedItems.length;
 
@@ -59,7 +61,7 @@ export function TransferTable({
             {failedCount} {t('sftp.transferFailed')}
           </span>
         )}
-        {completedItems.length > 0 && activeCount === 0 && (
+        {hasCleanable && (
           <Button
             variant="ghost"
             size="xs"
