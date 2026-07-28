@@ -141,10 +141,9 @@ export function SftpPanel() {
   useEffect(() => {
     if (!tabId) return;
     const wv = getCurrentWebview();
-    let cancelled = false;
     let unlistenFn: (() => void) | null = null;
 
-    wv.onDragDropEvent(async (event) => {
+    const promise = wv.onDragDropEvent(async (event) => {
       try {
         if (event.payload.type === 'enter' || event.payload.type === 'over') {
           setIsDragging(true);
@@ -164,24 +163,26 @@ export function SftpPanel() {
       } catch (e) {
         notifyError(e);
       }
-    }).then((fn) => {
-      if (cancelled) {
-        fn();
-        return;
-      }
+    });
+
+    promise.then((fn) => {
       unlistenFn = fn;
     });
 
     return () => {
-      cancelled = true;
-      unlistenFn?.();
+      if (unlistenFn) {
+        unlistenFn();
+      } else {
+        // If the promise hasn't resolved yet, wait for it and then unlisten
+        promise.then((fn) => fn());
+      }
     };
   }, [tabId, currentPath, loadDir, notifyError, start, done]);
 
   useEffect(() => {
-    let cancelled = false;
     let unlisten: UnlistenFn | undefined;
-    listen<{
+
+    const promise = listen<{
       transferId: string;
       current: number;
       total: number;
@@ -200,19 +201,19 @@ export function SftpPanel() {
             : x,
         ),
       );
-    })
-      .then((fn) => {
-        if (cancelled) {
-          fn();
-          return;
-        }
-        unlisten = fn;
-      })
-      .catch((e) => notifyError(e));
+    });
+
+    promise.then((fn) => {
+      unlisten = fn;
+    }).catch((e) => notifyError(e));
 
     return () => {
-      cancelled = true;
-      unlisten?.();
+      if (unlisten) {
+        unlisten();
+      } else {
+        // If the promise hasn't resolved yet, wait for it and then unlisten
+        promise.then((fn) => fn());
+      }
     };
   }, [notifyError]);
 

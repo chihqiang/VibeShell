@@ -399,7 +399,7 @@ pub fn get_ssh_defaults() -> Result<SshDefaults, String> {
         reconnect_max_retries: cfg
             .get("ssh_defaults_reconnect_max_retries")
             .and_then(|v| v.parse().ok())
-            .unwrap_or(SshDefaults::DEFAULT_HEARTBEAT_INTERVAL),
+            .unwrap_or(SshDefaults::DEFAULT_RECONNECT_MAX_RETRIES),
         reconnect_initial_delay: cfg
             .get("ssh_defaults_reconnect_initial_delay")
             .and_then(|v| v.parse().ok())
@@ -482,18 +482,20 @@ pub fn export_backup() -> Result<BackupPayload, String> {
 }
 
 pub fn import_backup(data: BackupPayload) -> Result<(), String> {
-    let conn = db()?;
+    let mut conn = db()?;
 
     // 整个导入过程在单个事务中执行，确保原子性
-    conn.execute_batch("BEGIN")
+    // 使用 rusqlite 的 Transaction API，它在 drop 时自动回滚（如果未提交）
+    let tx = conn
+        .transaction()
         .map_err(|e| format!("import begin transaction: {}", e))?;
 
     let result = (|| -> Result<(), String> {
-        import_hosts_conn(&conn, &data.hosts)?;
-        import_keys_conn(&conn, &data.keys)?;
+        import_hosts_conn(&tx, &data.hosts)?;
+        import_keys_conn(&tx, &data.keys)?;
 
         for (k, v) in &data.config {
-            conn.execute(
+            tx.execute(
                 "INSERT OR REPLACE INTO config (key, value) VALUES (?1, ?2)",
                 params![k, v],
             )
@@ -503,12 +505,10 @@ pub fn import_backup(data: BackupPayload) -> Result<(), String> {
     })();
 
     if result.is_ok() {
-        conn.execute_batch("COMMIT")
+        tx.commit()
             .map_err(|e| format!("import commit transaction: {}", e))?;
-    } else {
-        conn.execute_batch("ROLLBACK")
-            .map_err(|e| format!("import rollback transaction: {}", e))?;
     }
+    // If result is Err, `tx` is dropped and automatically rolled back.
 
     result
 }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
+use std::os::unix::fs::PermissionsExt;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Condvar, LazyLock, Mutex, RwLock};
 use std::thread;
@@ -21,6 +22,9 @@ const MAX_EMIT_FAILURES: u32 = 3;
 /// If the frontend hasn't sent any `ssh_write` for this duration, the session
 /// is considered idle and will be cleaned up.
 const SESSION_IDLE_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Maximum number of concurrent SSH sessions to prevent resource exhaustion.
+const MAX_SESSIONS: usize = 50;
 
 pub struct TabSession {
     pub session: Session,
@@ -153,8 +157,14 @@ fn do_connect_inner(
         std::fs::create_dir_all(&tmp_dir)
             .unwrap_or_else(|e| log::warn!("[connect] create tmp dir failed: {}", e));
         let key_file = tmp_dir.join(format!("key_{}", key_id));
-        let _guard = TempKeyGuard::new(key_file.clone());
+        // Write first, then set strict permissions, then create the RAII guard.
+        // This order ensures the guard only cleans up a file that was fully
+        // written and had correct permissions set.
         std::fs::write(&key_file, key_content).map_err(|e| format!("write temp key: {}", e))?;
+        // Set strict permissions (0600) so other users cannot read the temp key file
+        std::fs::set_permissions(&key_file, std::fs::Permissions::from_mode(0o600))
+            .map_err(|e| format!("set temp key permissions: {}", e))?;
+        let _guard = TempKeyGuard::new(key_file.clone());
         log::info!(
             "[connect] using key content: path={} ({} bytes) has_passphrase={}",
             key_file.display(),
@@ -227,11 +237,23 @@ pub fn do_connect(
         let _ = tx.send(result);
     });
 
-    rx.recv_timeout(Duration::from_secs(30)).map_err(|_| {
-        let msg = "Connection timed out".to_string();
-        log::error!("{}", msg);
-        msg
-    })?
+    // Fire-and-forget: the thread will exit on its own via TCP timeout.
+    // We must NOT join() here — join() blocks indefinitely (no timeout),
+    // which would freeze the Tauri command thread if the remote server
+    // is unreachable (e.g., firewall silently drops packets).
+    // After drop(rx), tx.send() fails harmlessly; the thread's
+    // do_connect_inner returns via TCP/read timeout and the thread exits.
+    match rx.recv_timeout(Duration::from_secs(30)) {
+        Ok(result) => result,
+        Err(_) => {
+            let msg = "Connection timed out".to_string();
+            log::error!("{}", msg);
+            // Drop rx so tx.send() in the thread fails immediately
+            // instead of blocking forever on the channel.
+            drop(rx);
+            Err(msg)
+        }
+    }
 }
 
 /// Generate a platform-appropriate monitor script.
@@ -533,8 +555,10 @@ pub fn connect(
     );
 
     // Cancel any existing session with this tabId (e.g. stale reconnect session)
+    // and enforce the maximum concurrent session limit.
     {
         let mut sessions = SESSIONS.write().map_err(|e| e.to_string())?;
+        // Remove any existing session for this tab_id first
         if let Some(old) = sessions.remove(tab_id) {
             if let Ok(inner) = old.lock() {
                 inner.cancel.store(true, Ordering::Relaxed);
@@ -542,6 +566,18 @@ pub fn connect(
                 inner.monitor_cvar.notify_all();
                 inner.heartbeat_cvar.notify_all();
             }
+        }
+        // Enforce max session limit (excluding the one we're about to insert)
+        if sessions.len() >= MAX_SESSIONS {
+            log::error!(
+                "[connect] tab={}: max sessions ({}) reached, rejecting",
+                tab_id,
+                MAX_SESSIONS
+            );
+            return Err(format!(
+                "Maximum number of concurrent connections ({}) reached. Close some tabs and try again.",
+                MAX_SESSIONS
+            ));
         }
         sessions.insert(tab_id.to_string(), handle);
     }
