@@ -107,8 +107,10 @@ fn do_connect_inner(
             log::error!("{}", msg);
             msg
         })?;
-    tcp.set_read_timeout(Some(Duration::from_secs(30))).ok();
-    tcp.set_write_timeout(Some(Duration::from_secs(30))).ok();
+    tcp.set_read_timeout(Some(Duration::from_secs(30)))
+        .unwrap_or_else(|e| log::warn!("[connect] set_read_timeout failed: {}", e));
+    tcp.set_write_timeout(Some(Duration::from_secs(30)))
+        .unwrap_or_else(|e| log::warn!("[connect] set_write_timeout failed: {}", e));
 
     let mut session = Session::new().map_err(|e| {
         log::error!("Failed to create session: {}", e);
@@ -125,7 +127,8 @@ fn do_connect_inner(
         // Write key content to temp file for ssh2 auth
         let key_id = uuid::Uuid::new_v4().to_string();
         let tmp_dir = super::data_dir().join("tmp");
-        std::fs::create_dir_all(&tmp_dir).ok();
+        std::fs::create_dir_all(&tmp_dir)
+            .unwrap_or_else(|e| log::warn!("[connect] create tmp dir failed: {}", e));
         let key_file = tmp_dir.join(format!("key_{}", key_id));
         std::fs::write(&key_file, key_content)
             .map_err(|e| format!("write temp key: {}", e))?;
@@ -146,7 +149,8 @@ fn do_connect_inner(
             }
         }
         // Clean up temp key file
-        std::fs::remove_file(&key_file).ok();
+        std::fs::remove_file(&key_file)
+            .unwrap_or_else(|e| log::warn!("[connect] remove temp key file failed: {}", e));
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);
@@ -401,8 +405,10 @@ pub fn connect(
             return true;
         }
         let mut out = String::new();
-        ch.read_to_string(&mut out).ok();
-        ch.wait_close().ok();
+        let _ = ch.read_to_string(&mut out);
+        if let Err(e) = ch.wait_close() {
+            log::warn!("[connect] OS detection channel wait_close failed: {}", e);
+        }
         out.trim() == "Linux"
     })();
     log::info!("[connect] tab={} remote OS: {}", tab_id, if remote_is_linux { "Linux" } else { "macOS/BSD" });
@@ -659,7 +665,9 @@ fn start_monitor(
                         Err(_) => break,
                     }
                 }
-                ch.wait_close().ok();
+                if let Err(e) = ch.wait_close() {
+                    log::debug!("[monitor] tab={} channel wait_close: {}", tid, e);
+                }
                 Some(out)
             })();
 
@@ -747,7 +755,9 @@ fn start_heartbeat(
                 let result = (|| -> Result<(), String> {
                     let mut channel = inner.session.channel_session().map_err(|_| "channel")?;
                     channel.exec("echo 1").map_err(|_| "exec")?;
-                    channel.wait_close().ok();
+                    if let Err(e) = channel.wait_close() {
+                        log::debug!("[heartbeat] tab={} channel wait_close: {}", tid, e);
+                    }
                     Ok(())
                 })();
                 drop(_guard);
@@ -839,7 +849,9 @@ pub fn execute(tab_id: &str, command: &str) -> Result<core::models::SshExecuteRe
         }
     }
 
-    channel.wait_close().ok();
+    if let Err(e) = channel.wait_close() {
+        log::debug!("[execute] tab={} channel wait_close: {}", tab_id, e);
+    }
     let exit_code = channel.exit_status().unwrap_or(-1);
 
     Ok(core::models::SshExecuteResult {

@@ -99,13 +99,13 @@ pub fn get_app_config(data_dir: &Path) -> AppConfig {
     let ssh_defaults = get_ssh_defaults().unwrap_or(SshDefaults {
         hostname: String::new(),
         username: String::new(),
-        port: 22,
-        monitor_interval: 4,
-        heartbeat_interval: 10,
-        reconnect_enabled: true,
-        reconnect_max_retries: 10,
-        reconnect_initial_delay: 1,
-        reconnect_max_delay: 30,
+        port: SshDefaults::DEFAULT_PORT,
+        monitor_interval: SshDefaults::DEFAULT_MONITOR_INTERVAL,
+        heartbeat_interval: SshDefaults::DEFAULT_HEARTBEAT_INTERVAL,
+        reconnect_enabled: SshDefaults::DEFAULT_RECONNECT_ENABLED,
+        reconnect_max_retries: SshDefaults::DEFAULT_RECONNECT_MAX_RETRIES,
+        reconnect_initial_delay: SshDefaults::DEFAULT_RECONNECT_INITIAL_DELAY,
+        reconnect_max_delay: SshDefaults::DEFAULT_RECONNECT_MAX_DELAY,
     });
     AppConfig {
         data_path: data_dir.to_string_lossy().to_string(),
@@ -245,13 +245,17 @@ pub fn delete_host(id: &str) -> Result<(), String> {
 }
 
 pub fn list_tags() -> Result<Vec<String>, String> {
-    let hosts = list_hosts()?;
-    let mut tags: Vec<String> = hosts
-        .into_iter()
-        .flat_map(|h| h.tags)
-        .collect();
-    tags.sort();
-    tags.dedup();
+    let conn = db()?;
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT json_each.value FROM hosts, json_each(hosts.tags) ORDER BY json_each.value")
+        .map_err(|e| format!("list_tags prepare: {}", e))?;
+    let rows = stmt
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| format!("list_tags query: {}", e))?;
+    let mut tags = Vec::new();
+    for row in rows {
+        tags.push(row.map_err(|e| format!("list_tags row: {}", e))?);
+    }
     Ok(tags)
 }
 
@@ -358,31 +362,31 @@ pub fn get_ssh_defaults() -> Result<SshDefaults, String> {
         port: cfg
             .get("ssh_defaults_port")
             .and_then(|v| v.parse().ok())
-            .unwrap_or(22),
+            .unwrap_or(SshDefaults::DEFAULT_PORT.into()),
         monitor_interval: cfg
             .get("ssh_defaults_monitor_interval")
             .and_then(|v| v.parse().ok())
-            .unwrap_or(4),
+            .unwrap_or(SshDefaults::DEFAULT_MONITOR_INTERVAL),
         heartbeat_interval: cfg
             .get("ssh_defaults_heartbeat_interval")
             .and_then(|v| v.parse().ok())
-            .unwrap_or(10),
+            .unwrap_or(SshDefaults::DEFAULT_HEARTBEAT_INTERVAL),
         reconnect_enabled: cfg
             .get("ssh_defaults_reconnect_enabled")
             .map(|v| v != "false")
-            .unwrap_or(true),
+            .unwrap_or(SshDefaults::DEFAULT_RECONNECT_ENABLED),
         reconnect_max_retries: cfg
             .get("ssh_defaults_reconnect_max_retries")
             .and_then(|v| v.parse().ok())
-            .unwrap_or(10),
+            .unwrap_or(SshDefaults::DEFAULT_HEARTBEAT_INTERVAL),
         reconnect_initial_delay: cfg
             .get("ssh_defaults_reconnect_initial_delay")
             .and_then(|v| v.parse().ok())
-            .unwrap_or(1),
+            .unwrap_or(SshDefaults::DEFAULT_RECONNECT_INITIAL_DELAY),
         reconnect_max_delay: cfg
             .get("ssh_defaults_reconnect_max_delay")
             .and_then(|v| v.parse().ok())
-            .unwrap_or(30),
+            .unwrap_or(SshDefaults::DEFAULT_RECONNECT_MAX_DELAY),
     })
 }
 
@@ -451,22 +455,38 @@ pub fn export_backup() -> Result<BackupPayload, String> {
 }
 
 pub fn import_backup(data: BackupPayload) -> Result<(), String> {
-    import_hosts(&data.hosts)?;
-    import_keys(&data.keys)?;
-
     let conn = db()?;
-    for (k, v) in &data.config {
-        conn.execute(
-            "INSERT OR REPLACE INTO config (key, value) VALUES (?1, ?2)",
-            params![k, v],
-        )
-        .map_err(|e| format!("import config: {}", e))?;
+
+    // 整个导入过程在单个事务中执行，确保原子性
+    conn.execute_batch("BEGIN")
+        .map_err(|e| format!("import begin transaction: {}", e))?;
+
+    let result = (|| -> Result<(), String> {
+        import_hosts_conn(&conn, &data.hosts)?;
+        import_keys_conn(&conn, &data.keys)?;
+
+        for (k, v) in &data.config {
+            conn.execute(
+                "INSERT OR REPLACE INTO config (key, value) VALUES (?1, ?2)",
+                params![k, v],
+            )
+            .map_err(|e| format!("import config: {}", e))?;
+        }
+        Ok(())
+    })();
+
+    if result.is_ok() {
+        conn.execute_batch("COMMIT")
+            .map_err(|e| format!("import commit transaction: {}", e))?;
+    } else {
+        conn.execute_batch("ROLLBACK")
+            .map_err(|e| format!("import rollback transaction: {}", e))?;
     }
-    Ok(())
+
+    result
 }
 
-fn import_hosts(hosts: &[HostConfig]) -> Result<(), String> {
-    let conn = db()?;
+fn import_hosts_conn(conn: &Connection, hosts: &[HostConfig]) -> Result<(), String> {
     for host in hosts {
         let tags_json =
             serde_json::to_string(&host.tags).map_err(|e| format!("serialize tags: {}", e))?;
@@ -495,8 +515,7 @@ fn import_hosts(hosts: &[HostConfig]) -> Result<(), String> {
     Ok(())
 }
 
-fn import_keys(keys: &[KeyEntry]) -> Result<(), String> {
-    let conn = db()?;
+fn import_keys_conn(conn: &Connection, keys: &[KeyEntry]) -> Result<(), String> {
     for key in keys {
         conn.execute(
             "INSERT OR REPLACE INTO keys (id, name, key_type, content, password)

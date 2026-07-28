@@ -159,7 +159,7 @@ export function EditorArea() {
         const delay = Math.min(cfg.initialDelaySecs * 1000 * Math.pow(2, retries), cfg.maxDelaySecs * 1000);
         const delaySecs = Math.ceil(delay / 1000);
         const nextRetry = retries + 1;
-        const msg = `${ANSI_NEWLINE}${ANSI_YELLOW}${delaySecs}s ${t('terminal.reconnectRetry', { retry: nextRetry, max: cfg.maxRetries })}${ANSI_RESET}${ANSI_NEWLINE}`;
+        const msg = `${ANSI_NEWLINE}${ANSI_YELLOW}${delaySecs}${t('common.second')} ${t('terminal.reconnectRetry', { retry: nextRetry, max: cfg.maxRetries })}${ANSI_RESET}${ANSI_NEWLINE}`;
         writeToTerminal(tab_id, msg);
 
         const timer = setTimeout(() => {

@@ -2,10 +2,10 @@ import { memo, useEffect, useRef, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sshWrite } from '@/services/sshService';
 import { listen } from '@tauri-apps/api/event';
-import type { Terminal as XtermTerminal } from '@xterm/xterm';
+import { Terminal as XtermTerminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import type { ITheme } from '@xterm/xterm';
-import type { FitAddon } from '@xterm/addon-fit';
-import type { SearchAddon } from '@xterm/addon-search';
 import type { ConnectionStatus } from '@/types';
 import { Loader2, WifiOff, RotateCw } from 'lucide-react';
 import { cn } from '@/utils';
@@ -224,18 +224,8 @@ const Terminal = memo(function Terminal({
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
     initializedRef.current = true;
-
-    let disposed = false;
-
-    const init = async () => {
-      const { Terminal } = await import('@xterm/xterm');
-      const { FitAddon } = await import('@xterm/addon-fit');
-      const { SearchAddon } = await import('@xterm/addon-search');
-
-      // If cleanup ran while awaiting dynamic imports, bail out
-      if (disposed || !containerRef.current) return;
-
-      const term = new Terminal({
+    const init = () => {
+      const term = new XtermTerminal({
         cursorBlink: true,
         cursorStyle: 'bar',
         fontSize: fontSizeRef.current,
@@ -244,12 +234,6 @@ const Terminal = memo(function Terminal({
         allowProposedApi: true,
         convertEol: true,
       });
-
-      // If cleanup ran while constructing the terminal, dispose immediately
-      if (disposed) {
-        term.dispose();
-        return;
-      }
 
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
@@ -325,7 +309,6 @@ const Terminal = memo(function Terminal({
 
     // Cleanup: dispose xterm instance when component unmounts or terminalId changes
     return () => {
-      disposed = true;
       // Flush any pending batched writes before disposing the terminal
       flushWriteRef.current?.();
       const term = termRef.current;
