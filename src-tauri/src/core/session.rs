@@ -85,6 +85,28 @@ static SESSIONS: LazyLock<RwLock<HashMap<String, SessionHandle>>> =
 // ── do_connect (moved from core/ssh.rs) ──
 
 
+
+/// Drop guard that removes a temporary key file when the scope exits,
+/// even if the caller returns early with an error.
+struct TempKeyGuard {
+    path: Option<std::path::PathBuf>,
+}
+
+impl TempKeyGuard {
+    fn new(path: std::path::PathBuf) -> Self {
+        Self { path: Some(path) }
+    }
+}
+
+impl Drop for TempKeyGuard {
+    fn drop(&mut self) {
+        if let Some(path) = &self.path {
+            std::fs::remove_file(path)
+                .unwrap_or_else(|e| log::warn!("[connect] remove temp key file failed: {}", e));
+        }
+    }
+}
+
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 
 fn do_connect_inner(
@@ -130,6 +152,7 @@ fn do_connect_inner(
         std::fs::create_dir_all(&tmp_dir)
             .unwrap_or_else(|e| log::warn!("[connect] create tmp dir failed: {}", e));
         let key_file = tmp_dir.join(format!("key_{}", key_id));
+        let _guard = TempKeyGuard::new(key_file.clone());
         std::fs::write(&key_file, key_content)
             .map_err(|e| format!("write temp key: {}", e))?;
         log::info!(
@@ -148,9 +171,7 @@ fn do_connect_inner(
                 return Err(format!("Key auth failed: {}", e.message()));
             }
         }
-        // Clean up temp key file
-        std::fs::remove_file(&key_file)
-            .unwrap_or_else(|e| log::warn!("[connect] remove temp key file failed: {}", e));
+        // Temp key file is cleaned up by TempKeyGuard::drop();
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);
@@ -516,16 +537,26 @@ pub fn get(tab_id: &str) -> Result<SessionHandle, String> {
         .ok_or_else(|| "Session not found".to_string())
 }
 
+/// Core logic: remove tab from SESSIONS, set cancel, signal all threads.
+/// Returns `true` if a session was actually removed, `false` if not found.
+fn remove_and_signal(tab_id: &str, sessions: &mut HashMap<String, SessionHandle>) -> bool {
+    if let Some(state) = sessions.remove(tab_id) {
+        if let Ok(inner) = state.lock() {
+            inner.cancel.store(true, Ordering::Relaxed);
+            inner.reader_cvar.notify_all();
+            inner.monitor_cvar.notify_all();
+            inner.heartbeat_cvar.notify_all();
+        }
+        true
+    } else {
+        false
+    }
+}
+
 pub fn disconnect(tab_id: &str) -> Result<(), String> {
     log::info!("[disconnect] tab={}: disconnecting", tab_id);
     let mut sessions = SESSIONS.write().map_err(|e| e.to_string())?;
-    if let Some(state) = sessions.remove(tab_id) {
-        let inner = state.lock().map_err(|e| e.to_string())?;
-        inner.cancel.store(true, Ordering::Relaxed);
-        inner.reader_cvar.notify_all();
-        inner.monitor_cvar.notify_all();
-        inner.heartbeat_cvar.notify_all();
-    }
+    remove_and_signal(tab_id, &mut sessions);
     log::info!(
         "[disconnect] tab={}: removed (remaining sessions: {})",
         tab_id,
@@ -542,14 +573,7 @@ pub fn disconnect(tab_id: &str) -> Result<(), String> {
 /// finish quickly (they wait on the cancel flag first).
 fn cleanup_session(tab_id: &str) {
     let Ok(mut sessions) = SESSIONS.write() else { return };
-    if let Some(state) = sessions.remove(tab_id) {
-        if let Ok(inner) = state.lock() {
-            inner.cancel.store(true, Ordering::Relaxed);
-            inner.reader_cvar.notify_all();
-            inner.monitor_cvar.notify_all();
-            inner.heartbeat_cvar.notify_all();
-        }
-    }
+    remove_and_signal(tab_id, &mut sessions);
     log::info!("[cleanup] tab={}: session removed", tab_id);
 }
 
@@ -852,7 +876,10 @@ pub fn execute(tab_id: &str, command: &str) -> Result<core::models::SshExecuteRe
     if let Err(e) = channel.wait_close() {
         log::debug!("[execute] tab={} channel wait_close: {}", tab_id, e);
     }
-    let exit_code = channel.exit_status().unwrap_or(-1);
+    let exit_code = channel.exit_status().unwrap_or_else(|e| {
+        log::debug!("[execute] tab={} exit_status failed: {}", tab_id, e);
+        -1
+    });
 
     Ok(core::models::SshExecuteResult {
         tab_id: tab_id.to_string(),

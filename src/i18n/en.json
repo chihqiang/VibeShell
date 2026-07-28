@@ -25,7 +25,9 @@
     "tagName": "Tag name",
     "selectKey": "Select key",
     "hostManagement": "Host Management",
-    "keyManagement": "Key Management"
+    "keyManagement": "Key Management",
+    "cannotDeleteKey": "This key is in use by the following hosts",
+    "keyInUseBy": "Unlink the key from these hosts before deleting"
   },
   "connection": {
     "hostname": "Hostname",

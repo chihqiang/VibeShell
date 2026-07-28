@@ -154,9 +154,11 @@ export function SftpPanel() {
           setIsDragging(false);
           const paths = event.payload.paths;
           if (paths.length === 0) return;
+          start();
 
           const { files: allFiles } = await expandLocalFiles(paths, currentPath);
 
+          done();
           uploadRef.current(allFiles, () => loadDir(currentPath));
         }
       } catch (e) {

@@ -16,6 +16,11 @@ export function importKeyContent(params: ImportKeyContentParams): Promise<KeyEnt
   return invoke('import_key_content', params);
 }
 
+/** 查看哪些主机引用了该密钥 */
+export function getKeyReferrers(params: { keyId: string }): Promise<string[]> {
+  return invoke('get_key_referrers', params);
+}
+
 /** 删除密钥 */
 export function deleteKey(params: { id: string }): Promise<void> {
   return invoke('delete_key', params);

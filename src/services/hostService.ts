@@ -10,6 +10,11 @@ export function listHosts(): Promise<HostConfig[]> {
   return invoke('list_hosts');
 }
 
+/** 获取主机总数（比 listHosts 轻量得多） */
+export function countHosts(): Promise<number> {
+  return invoke('count_hosts');
+}
+
 /** 保存主机 */
 export function saveHost(params: { host: HostConfig }): Promise<void> {
   return invoke('save_host', params);

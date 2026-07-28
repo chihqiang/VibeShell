@@ -150,6 +150,12 @@ pub fn list_hosts() -> Result<Vec<HostConfig>, String> {
     Ok(hosts)
 }
 
+pub fn count_hosts() -> Result<i64, String> {
+    let conn = db()?;
+    conn.query_row("SELECT COUNT(*) FROM hosts", [], |row| row.get(0))
+        .map_err(|e| format!("count hosts: {}", e))
+}
+
 pub fn get_host(id: &str) -> Result<HostConfig, String> {
     let conn = db()?;
     conn.query_row(
@@ -317,7 +323,32 @@ pub fn insert_key(entry: &KeyEntry) -> Result<(), String> {
     Ok(())
 }
 
+/// 查询引用指定密钥的主机名称列表
+pub fn get_key_referrers(key_id: &str) -> Result<Vec<String>, String> {
+    let conn = db()?;
+    let mut stmt = conn
+        .prepare("SELECT name FROM hosts WHERE key_id = ?1 AND auth_method = 'key'")
+        .map_err(|e| format!("get_key_referrers prepare: {}", e))?;
+    let rows = stmt
+        .query_map(params![key_id], |row| row.get::<_, String>(0))
+        .map_err(|e| format!("get_key_referrers query: {}", e))?;
+    let mut names = Vec::new();
+    for row in rows {
+        names.push(row.map_err(|e| format!("get_key_referrers row: {}", e))?);
+    }
+    Ok(names)
+}
+
 pub fn delete_key(id: &str) -> Result<KeyEntry, String> {
+    // 检查是否有主机引用此密钥
+    let referrers = get_key_referrers(id)?;
+    if !referrers.is_empty() {
+        return Err(format!(
+            "Key is in use by {} host(s): {}. Unlink the key from these hosts first or change their auth method.",
+            referrers.len(),
+            referrers.join(", ")
+        ));
+    }
     let conn = db()?;
     let entry = conn
         .query_row(

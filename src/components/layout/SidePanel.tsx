@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/utils';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useStorage } from '@/utils/storage';
 import { STORAGE_KEYS } from '@/constants/storage-keys';
 import { SIDE_PANEL_MIN_WIDTH, SIDE_PANEL_MAX_WIDTH, SIDE_PANEL_DEFAULT_WIDTH } from '@/constants/layout';
+import { useDragResize } from '@/hooks/use-drag-resize';
 import { HostSidePanel } from '@/components/host';
 import { KeySidePanel } from '@/components/keys';
 
@@ -12,63 +12,14 @@ import { KeySidePanel } from '@/components/keys';
 export function SidePanel() {
   const { activeView } = useLayout();
   const [storedWidth, setStoredWidth] = useStorage(STORAGE_KEYS.SIDE_PANEL_WIDTH, SIDE_PANEL_DEFAULT_WIDTH);
-  const width = Math.max(SIDE_PANEL_MIN_WIDTH, Math.min(SIDE_PANEL_MAX_WIDTH, storedWidth));
 
-  const dragging = useRef(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const startX = useRef(0);
-  const startWidth = useRef(0);
-  const dragRafRef = useRef<number | null>(null);
-  const dragWidthRef = useRef(0);
-
-  const onMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      dragging.current = true;
-      setIsDragging(true);
-      startX.current = e.clientX;
-      startWidth.current = width;
-      dragWidthRef.current = width;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    },
-    [width],
-  );
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragging.current) return;
-      const newWidth = Math.max(
-        SIDE_PANEL_MIN_WIDTH,
-        Math.min(SIDE_PANEL_MAX_WIDTH, startWidth.current + e.clientX - startX.current),
-      );
-      dragWidthRef.current = newWidth;
-      if (dragRafRef.current === null) {
-        dragRafRef.current = requestAnimationFrame(() => {
-          dragRafRef.current = null;
-          setStoredWidth(dragWidthRef.current);
-        });
-      }
-    };
-    const onMouseUp = () => {
-      if (!dragging.current) return;
-      dragging.current = false;
-      if (dragRafRef.current !== null) {
-        cancelAnimationFrame(dragRafRef.current);
-        dragRafRef.current = null;
-      }
-      setStoredWidth(dragWidthRef.current);
-      setIsDragging(false);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      if (dragRafRef.current !== null) cancelAnimationFrame(dragRafRef.current);
-    };
-  }, [setStoredWidth]);
+  const { size: width, isDragging, handleMouseDown } = useDragResize({
+    axis: 'x',
+    minSize: SIDE_PANEL_MIN_WIDTH,
+    maxSize: SIDE_PANEL_MAX_WIDTH,
+    defaultSize: storedWidth,
+    onSizeChange: setStoredWidth,
+  });
 
   if (!activeView) return null;
 
@@ -88,7 +39,7 @@ export function SidePanel() {
       {/* 拖拽调整宽度 */}
       <div
         className="absolute top-0 right-0 w-[5px] h-full cursor-col-resize hover:bg-primary/30 active:bg-primary/60 transition-colors"
-        onMouseDown={onMouseDown}
+        onMouseDown={handleMouseDown}
       />
     </aside>
   );

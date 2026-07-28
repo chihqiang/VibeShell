@@ -6,6 +6,7 @@ import { sshConnect, sshDisconnect } from '@/services/sshService';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import type { ConnectConfig } from '@/contexts/TerminalTabsContext';
 import { Terminal as TerminalComp } from '@/components/terminal';
+import { useDragResize } from '@/hooks/use-drag-resize';
 import { WelcomePage } from '@/pages/WelcomePage';
 import { TabBar } from '@/components/tabbar';
 import { SftpBottomPanel } from '@/components/sftp';
@@ -38,11 +39,14 @@ export function EditorArea() {
   const connectedTabs = useRef(new Set<string>());
   const abortRef = useRef(new Map<string, AbortController>());
   const [bottomHeight, setBottomHeight] = useStorage(STORAGE_KEYS.SFTP_HEIGHT, BOTTOM_PANEL_DEFAULT_HEIGHT);
-  const dragging = useRef(false);
-  const startY = useRef(0);
-  const startH = useRef(0);
-  const dragRafRef = useRef<number | null>(null);
-  const dragHeightRef = useRef(0);
+
+  const { handleMouseDown: handleResizeStart } = useDragResize({
+    axis: 'y',
+    minSize: BOTTOM_PANEL_MIN_HEIGHT,
+    maxSize: window.innerHeight * 0.6,
+    defaultSize: bottomHeight,
+    onSizeChange: setBottomHeight,
+  });
 
   const tabsRef = useRef(tabs);
   useEffect(() => {
@@ -208,39 +212,6 @@ export function EditorArea() {
     };
   }, []);
 
-  useEffect(() => {
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!dragging.current) return;
-      const delta = startY.current - ev.clientY;
-      const newH = Math.max(BOTTOM_PANEL_MIN_HEIGHT, startH.current + delta);
-      dragHeightRef.current = newH;
-      if (dragRafRef.current === null) {
-        dragRafRef.current = requestAnimationFrame(() => {
-          dragRafRef.current = null;
-          setBottomHeight(dragHeightRef.current);
-        });
-      }
-    };
-    const onMouseUp = () => {
-      if (!dragging.current) return;
-      dragging.current = false;
-      if (dragRafRef.current !== null) {
-        cancelAnimationFrame(dragRafRef.current);
-        dragRafRef.current = null;
-      }
-      setBottomHeight(dragHeightRef.current);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      if (dragRafRef.current !== null) cancelAnimationFrame(dragRafRef.current);
-    };
-  }, [setBottomHeight]);
-
   // Notify terminal to refit when SFTP panel opens/closes — the terminal area
   // height changes and xterm needs to recalculate rows/cols + scroll to bottom.
   useEffect(() => {
@@ -252,18 +223,6 @@ export function EditorArea() {
     });
     return () => cancelAnimationFrame(raf);
   }, [sftpOpen]);
-
-  const handleResizeStart = useCallback(
-    (e: React.MouseEvent) => {
-      dragging.current = true;
-      startY.current = e.clientY;
-      startH.current = bottomHeight;
-      dragHeightRef.current = bottomHeight;
-      document.body.style.cursor = 'row-resize';
-      document.body.style.userSelect = 'none';
-    },
-    [bottomHeight],
-  );
 
   const handleReconnect = useCallback(
     (tabId: string) => {

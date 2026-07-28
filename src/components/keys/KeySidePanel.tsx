@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Search, Plus, Trash2, FileKey, Lock } from 'lucide-react';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useNotify } from '@/hooks/use-notify';
-import { listKeys, deleteKey } from '@/services/keyService';
+import { listKeys, deleteKey, getKeyReferrers } from '@/services/keyService';
 import type { KeyEntry } from '@/types/key';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ export function KeySidePanel() {
   const { notifyError } = useNotify();
   const [keys, setKeys] = useState<KeyEntry[]>([]);
   const [importOpen, setImportOpen] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; referrers: string[] } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadKeys = useCallback(async () => {
@@ -34,15 +34,26 @@ export function KeySidePanel() {
     loadKeys();
   }, [loadKeys]);
 
-  async function confirmDelete() {
-    if (!confirmDeleteId) return;
+  const initiateDelete = useCallback(async (keyId: string, keyName: string) => {
     try {
-      await deleteKey({ id: confirmDeleteId });
-      setKeys((prev) => prev.filter((k) => k.id !== confirmDeleteId));
-      setConfirmDeleteId(null);
+      const referrers = await getKeyReferrers({ keyId });
+      setDeleteTarget({ id: keyId, name: keyName, referrers });
     } catch (e) {
       notifyError(e);
-      setConfirmDeleteId(null);
+    }
+  }, [notifyError]);
+
+  async function confirmDelete() {
+    const target = deleteTarget;
+    if (!target) return;
+    if (target.referrers.length > 0) return; // should not reach here
+    try {
+      await deleteKey({ id: target.id });
+      setKeys((prev) => prev.filter((k) => k.id !== target.id));
+      setDeleteTarget(null);
+    } catch (e) {
+      notifyError(e);
+      setDeleteTarget(null);
     }
   }
 
@@ -96,7 +107,7 @@ export function KeySidePanel() {
         ) : (
           <div className="space-y-0.5">
             {filtered.map((key) => (
-              <KeySideRow key={key.id} keyEntry={key} onDelete={() => setConfirmDeleteId(key.id)} />
+              <KeySideRow key={key.id} keyEntry={key} onDelete={() => initiateDelete(key.id, key.name)} />
             ))}
           </div>
         )}
@@ -104,11 +115,23 @@ export function KeySidePanel() {
 
       <ImportKeyDialog open={importOpen} onClose={() => setImportOpen(false)} onImported={() => loadKeys()} />
       <DeleteDialog
-        open={confirmDeleteId !== null}
-        onClose={() => setConfirmDeleteId(null)}
+        open={deleteTarget !== null && deleteTarget.referrers.length === 0}
+        onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
         titleKey="sidebar.confirmDeleteKey"
       />
+      {deleteTarget && deleteTarget.referrers.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-card rounded-lg shadow-xl p-6 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-destructive font-semibold mb-2">{t('sidebar.cannotDeleteKey')}</p>
+            <p className="text-xs text-muted-foreground mb-3">{t('sidebar.keyInUseBy', { count: deleteTarget.referrers.length })}</p>
+            <ul className="text-xs space-y-1 mb-4 list-disc list-inside text-foreground">
+              {deleteTarget.referrers.map((name) => (<li key={name}>{name}</li>))}
+            </ul>
+            <button onClick={() => setDeleteTarget(null)} className="w-full px-4 py-2 text-xs font-medium rounded bg-secondary hover:bg-muted transition-colors cursor-pointer">{t('common.close')}</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

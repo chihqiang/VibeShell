@@ -41,6 +41,11 @@ pub fn get_app_config() -> core::models::AppConfig {
 }
 
 #[tauri::command]
+pub fn count_hosts() -> Result<i64, String> {
+    core::store::count_hosts()
+}
+
+#[tauri::command]
 pub fn list_tags() -> Result<Vec<String>, String> {
     core::store::list_tags()
 }

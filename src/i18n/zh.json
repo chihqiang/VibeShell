@@ -25,7 +25,9 @@
     "tagName": "标签名称",
     "selectKey": "选择密钥",
     "hostManagement": "主机管理",
-    "keyManagement": "密钥管理"
+    "keyManagement": "密钥管理",
+    "cannotDeleteKey": "此密钥正在被以下主机使用",
+    "keyInUseBy": "请先从这些主机中解除密钥关联后再删除"
   },
   "connection": {
     "hostname": "主机地址",

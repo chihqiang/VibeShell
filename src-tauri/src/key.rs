@@ -1,6 +1,12 @@
 use crate::core;
 
 #[tauri::command]
+pub fn get_key_referrers(key_id: String) -> Result<Vec<String>, String> {
+    log::info!("[key] get referrers: key_id={}", key_id);
+    core::store::get_key_referrers(&key_id)
+}
+
+#[tauri::command]
 pub fn list_keys() -> Result<Vec<core::models::KeyEntry>, String> {
     core::key::list_keys()
 }

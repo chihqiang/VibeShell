@@ -10,11 +10,13 @@ mod storage;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let data_dir = core::data_dir();
-    std::fs::create_dir_all(&data_dir).ok();
+    std::fs::create_dir_all(&data_dir)
+        .unwrap_or_else(|e| eprintln!("Warning: failed to create data dir: {}", e));
 
     let log_file = core::log_path();
     if let Some(parent) = log_file.parent() {
-        std::fs::create_dir_all(parent).ok();
+        std::fs::create_dir_all(parent)
+            .unwrap_or_else(|e| eprintln!("Warning: failed to create log dir: {}", e));
         // If creation failed, log_file may still be writable.
         // Attempt to touch it now so that fern::log_file succeeds.
         // If this also fails, we log a warning and skip file logging.
@@ -71,6 +73,7 @@ pub fn run() {
             storage::save_host,
             storage::delete_host,
             storage::get_app_config,
+            storage::count_hosts,
             storage::list_tags,
             // SSH commands
             ssh::ssh_connect,
@@ -100,6 +103,7 @@ pub fn run() {
             sftp::sftp_is_directory,
             // Local filesystem
             fs::list_local_files,
+            key::get_key_referrers,
             key::list_keys,
             key::import_key,
             key::import_key_content,

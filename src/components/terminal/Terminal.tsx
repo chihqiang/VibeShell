@@ -28,9 +28,14 @@ import {
 import { TerminalSearchBar } from './TerminalSearchBar';
 
 /** Build an xterm ITheme object from the stored terminal theme. */
+let _cachedThemeId: string | null = null;
+let _cachedTheme: ITheme | null = null;
+
 function buildXtermTheme(): ITheme {
-  const tc = getTerminalTheme(getStoredThemeId()).colors;
-  return {
+  const id = getStoredThemeId();
+  if (_cachedThemeId === id && _cachedTheme) return _cachedTheme;
+  const tc = getTerminalTheme(id).colors;
+  _cachedTheme = {
     background: tc.background,
     foreground: tc.foreground,
     cursor: tc.cursor,
@@ -53,6 +58,8 @@ function buildXtermTheme(): ITheme {
     brightCyan: tc.brightCyan,
     brightWhite: tc.brightWhite,
   };
+  _cachedThemeId = id;
+  return _cachedTheme;
 }
 
 interface TerminalProps {
