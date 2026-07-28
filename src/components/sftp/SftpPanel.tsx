@@ -203,9 +203,11 @@ export function SftpPanel() {
       );
     });
 
-    promise.then((fn) => {
-      unlisten = fn;
-    }).catch((e) => notifyError(e));
+    promise
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch((e) => notifyError(e));
 
     return () => {
       if (unlisten) {
