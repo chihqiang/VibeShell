@@ -31,7 +31,7 @@ export function ImportKeyDialog({ open, onClose, onImported }: Props) {
       const { open: showOpen } = await import('@tauri-apps/plugin-dialog');
       const selected = await showOpen({
         multiple: false,
-        filters: [{ name: 'SSH Keys', extensions: ['pem', 'pub', 'key', 'ppk'] }],
+        // 不设 filters 以支持无扩展名的私钥文件（如 id_rsa、id_ed25519）
       });
       if (selected) {
         setSelectedFile(selected);

@@ -1,52 +1,62 @@
 # VibeShell
 
-基于 [Tauri 2](https://v2.tauri.app) 开发的跨平台 SSH 终端客户端。
-集成主机管理、SSH 连接、服务器监控和文件传输功能。
+基于 [Tauri 2](https://v2.tauri.app) 开发的跨平台 SSH 终端客户端，一站式整合远程终端会话、服务器实时监控和 SFTP 文件管理功能。
 
 ## 功能特性
 
-- **SSH 终端** — 支持密码和密钥认证连接远程服务器
-- **标签页与分屏** — 多会话标签页和分屏视图
-- **主机管理** — 标签管理服务器，保存连接凭据
-- **SFTP 文件管理** — 浏览、上传、下载、拖拽上传、编辑和管理远程文件
-- **服务器监控** — 实时 CPU、内存、磁盘和进程概览
-- **密钥链** — 导入和管理 SSH 私钥
-- **快速连接** — 临时连接无需保存主机
-- **主题切换** — 深色和浅色模式
-- **国际化** — 支持英文和中文界面
-
-## 界面预览
-
-<img src="docs/images/vibessh.png" width="600">
-
+- **SSH 终端** — 支持密码认证、密钥认证（OpenSSH / PEM 格式）和 ssh-agent 连接远程服务器
+- **多标签页** — 多会话标签页管理，支持快速切换和标签排序
+- **主机管理** — 标签系统管理服务器，保存连接凭据，支持搜索和快速连接
+- **SFTP 文件管理** — 浏览、上传、下载、拖拽上传、在线编辑、重命名、权限修改和递归操作
+- **服务器监控** — 实时 CPU、内存、磁盘占用和进程概览，带历史趋势折线图
+- **密钥链** — 导入和管理 SSH 私钥，支持密码短语验证
+- **自动重连** — 指数退避重连策略，可配置最大重试次数和延迟
+- **主题切换** — 深色和浅色模式，多种终端配色方案（GitHub Dark、Dracula 等）
+- **国际化** — 支持简体中文和英文界面，自动跟随系统语言
+- **数据备份** — 导出/恢复主机配置和密钥数据（JSON 格式）
 
 ## 下载
 
 预编译安装包请前往 [Releases](https://github.com/chihqiang/VibeShell/releases) 页面下载。
 
-| 平台   | 架构        | 格式 |
-| ------ | ----------- | ---- |
-| macOS  | Intel & ARM | .dmg |
+| 平台 | 架构 | 格式 |
+|------|------|------|
+| macOS | Intel & ARM | .dmg |
 
 ## 快速开始
-
-1. 从 [Releases](https://github.com/chihqiang/VibeShell/releases) 下载对应平台的安装包。
-2. 安装并启动 VibeShell。
-3. 点击 **添加主机** 保存服务器，或使用 **快速连接** 临时连接。
-4. 双击主机或输入凭据，即可打开终端会话。
-
-## 开发
 
 ```bash
 # 安装依赖
 npm install
 
-# 启动开发
+# 启动开发模式
 npm run tauri dev
 
-# 构建
+# 构建安装包
 npm run tauri build
 ```
+
+启动后：
+
+1. 点击 **添加主机** 保存服务器连接信息，或使用顶栏 **快速连接** 输入地址
+2. 双击主机或回车即可打开终端会话
+3. 连接后点击右侧按钮打开 **监控面板** 查看实时服务器状态
+4. 在终端标签页底部可展开 **SFTP 面板** 管理远程文件
+
+## 技术栈
+
+| 层 | 技术 |
+|---|---|
+| 桌面框架 | [Tauri 2](https://v2.tauri.app) |
+| 前端框架 | React 19 + TypeScript 5.8 |
+| 构建工具 | Vite 7 + Tailwind CSS 4 |
+| 终端 | [xterm.js](https://xtermjs.org/) |
+| 图表 | [Recharts](https://recharts.org/) |
+| 路由 | react-router-dom 7 |
+| 国际化 | i18next |
+| 后端语言 | Rust (edition 2021) |
+| SSH 库 | [ssh2](https://github.com/alexcrichton/ssh2-rs) (libssh2) |
+| 数据库 | SQLite (rusqlite) |
 
 ## 贡献指南
 
@@ -55,7 +65,7 @@ npm run tauri build
 ### 开发环境
 
 - Node.js 20+
-- Rust 1.95+
+- Rust 1.85+
 - npm 10.8+
 
 ### 开发流程
@@ -70,7 +80,12 @@ npm run tauri build
 
 - 前端：遵循 ESLint 和 Prettier 配置
 - 后端：遵循 `cargo fmt` 格式化
-- 提交信息：使用清晰的提交描述
+- i18n：修改语言文件后运行 `npm run check:i18n` 验证键一致性
+
+```bash
+# 一键检查（格式化、lint、i18n、编译）
+npm run check
+```
 
 ## 许可证
 

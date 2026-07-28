@@ -1,12 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { useMonitorData } from '@/hooks/use-monitor';
+import type { MonitorEvent } from '@/types/monitor';
 import { MONITOR_COLORS, MONITOR_DISK_WARN_THRESHOLD, MONITOR_DISK_DANGER_THRESHOLD } from '@/constants';
 import type { DiskInfo } from '@/types';
 
 /** 磁盘列表 — 显示磁盘使用率 */
-export function DiskList() {
+export function DiskList({ monitorData }: { monitorData: MonitorEvent | null }) {
   const { t } = useTranslation();
-  const monitorData = useMonitorData();
   const disks: DiskInfo[] = monitorData?.disks ?? [];
 
   const parseDiskSize = (s: string): number => {

@@ -25,7 +25,9 @@
     "tagName": "Tag name",
     "selectKey": "Select key",
     "hostManagement": "Host Management",
-    "keyManagement": "Key Management"
+    "keyManagement": "Key Management",
+    "cannotDeleteKey": "This key is in use by the following hosts",
+    "keyInUseBy": "Unlink the key from these hosts before deleting"
   },
   "connection": {
     "hostname": "Hostname",
@@ -210,6 +212,9 @@
     "diskSize": "Size",
     "diskUsage": "Usage",
     "systemInfo": "System",
+    "os": "OS",
+    "kernel": "Kernel",
+    "hostname": "Hostname",
     "processes": "Processes",
     "disks": "Disks",
     "noConnection": "No active connection",
@@ -252,6 +257,7 @@
     "error": "Error",
     "quit": "Quit",
     "quitConfirm": "Are you sure you want to quit VibeShell?",
+    "second": "s",
     "day": "d",
     "hour": "h",
     "minute": "m"

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
-use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Condvar, LazyLock, Mutex, RwLock};
 use std::thread;
@@ -85,29 +84,24 @@ static SESSIONS: LazyLock<RwLock<HashMap<String, SessionHandle>>> =
 
 // ── do_connect (moved from core/ssh.rs) ──
 
-/// RAII guard that removes a temporary key file on drop, even on panic.
-/// Used when extracting a key from the database to a temp file for ssh2 auth.
-struct TempKeyGuard(Option<PathBuf>);
+/// Drop guard that removes a temporary key file when the scope exits,
+/// even if the caller returns early with an error.
+struct TempKeyGuard {
+    path: Option<std::path::PathBuf>,
+}
 
 impl TempKeyGuard {
-    fn new(path: PathBuf) -> Self {
-        Self(Some(path))
+    fn new(path: std::path::PathBuf) -> Self {
+        Self { path: Some(path) }
     }
 }
 
 impl Drop for TempKeyGuard {
     fn drop(&mut self) {
-        if let Some(path) = self.0.take() {
-            std::fs::remove_file(&path).ok();
+        if let Some(path) = &self.path {
+            std::fs::remove_file(path)
+                .unwrap_or_else(|e| log::warn!("[connect] remove temp key file failed: {}", e));
         }
-    }
-}
-
-fn expand_path(path: &str) -> PathBuf {
-    if path.starts_with('~') {
-        core::home_dir().join(&path[2..])
-    } else {
-        Path::new(path).to_path_buf()
     }
 }
 
@@ -121,10 +115,13 @@ fn do_connect_inner(
     private_key_path: Option<&str>,
 ) -> Result<(Session, String), String> {
     let addr = format!("{}:{}", hostname, port);
-    let sock_addrs: Vec<_> = addr.to_socket_addrs().map_err(|e| {
-        log::error!("DNS resolution failed: {}", e);
-        format!("DNS resolution failed: {}", e)
-    })?.collect();
+    let sock_addrs: Vec<_> = addr
+        .to_socket_addrs()
+        .map_err(|e| {
+            log::error!("DNS resolution failed: {}", e);
+            format!("DNS resolution failed: {}", e)
+        })?
+        .collect();
     let tcp = sock_addrs
         .iter()
         .find_map(|sa| TcpStream::connect_timeout(sa, CONNECT_TIMEOUT).ok())
@@ -133,8 +130,10 @@ fn do_connect_inner(
             log::error!("{}", msg);
             msg
         })?;
-    tcp.set_read_timeout(Some(Duration::from_secs(30))).ok();
-    tcp.set_write_timeout(Some(Duration::from_secs(30))).ok();
+    tcp.set_read_timeout(Some(Duration::from_secs(30)))
+        .unwrap_or_else(|e| log::warn!("[connect] set_read_timeout failed: {}", e));
+    tcp.set_write_timeout(Some(Duration::from_secs(30)))
+        .unwrap_or_else(|e| log::warn!("[connect] set_write_timeout failed: {}", e));
 
     let mut session = Session::new().map_err(|e| {
         log::error!("Failed to create session: {}", e);
@@ -147,35 +146,37 @@ fn do_connect_inner(
         format!("SSH handshake failed: {}", e)
     })?;
 
-    if let Some(key_path) = private_key_path {
-        // Support vibeshell://key/<uuid> -- read key content from SQLite
-        if let Some(key_id) = key_path.strip_prefix("vibeshell://key/") {
-            let content = super::store::get_key_content(key_id)?
-                .ok_or_else(|| format!("Key not found: {}", key_id))?;
-            let tmp_dir = std::env::temp_dir().join("vibeshell_keys");
-            std::fs::create_dir_all(&tmp_dir)
-                .map_err(|e| format!("create temp key dir: {}", e))?;
-            let tmp_path = tmp_dir.join(key_id).to_path_buf();
-            std::fs::write(&tmp_path, &content)
-                .map_err(|e| format!("write temp key: {}", e))?;
-            let _guard = TempKeyGuard::new(tmp_path.clone());
-            let result = session
-                .userauth_pubkey_file(username, None, &tmp_path, password)
-                .map_err(|e| {
-                    log::error!("Key auth failed: {}", e);
-                    format!("Key auth failed: {}", e)
-                });
-            // _guard drops here, removing the temp file
-            result?;
-        } else {
-            let key_file = expand_path(key_path);
-            session
-                .userauth_pubkey_file(username, None, &key_file, password)
-                .map_err(|e| {
-                    log::error!("Key auth failed: {}", e);
-                    format!("Key auth failed: {}", e)
-                })?;
-        };
+    if let Some(key_content) = private_key_path {
+        // Write key content to temp file for ssh2 auth
+        let key_id = uuid::Uuid::new_v4().to_string();
+        let tmp_dir = super::data_dir().join("tmp");
+        std::fs::create_dir_all(&tmp_dir)
+            .unwrap_or_else(|e| log::warn!("[connect] create tmp dir failed: {}", e));
+        let key_file = tmp_dir.join(format!("key_{}", key_id));
+        let _guard = TempKeyGuard::new(key_file.clone());
+        std::fs::write(&key_file, key_content).map_err(|e| format!("write temp key: {}", e))?;
+        log::info!(
+            "[connect] using key content: path={} ({} bytes) has_passphrase={}",
+            key_file.display(),
+            key_content.len(),
+            password.is_some()
+        );
+        match session.userauth_pubkey_file(username, None, &key_file, password) {
+            Ok(()) => {
+                log::info!("[connect] key auth succeeded: path={}", key_file.display());
+            }
+            Err(e) => {
+                log::error!(
+                    "[connect] key auth failed: path={} has_passphrase={} error=[{}] {}",
+                    key_file.display(),
+                    password.is_some(),
+                    e.code(),
+                    e.message()
+                );
+                return Err(format!("Key auth failed: {}", e.message()));
+            }
+        }
+        // Temp key file is cleaned up by TempKeyGuard::drop();
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);
@@ -189,8 +190,13 @@ fn do_connect_inner(
     }
 
     if !session.authenticated() {
-        log::error!("Authentication failed: not authenticated");
-        return Err("Authentication failed: not authenticated".to_string());
+        let msg = format!(
+            "Authentication succeeded but session not authenticated (username={} has_key={})",
+            username,
+            private_key_path.is_some()
+        );
+        log::error!("[connect] {}", msg);
+        return Err(msg);
     }
 
     let banner = session.banner().unwrap_or("").to_string();
@@ -211,16 +217,21 @@ pub fn do_connect(
     let private_key_path = private_key_path.map(|s| s.to_string());
 
     std::thread::spawn(move || {
-        let result = do_connect_inner(&hostname, port, &username, password.as_deref(), private_key_path.as_deref());
+        let result = do_connect_inner(
+            &hostname,
+            port,
+            &username,
+            password.as_deref(),
+            private_key_path.as_deref(),
+        );
         let _ = tx.send(result);
     });
 
-    rx.recv_timeout(Duration::from_secs(30))
-        .map_err(|_| {
-            let msg = "Connection timed out".to_string();
-            log::error!("{}", msg);
-            msg
-        })?
+    rx.recv_timeout(Duration::from_secs(30)).map_err(|_| {
+        let msg = "Connection timed out".to_string();
+        log::error!("{}", msg);
+        msg
+    })?
 }
 
 /// Generate a platform-appropriate monitor script.
@@ -243,6 +254,12 @@ fn linux_monitor_script() -> String {
         r#"(cat /proc/loadavg 2>/dev/null | awk '{print $1, $2, $3}' || echo '')"#,
         r#"echo '---CPU---'"#,
         r#"(top -bn1 2>/dev/null | grep -i 'Cpu(s)' | awk '{print $2+$4}' || cat /proc/stat 2>/dev/null | head -1 | awk '{print 100-($5*100/($2+$3+$4+$5+$6+$7+$8))}' || echo '')"#,
+        r#"echo '---HOSTNAME---'"#,
+        r#"(hostname 2>/dev/null || echo '')"#,
+        r#"echo '---OS---'"#,
+        r#"(grep -m1 '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || grep -m1 '^ID=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || lsb_release -d 2>/dev/null | cut -f2- || cat /etc/*release* 2>/dev/null | head -n1 | cut -d= -f2 | tr -d '"' 2>/dev/null || uname -o 2>/dev/null || echo 'Linux')"#,
+        r#"echo '---KERNEL---'"#,
+        r#"(uname -r 2>/dev/null || echo '')"#,
         r#"echo '---MEM---'"#,
         r#"(free -m 2>/dev/null | awk 'NR==2{printf "%dMB / %dMB (%.1f%%)\n", $3, $2, $3/$2*100}' || echo '')"#,
         r#"echo '---SWAP---'"#,
@@ -261,6 +278,12 @@ fn macos_monitor_script() -> String {
     vec![
         r#"echo '---IP---'"#,
         r#"(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || ifconfig 2>/dev/null | grep 'inet ' | grep -v 127.0.0.1 | awk '{print $2}' | head -1 || echo '')"#,
+        r#"echo '---HOSTNAME---'"#,
+        r#"(hostname 2>/dev/null || echo '')"#,
+        r#"echo '---OS---'"#,
+        r#"(sw_vers -productName 2>/dev/null | tr -d '\n'; echo -n ' '; sw_vers -productVersion 2>/dev/null || echo '')"#,
+        r#"echo '---KERNEL---'"#,
+        r#"(uname -r 2>/dev/null || echo '')"#,
         r#"echo '---UPTIME---'"#,
         r#"(uptime 2>/dev/null | sed 's/.*up //' | sed 's/,.*//' || echo '')"#,
         r#"echo '---LOAD---'"#,
@@ -285,6 +308,9 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
     let mut uptime = String::new();
     let mut load = String::new();
     let mut cpu = String::new();
+    let mut hostname = String::new();
+    let mut os = String::new();
+    let mut kernel = String::new();
     let mut memory = String::new();
     let mut swap = String::new();
     let mut net_io = String::new();
@@ -303,6 +329,9 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
             "UPTIME" => uptime = trimmed.to_string(),
             "LOAD" => load = trimmed.to_string(),
             "CPU" => cpu = trimmed.to_string(),
+            "HOSTNAME" => hostname = trimmed.to_string(),
+            "OS" => os = trimmed.to_string(),
+            "KERNEL" => kernel = trimmed.to_string(),
             "MEM" => memory = trimmed.to_string(),
             "SWAP" => swap = trimmed.to_string(),
             "NET" => net_io = trimmed.to_string(),
@@ -334,6 +363,9 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
     core::models::MonitorEvent {
         tab_id: tab_id.to_string(),
         ip,
+        hostname,
+        os,
+        kernel,
         uptime,
         load,
         cpu,
@@ -359,17 +391,27 @@ pub fn connect(
     monitor_interval_secs: u64,
     heartbeat_interval_secs: u64,
 ) -> Result<String, String> {
+    let auth_type = if private_key_path.is_some() {
+        "key"
+    } else {
+        "password"
+    };
     log::info!(
-        "[connect] tab={} connecting to {}@{}:{}",
+        "[connect] tab={} connecting to {}@{}:{} auth={}",
         tab_id,
         username,
         hostname,
-        port
+        port,
+        auth_type
     );
 
     let (session, banner) = do_connect(hostname, port, username, password, private_key_path)?;
 
-    log::info!("[connect] tab={} authenticated, banner={:?}", tab_id, banner);
+    log::info!(
+        "[connect] tab={} authenticated, banner={:?}",
+        tab_id,
+        banner
+    );
 
     let sftp = session.sftp().map_err(|e| {
         log::error!("SFTP init failed: {}", e);
@@ -402,11 +444,21 @@ pub fn connect(
             return true;
         }
         let mut out = String::new();
-        ch.read_to_string(&mut out).ok();
-        ch.wait_close().ok();
+        let _ = ch.read_to_string(&mut out);
+        if let Err(e) = ch.wait_close() {
+            log::warn!("[connect] OS detection channel wait_close failed: {}", e);
+        }
         out.trim() == "Linux"
     })();
-    log::info!("[connect] tab={} remote OS: {}", tab_id, if remote_is_linux { "Linux" } else { "macOS/BSD" });
+    log::info!(
+        "[connect] tab={} remote OS: {}",
+        tab_id,
+        if remote_is_linux {
+            "Linux"
+        } else {
+            "macOS/BSD"
+        }
+    );
 
     session.set_blocking(false);
 
@@ -511,16 +563,26 @@ pub fn get(tab_id: &str) -> Result<SessionHandle, String> {
         .ok_or_else(|| "Session not found".to_string())
 }
 
+/// Core logic: remove tab from SESSIONS, set cancel, signal all threads.
+/// Returns `true` if a session was actually removed, `false` if not found.
+fn remove_and_signal(tab_id: &str, sessions: &mut HashMap<String, SessionHandle>) -> bool {
+    if let Some(state) = sessions.remove(tab_id) {
+        if let Ok(inner) = state.lock() {
+            inner.cancel.store(true, Ordering::Relaxed);
+            inner.reader_cvar.notify_all();
+            inner.monitor_cvar.notify_all();
+            inner.heartbeat_cvar.notify_all();
+        }
+        true
+    } else {
+        false
+    }
+}
+
 pub fn disconnect(tab_id: &str) -> Result<(), String> {
     log::info!("[disconnect] tab={}: disconnecting", tab_id);
     let mut sessions = SESSIONS.write().map_err(|e| e.to_string())?;
-    if let Some(state) = sessions.remove(tab_id) {
-        let inner = state.lock().map_err(|e| e.to_string())?;
-        inner.cancel.store(true, Ordering::Relaxed);
-        inner.reader_cvar.notify_all();
-        inner.monitor_cvar.notify_all();
-        inner.heartbeat_cvar.notify_all();
-    }
+    remove_and_signal(tab_id, &mut sessions);
     log::info!(
         "[disconnect] tab={}: removed (remaining sessions: {})",
         tab_id,
@@ -536,15 +598,10 @@ pub fn disconnect(tab_id: &str) -> Result<(), String> {
 /// Blocks on the write lock — background operations holding the read lock should
 /// finish quickly (they wait on the cancel flag first).
 fn cleanup_session(tab_id: &str) {
-    let Ok(mut sessions) = SESSIONS.write() else { return };
-    if let Some(state) = sessions.remove(tab_id) {
-        if let Ok(inner) = state.lock() {
-            inner.cancel.store(true, Ordering::Relaxed);
-            inner.reader_cvar.notify_all();
-            inner.monitor_cvar.notify_all();
-            inner.heartbeat_cvar.notify_all();
-        }
-    }
+    let Ok(mut sessions) = SESSIONS.write() else {
+        return;
+    };
+    remove_and_signal(tab_id, &mut sessions);
     log::info!("[cleanup] tab={}: session removed", tab_id);
 }
 
@@ -628,7 +685,7 @@ fn spawn_reader(
 #[allow(clippy::too_many_arguments)]
 fn start_monitor(
     app_handle: &tauri::AppHandle,
-    tab_id: &str, // unused, kept for API consistency
+    tab_id: &str,
     handle: SessionHandle,
     cancel: Arc<AtomicBool>,
     fail_count: Arc<AtomicU32>,
@@ -640,9 +697,46 @@ fn start_monitor(
     let app = app_handle.clone();
     let tid = tab_id.to_string();
     let script = monitor_script(remote_is_linux);
+
     thread::spawn(move || {
+        // ── 连接建立后立即推送第一条监控数据 ──
+        // 不等第一个 interval，让监控面板一打开就有数据可展示
+        let first = (|| -> Option<String> {
+            let inner = handle.try_lock().ok()?;
+            let _guard = BlockingGuard::new(&inner.session);
+            inner.session.set_timeout(15_000);
+            let mut buf = [0u8; 8192];
+            let mut ch = inner.session.channel_session().ok()?;
+            if ch.exec(&script).is_err() {
+                return None;
+            }
+            let mut out = String::new();
+            loop {
+                match ch.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => out.push_str(&String::from_utf8_lossy(&buf[..n])),
+                    Err(_) => break,
+                }
+            }
+            if let Err(e) = ch.wait_close() {
+                log::debug!("[monitor] tab={} channel wait_close: {}", tid, e);
+            }
+            Some(out)
+        })();
+        if let Some(data) = first {
+            let event = parse_monitor_output(&data, &tid);
+            log::info!("[monitor] tab={} initial push", tid);
+            let ok = app.emit("ssh://monitor", event).is_ok();
+            if emit_ok(&fail_count, ok) {
+                log::warn!(
+                    "[monitor] tab={}: frontend unreachable on initial push",
+                    tid
+                );
+                return;
+            }
+        }
+
         while !cancel.load(Ordering::Relaxed) {
-            // ── Collect monitor data (try_lock to avoid blocking terminal I/O) ──
             let output = (|| -> Option<String> {
                 let inner = handle.try_lock().ok()?;
                 let _guard = BlockingGuard::new(&inner.session);
@@ -660,12 +754,21 @@ fn start_monitor(
                         Err(_) => break,
                     }
                 }
-                ch.wait_close().ok();
+                if let Err(e) = ch.wait_close() {
+                    log::debug!("[monitor] tab={} channel wait_close: {}", tid, e);
+                }
                 Some(out)
             })();
 
             if let Some(data) = output {
                 let event = parse_monitor_output(&data, &tid);
+                log::info!(
+                    "[monitor] tab={} os={:?} hostname={:?} kernel={:?}",
+                    tid,
+                    event.os,
+                    event.hostname,
+                    event.kernel
+                );
                 let ok = app.emit("ssh://monitor", event).is_ok();
                 if emit_ok(&fail_count, ok) {
                     log::warn!("[monitor] tab={}: frontend unreachable, exiting", tid);
@@ -748,7 +851,9 @@ fn start_heartbeat(
                 let result = (|| -> Result<(), String> {
                     let mut channel = inner.session.channel_session().map_err(|_| "channel")?;
                     channel.exec("echo 1").map_err(|_| "exec")?;
-                    channel.wait_close().ok();
+                    if let Err(e) = channel.wait_close() {
+                        log::debug!("[heartbeat] tab={} channel wait_close: {}", tid, e);
+                    }
                     Ok(())
                 })();
                 drop(_guard);
@@ -840,8 +945,13 @@ pub fn execute(tab_id: &str, command: &str) -> Result<core::models::SshExecuteRe
         }
     }
 
-    channel.wait_close().ok();
-    let exit_code = channel.exit_status().unwrap_or(-1);
+    if let Err(e) = channel.wait_close() {
+        log::debug!("[execute] tab={} channel wait_close: {}", tab_id, e);
+    }
+    let exit_code = channel.exit_status().unwrap_or_else(|e| {
+        log::debug!("[execute] tab={} exit_status failed: {}", tab_id, e);
+        -1
+    });
 
     Ok(core::models::SshExecuteResult {
         tab_id: tab_id.to_string(),

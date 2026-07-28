@@ -4,8 +4,7 @@ import { Server, Wifi, WifiOff, Activity, Folder } from 'lucide-react';
 import { cn } from '@/utils';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useLayout } from '@/contexts/LayoutContext';
-import { listHosts } from '@/services/hostService';
-import type { HostConfig } from '@/types/host';
+import { countHosts } from '@/services/hostService';
 import { DOM_EVENTS, APP_NAME, SFTP_LABEL } from '@/constants';
 
 /** 底部状态栏 — 显示主机数、连接数等信息 */
@@ -13,12 +12,12 @@ export function StatusBar() {
   const { t } = useTranslation();
   const { tabs, activeTabId } = useTerminalTabs();
   const { toggleSftp, sftpOpen, toggleMonitor, monitorOpen, setActiveView } = useLayout();
-  const [hosts, setHosts] = useState<HostConfig[]>([]);
+  const [hostCount, setHostCount] = useState(0);
 
   useEffect(() => {
     const reload = () =>
-      listHosts()
-        .then(setHosts)
+      countHosts()
+        .then(setHostCount)
         .catch(() => {});
     reload();
     window.addEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
@@ -78,7 +77,7 @@ export function StatusBar() {
         className="flex items-center gap-1.5 px-1.5 h-full hover:bg-primary-foreground/10 transition-all duration-150 cursor-pointer"
       >
         <Server size={11} />
-        <span>{t('statusbar.hosts', { count: hosts.length })}</span>
+        <span>{t('statusbar.hosts', { count: hostCount })}</span>
       </button>
 
       <div className="w-px h-3 bg-primary-foreground/15" />

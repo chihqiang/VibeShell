@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Plus, Trash2, FileKey, Lock, Copy, Check } from 'lucide-react';
+import { Search, Plus, Trash2, FileKey, Lock } from 'lucide-react';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useNotify } from '@/hooks/use-notify';
-import { listKeys, deleteKey } from '@/services/keyService';
+import { listKeys, deleteKey, getKeyReferrers } from '@/services/keyService';
 import type { KeyEntry } from '@/types/key';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DeleteDialog } from '@/components/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ImportKeyDialog } from '@/components/keys';
 import { PanelHeader } from '@/components/layout/SidePanel';
-import { COPY_FEEDBACK_DELAY } from '@/constants';
 
 /** 密钥管理侧边栏面板 */
 export function KeySidePanel() {
@@ -19,7 +19,7 @@ export function KeySidePanel() {
   const { notifyError } = useNotify();
   const [keys, setKeys] = useState<KeyEntry[]>([]);
   const [importOpen, setImportOpen] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; referrers: string[] } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadKeys = useCallback(async () => {
@@ -35,24 +35,36 @@ export function KeySidePanel() {
     loadKeys();
   }, [loadKeys]);
 
+  const initiateDelete = useCallback(
+    async (keyId: string, keyName: string) => {
+      try {
+        const referrers = await getKeyReferrers({ keyId });
+        setDeleteTarget({ id: keyId, name: keyName, referrers });
+      } catch (e) {
+        notifyError(e);
+      }
+    },
+    [notifyError],
+  );
+
   async function confirmDelete() {
-    if (!confirmDeleteId) return;
+    const target = deleteTarget;
+    if (!target) return;
+    if (target.referrers.length > 0) return; // should not reach here
     try {
-      await deleteKey({ id: confirmDeleteId });
-      setKeys((prev) => prev.filter((k) => k.id !== confirmDeleteId));
-      setConfirmDeleteId(null);
+      await deleteKey({ id: target.id });
+      setKeys((prev) => prev.filter((k) => k.id !== target.id));
+      setDeleteTarget(null);
     } catch (e) {
       notifyError(e);
-      setConfirmDeleteId(null);
+      setDeleteTarget(null);
     }
   }
 
   const filtered = keys.filter(
     (k) =>
       k.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      k.key_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      k.fingerprint.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      k.file_name.toLowerCase().includes(searchQuery.toLowerCase()),
+      k.key_type.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -99,7 +111,7 @@ export function KeySidePanel() {
         ) : (
           <div className="space-y-0.5">
             {filtered.map((key) => (
-              <KeySideRow key={key.id} keyEntry={key} onDelete={() => setConfirmDeleteId(key.id)} />
+              <KeySideRow key={key.id} keyEntry={key} onDelete={() => initiateDelete(key.id, key.name)} />
             ))}
           </div>
         )}
@@ -107,44 +119,50 @@ export function KeySidePanel() {
 
       <ImportKeyDialog open={importOpen} onClose={() => setImportOpen(false)} onImported={() => loadKeys()} />
       <DeleteDialog
-        open={confirmDeleteId !== null}
-        onClose={() => setConfirmDeleteId(null)}
+        open={deleteTarget !== null && deleteTarget.referrers.length === 0}
+        onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
         titleKey="sidebar.confirmDeleteKey"
       />
+      {deleteTarget && deleteTarget.referrers.length > 0 && (
+        <Dialog open={true} onOpenChange={() => setDeleteTarget(null)}>
+          <DialogContent showCloseButton={false} className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{t('sidebar.cannotDeleteKey')}</DialogTitle>
+            </DialogHeader>
+            <p className="px-5 text-sm text-muted-foreground">
+              {t('sidebar.keyInUseBy', { count: deleteTarget.referrers.length })}
+            </p>
+            <ul className="px-5 text-xs space-y-1 list-disc list-inside text-foreground">
+              {deleteTarget.referrers.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
+            </ul>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline" size="sm">
+                  {t('common.close')}
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
 
 function KeySideRow({ keyEntry: k, onDelete }: { keyEntry: KeyEntry; onDelete: () => void }) {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-
-  const copyFingerprint = () => {
-    navigator.clipboard.writeText(k.fingerprint).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), COPY_FEEDBACK_DELAY);
-    });
-  };
-
   return (
     <div className="group flex items-center gap-2 h-10 px-3 hover:bg-muted/60 transition-colors cursor-default">
       <FileKey size={14} className="text-muted-foreground flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-xs text-foreground truncate">{k.name}</div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
-          {k.password && <Lock size={9} className="flex-shrink-0" />}
+          {k.password && <Lock size={10} className="flex-shrink-0" />}
           <span className="uppercase">{k.key_type}</span>
-          <span className="truncate">{k.fingerprint}</span>
         </div>
       </div>
-      <button
-        onClick={copyFingerprint}
-        className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
-        title={t('common.copyFingerprint')}
-      >
-        {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-      </button>
       <button
         onClick={onDelete}
         className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all cursor-pointer"

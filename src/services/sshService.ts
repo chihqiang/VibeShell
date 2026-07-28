@@ -1,13 +1,13 @@
 import { invoke } from '@/utils/invoke';
-import type { SshConnectResult, SshConnectParams } from '@/types/host';
+import type { SshConnectResult, SshConnectParams, ConnectConfig } from '@/types/host';
 
-/** 建立 SSH 连接 */
+/** 建立 SSH 连接（通过已保存主机的 hostId） */
 export function sshConnect(params: SshConnectParams): Promise<SshConnectResult> {
   return invoke('ssh_connect', params);
 }
 
-/** 测试 SSH 连接 */
-export function sshTestConnect(params: Omit<SshConnectParams, 'tabId'>): Promise<string> {
+/** 测试 SSH 连接（直接传参，用于快速连接/测试） */
+export function sshTestConnect(params: ConnectConfig): Promise<string> {
   return invoke('ssh_test_connect', params);
 }
 

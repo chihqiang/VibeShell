@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Area, AreaChart } from 'recharts';
-import { useMonitorData } from '@/hooks/use-monitor';
+import type { MonitorEvent } from '@/types/monitor';
 import { formatUptime, parsePercent, formatSize } from '@/utils';
 import {
   MONITOR_MAX_HISTORY,
@@ -73,9 +73,8 @@ function Bar({ label, value, text, history }: { label: string; value: number; te
 }
 
 /** 监控信息 — CPU、内存、Swap、网络 IO 等 */
-export function MonitorInfo() {
+export function MonitorInfo({ monitorData }: { monitorData: MonitorEvent | null }) {
   const { t } = useTranslation();
-  const monitorData = useMonitorData();
 
   const [cpuHistory, setCpuHistory] = useState<number[]>([]);
   const [memHistory, setMemHistory] = useState<number[]>([]);
@@ -115,7 +114,18 @@ export function MonitorInfo() {
 
   const uptimeLabels = { day: t('common.day'), hour: t('common.hour'), minute: t('common.minute') };
 
-  const data = monitorData ?? { ip: '', uptime: '', load: '', cpu: '', memory: '', swap: '', net_io: '' };
+  const data = monitorData ?? {
+    ip: '',
+    hostname: '',
+    os: '',
+    kernel: '',
+    uptime: '',
+    load: '',
+    cpu: '',
+    memory: '',
+    swap: '',
+    net_io: '',
+  };
 
   return (
     <div className="p-3 space-y-3 text-xs">
@@ -124,6 +134,21 @@ export function MonitorInfo() {
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-[11px]">IP</span>
           <span className="text-foreground font-mono text-xs">{data.ip || '—'}</span>
+        </div>
+        <div className="h-px bg-border/30" />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">{t('monitor.hostname')}</span>
+          <span className="text-foreground font-mono text-xs">{data.hostname || '—'}</span>
+        </div>
+        <div className="h-px bg-border/30" />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">{t('monitor.os')}</span>
+          <span className="text-foreground font-mono text-xs">{data.os || '—'}</span>
+        </div>
+        <div className="h-px bg-border/30" />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">{t('monitor.kernel')}</span>
+          <span className="text-foreground font-mono text-xs">{data.kernel || '—'}</span>
         </div>
         <div className="h-px bg-border/30" />
         <div className="flex items-center justify-between">

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { saveHost } from '@/services/hostService';
-import { hostConfigToFormState, formStateToHostPayload } from '@/services/hostService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import TagSelect from '@/components/ui/tag-select';
 import { HostForm } from '@/components/host';
-import type { HostFormState } from '@/types';
 import type { HostConfig } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 import { getSshDefaults } from '@/services/configService';
@@ -31,19 +29,23 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
   const { t } = useTranslation();
   const { notify, notifyError } = useNotify();
   const editing = !!host;
-  const [form, setForm] = useState<HostFormState>(() =>
+  const [form, setForm] = useState<HostConfig>(() =>
     host
-      ? hostConfigToFormState(host)
+      ? { ...host, key_passphrase: host.key_passphrase || '' }
       : {
+          id: '',
           name: '',
           hostname: '',
           port: DEFAULT_SSH_PORT,
           username: '',
-          authMethod: 'password',
+          auth_method: 'password',
           password: '',
-          privateKeyPath: '',
-          keyPassphrase: '',
+          key_id: '',
+          key_passphrase: '',
           tags: [],
+          created_at: 0,
+          updated_at: 0,
+          last_connected_at: null,
         },
   );
   const [saving, setSaving] = useState(false);
@@ -58,8 +60,8 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
         hostname: form.hostname,
         port: form.port || DEFAULT_SSH_PORT,
         username: form.username,
-        password: form.authMethod === 'password' ? form.password || null : null,
-        privateKeyPath: form.authMethod === 'key' ? form.privateKeyPath || null : null,
+        password: form.auth_method === 'password' ? form.password || null : null,
+        privateKeyPath: form.auth_method === 'key' ? form.key_id || null : null,
       });
       notify(`${t('connection.testConnectionSuccess')}: ${banner}`);
     } catch (e) {
@@ -74,15 +76,19 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
     if (open && !host) {
       getSshDefaults().then((d) => {
         setForm({
+          id: '',
           name: '',
           hostname: d.hostname,
           port: d.port,
           username: d.username,
-          authMethod: 'password',
+          auth_method: 'password',
           password: '',
-          privateKeyPath: '',
-          keyPassphrase: '',
+          key_id: '',
+          key_passphrase: '',
           tags: [],
+          created_at: 0,
+          updated_at: 0,
+          last_connected_at: null,
         });
       });
     }
@@ -90,22 +96,22 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
 
   useEffect(() => {
     if (host) {
-      setForm(hostConfigToFormState(host));
+      setForm({ ...host, key_passphrase: host.key_passphrase || '' });
     }
-  }, [host, open]);
+  }, [host, keys, open]);
 
-  function updateField<K extends keyof HostFormState>(key: K, v: HostFormState[K]) {
+  function updateField<K extends keyof HostConfig>(key: K, v: HostConfig[K]) {
     setForm((prev) => ({ ...prev, [key]: v }));
   }
 
-  const handleFormChange = (data: HostFormState) => {
+  const handleFormChange = (data: HostConfig) => {
     setForm(data);
   };
 
   async function handleSave() {
     setSaving(true);
     try {
-      await saveHost({ host: formStateToHostPayload(form, host) });
+      await saveHost({ host: form });
       notify(editing ? t('connection.hostUpdated') : t('connection.hostAdded'));
       onClose();
     } catch (e) {
@@ -156,7 +162,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
                 onClick={openTagDialog}
                 className="flex items-center gap-1 flex-wrap w-full min-h-8 rounded-lg border border-input bg-background px-2.5 py-1 text-sm transition-colors hover:border-muted-foreground cursor-pointer"
               >
-                {form.tags.length > 0 ? (
+                {form.tags && form.tags.length > 0 ? (
                   form.tags.map((t) => (
                     <Badge key={t} variant="secondary" className="h-5 text-[11px]">
                       {t}
@@ -200,7 +206,7 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
         open={tagDialogOpen}
         onClose={() => setTagDialogOpen(false)}
         availableTags={allTags}
-        selectedTags={form.tags}
+        selectedTags={form.tags || []}
         onConfirm={handleConfirmTags}
         title={t('sidebar.selectTag')}
         placeholder={t('sidebar.tagName')}

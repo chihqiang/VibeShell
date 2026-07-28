@@ -25,7 +25,9 @@
     "tagName": "标签名称",
     "selectKey": "选择密钥",
     "hostManagement": "主机管理",
-    "keyManagement": "密钥管理"
+    "keyManagement": "密钥管理",
+    "cannotDeleteKey": "此密钥正在被以下主机使用",
+    "keyInUseBy": "请先从这些主机中解除密钥关联后再删除"
   },
   "connection": {
     "hostname": "主机地址",
@@ -210,6 +212,9 @@
     "diskSize": "大小",
     "diskUsage": "使用率",
     "systemInfo": "系统信息",
+    "os": "系统",
+    "kernel": "内核",
+    "hostname": "主机名",
     "processes": "进程",
     "disks": "磁盘",
     "noConnection": "暂无活跃连接",
@@ -252,6 +257,7 @@
     "error": "错误",
     "quit": "退出应用",
     "quitConfirm": "确定要退出 VibeShell 吗？",
+    "second": "秒",
     "day": "天",
     "hour": "小时",
     "minute": "分钟"

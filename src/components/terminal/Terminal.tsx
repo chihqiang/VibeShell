@@ -1,14 +1,14 @@
 import { memo, useEffect, useRef, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sshWrite } from '@/services/sshService';
-import { listen } from '@tauri-apps/api/event';
-import type { Terminal as XtermTerminal } from '@xterm/xterm';
+import { Terminal as XtermTerminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import type { ITheme } from '@xterm/xterm';
-import type { FitAddon } from '@xterm/addon-fit';
-import type { SearchAddon } from '@xterm/addon-search';
 import type { ConnectionStatus } from '@/types';
 import { Loader2, WifiOff, RotateCw } from 'lucide-react';
-import { cn } from '@/utils';
+import { cn, getStorage, setStorage } from '@/utils';
+import { registerOutputHandler } from '@/services/outputService';
 import { useNotify } from '@/hooks/use-notify';
 import { getStoredThemeId, getTerminalTheme } from '@/utils/terminal-themes';
 import {
@@ -18,7 +18,6 @@ import {
   TERM_FONT_FAMILY,
   STORAGE_KEYS,
   DOM_EVENTS,
-  TAURI_EVENTS,
   ANSI_YELLOW,
   ANSI_GREEN,
   ANSI_RED,
@@ -28,9 +27,14 @@ import {
 import { TerminalSearchBar } from './TerminalSearchBar';
 
 /** Build an xterm ITheme object from the stored terminal theme. */
+let _cachedThemeId: string | null = null;
+let _cachedTheme: ITheme | null = null;
+
 function buildXtermTheme(): ITheme {
-  const tc = getTerminalTheme(getStoredThemeId()).colors;
-  return {
+  const id = getStoredThemeId();
+  if (_cachedThemeId === id && _cachedTheme) return _cachedTheme;
+  const tc = getTerminalTheme(id).colors;
+  _cachedTheme = {
     background: tc.background,
     foreground: tc.foreground,
     cursor: tc.cursor,
@@ -53,6 +57,8 @@ function buildXtermTheme(): ITheme {
     brightCyan: tc.brightCyan,
     brightWhite: tc.brightWhite,
   };
+  _cachedThemeId = id;
+  return _cachedTheme;
 }
 
 interface TerminalProps {
@@ -64,19 +70,9 @@ interface TerminalProps {
   onReconnect?: (tabId: string) => void;
 }
 
-interface SshOutputEvent {
-  tab_id: string;
-  data: string;
-}
-
 function getStoredFontSize(): number {
-  try {
-    const v = localStorage.getItem(STORAGE_KEYS.TERM_FONT_SIZE);
-    const n = v ? parseInt(v, 10) : TERM_DEFAULT_FONT_SIZE;
-    return isNaN(n) ? TERM_DEFAULT_FONT_SIZE : Math.max(TERM_MIN_FONT_SIZE, Math.min(TERM_MAX_FONT_SIZE, n));
-  } catch {
-    return TERM_DEFAULT_FONT_SIZE;
-  }
+  const n = getStorage<number>(STORAGE_KEYS.TERM_FONT_SIZE, TERM_DEFAULT_FONT_SIZE);
+  return isNaN(n) ? TERM_DEFAULT_FONT_SIZE : Math.max(TERM_MIN_FONT_SIZE, Math.min(TERM_MAX_FONT_SIZE, n));
 }
 
 const Terminal = memo(function Terminal({
@@ -155,7 +151,7 @@ const Terminal = memo(function Terminal({
     const next = Math.max(TERM_MIN_FONT_SIZE, Math.min(TERM_MAX_FONT_SIZE, fontSizeRef.current + delta));
     if (next === fontSizeRef.current) return;
     fontSizeRef.current = next;
-    localStorage.setItem(STORAGE_KEYS.TERM_FONT_SIZE, String(next));
+    setStorage(STORAGE_KEYS.TERM_FONT_SIZE, next);
     term.options.fontSize = next;
     fitAddon.fit();
   }, []);
@@ -224,18 +220,8 @@ const Terminal = memo(function Terminal({
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
     initializedRef.current = true;
-
-    let disposed = false;
-
-    const init = async () => {
-      const { Terminal } = await import('@xterm/xterm');
-      const { FitAddon } = await import('@xterm/addon-fit');
-      const { SearchAddon } = await import('@xterm/addon-search');
-
-      // If cleanup ran while awaiting dynamic imports, bail out
-      if (disposed || !containerRef.current) return;
-
-      const term = new Terminal({
+    const init = () => {
+      const term = new XtermTerminal({
         cursorBlink: true,
         cursorStyle: 'bar',
         fontSize: fontSizeRef.current,
@@ -244,12 +230,6 @@ const Terminal = memo(function Terminal({
         allowProposedApi: true,
         convertEol: true,
       });
-
-      // If cleanup ran while constructing the terminal, dispose immediately
-      if (disposed) {
-        term.dispose();
-        return;
-      }
 
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
@@ -325,7 +305,6 @@ const Terminal = memo(function Terminal({
 
     // Cleanup: dispose xterm instance when component unmounts or terminalId changes
     return () => {
-      disposed = true;
       // Flush any pending batched writes before disposing the terminal
       flushWriteRef.current?.();
       const term = termRef.current;
@@ -456,48 +435,33 @@ const Terminal = memo(function Terminal({
   }, [tabId, status, t]);
 
   // SSH output listener — requestAnimationFrame-batched writes to avoid jank
+  // 使用模块级全局 listener + 回调注册，消除异步 listen() 竞态
   useEffect(() => {
     if (!tabId) return;
 
-    let cancelled = false;
+    let rafId: number | null = null;
+    let pending = '';
 
-    const setup = async () => {
-      let rafId: number | null = null;
-      let pending = '';
-
-      const flush = () => {
-        rafId = null;
-        if (termRef.current) {
-          termRef.current.write(pending);
-        } else {
-          pendingRef.current.push(pending);
-        }
-        pending = '';
-      };
-
-      const unlisten = await listen<SshOutputEvent>(TAURI_EVENTS.SSH_OUTPUT, (event) => {
-        if (cancelled) return;
-        if (event.payload.tab_id === tabIdRef.current) {
-          pending += event.payload.data;
-          if (rafId === null) {
-            rafId = requestAnimationFrame(flush);
-          }
-        }
-      });
-
-      if (cancelled) {
-        unlisten();
-        return;
+    const flush = () => {
+      rafId = null;
+      if (termRef.current) {
+        termRef.current.write(pending);
+      } else {
+        pendingRef.current.push(pending);
       }
-
-      return unlisten;
+      pending = '';
     };
 
-    const unlistenPromise = setup();
+    const unregister = registerOutputHandler(tabId, (data: string) => {
+      pending += data;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(flush);
+      }
+    });
 
     return () => {
-      cancelled = true;
-      unlistenPromise.then((fn) => fn?.());
+      unregister();
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [tabId, notifyError]);
 

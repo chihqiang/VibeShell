@@ -24,7 +24,11 @@ pub fn save_host(host: core::models::HostConfig) -> Result<core::models::HostCon
         host.hostname,
         host.port,
         host.username,
-        if host.id.is_empty() { "<new>" } else { &host.id }
+        if host.id.is_empty() {
+            "<new>"
+        } else {
+            &host.id
+        }
     );
     core::store::save_host(host)
 }
@@ -32,12 +36,17 @@ pub fn save_host(host: core::models::HostConfig) -> Result<core::models::HostCon
 #[tauri::command]
 pub fn delete_host(id: String) -> Result<(), String> {
     log::info!("[host] delete host: id={}", id);
-    core::store::delete_host(id)
+    core::store::delete_host(&id)
 }
 
 #[tauri::command]
 pub fn get_app_config() -> core::models::AppConfig {
     core::store::get_app_config(&core::data_dir())
+}
+
+#[tauri::command]
+pub fn count_hosts() -> Result<i64, String> {
+    core::store::count_hosts()
 }
 
 #[tauri::command]

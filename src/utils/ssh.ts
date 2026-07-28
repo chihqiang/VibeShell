@@ -1,19 +1,17 @@
-import type { AuthMethod } from '@/types/common';
 import type { HostConfig, ConnectConfig, ParsedSshCommand } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 import { DEFAULT_SSH_PORT } from '@/constants/app';
 
 /**
  * 解析私有密钥路径。
- * 如果主机使用密钥认证但没有显式路径，则回退到第一个导入的密钥。
+ * 如果主机使用密钥认证，则返回 host.key_id（后端已存储的密钥 ID）；
+ * 如果未设置 key_id 但有可用密钥，则回退到第一个密钥的 ID。
  */
 export async function resolvePrivateKeyPath(host: HostConfig, keys: KeyEntry[]): Promise<string | null> {
-  let privateKeyPath = host.private_key_path || null;
-  if (host.auth_method === 'key' && !privateKeyPath && keys.length > 0) {
-    // 使用 vibeshell://key/<id> 协议引用内部密钥
-    privateKeyPath = `vibeshell://key/${keys[0].id}`;
+  if (host.auth_method === 'key') {
+    return host.key_id || (keys.length > 0 ? keys[0].id : null);
   }
-  return privateKeyPath;
+  return null;
 }
 
 /**
@@ -25,33 +23,25 @@ export async function hostToConnectConfig(host: HostConfig, keys: KeyEntry[]): P
     hostname: host.hostname,
     port: host.port || DEFAULT_SSH_PORT,
     username: host.username,
-    password: host.auth_method === 'password' ? (host.password ?? null) : null,
-    privateKeyPath: host.auth_method === 'key' ? privateKeyPath : null,
+    password: host.password ?? null,
+    privateKeyPath,
   };
 }
 
 /**
- * 将 HostFormState（表单数据）转换为 ConnectConfig（运行时 SSH 参数）。
- * 用于没有保存 HostConfig 的快速连接流程。
+ * 将 HostConfig 转换为 ConnectConfig（运行时 SSH 参数）。
  */
-export function formToConnectConfig(form: {
-  authMethod: AuthMethod;
-  hostname: string;
-  port: number;
-  username: string;
-  password?: string | null;
-  keyPassphrase?: string | null;
-  privateKeyPath?: string | null;
-}): ConnectConfig {
-  const { authMethod, hostname, port, username, password, keyPassphrase, privateKeyPath } = form;
+export function formToConnectConfig(host: HostConfig): ConnectConfig {
   return {
-    hostname,
-    port: port || DEFAULT_SSH_PORT,
-    username,
-    password: authMethod === 'password' ? (password ?? null) : (keyPassphrase ?? null),
-    privateKeyPath: authMethod === 'key' ? (privateKeyPath ?? null) : null,
+    hostname: host.hostname,
+    port: host.port || DEFAULT_SSH_PORT,
+    username: host.username,
+    password: host.password ?? null,
+    privateKeyPath: host.auth_method === 'key' ? (host.key_id ?? null) : null,
   };
 }
+
+// ── SSH 命令解析 ──
 
 /**
  * 解析 SSH 命令字符串为连接参数。
@@ -70,7 +60,7 @@ export function parseSshCommand(raw: string): ParsedSshCommand | null {
   const input = raw.trim();
   if (!input) return null;
 
-  let password: string | null = null;
+  let loginPassword: string | null = null;
   let privateKeyPath: string | null = null;
   let port = DEFAULT_SSH_PORT;
   let username = '';
@@ -81,8 +71,8 @@ export function parseSshCommand(raw: string): ParsedSshCommand | null {
   let startIdx = 0;
   if (tokens[0] === 'sshpass') {
     for (let i = 1; i < tokens.length; i++) {
-      if (tokens[i] === '-p' && i + 1 < tokens.length) {
-        password = tokens[i + 1];
+      if (tokens[i] === '-p') {
+        loginPassword = tokens[i + 1] || null;
         i++;
       } else if (tokens[i] === 'ssh') {
         startIdx = i + 1;
@@ -106,7 +96,7 @@ export function parseSshCommand(raw: string): ParsedSshCommand | null {
         privateKeyPath = tokens[i + 1];
         i++;
       } else if (tok.startsWith('-')) {
-        // ignore unknown flags
+        // skip unknown flags
       } else {
         positional.push(tok);
       }
@@ -135,7 +125,7 @@ export function parseSshCommand(raw: string): ParsedSshCommand | null {
       const colonIdx = userPart.indexOf(':');
       if (colonIdx > 0) {
         username = userPart.slice(0, colonIdx);
-        password = userPart.slice(colonIdx + 1);
+        loginPassword = userPart.slice(colonIdx + 1) || null;
       } else {
         username = userPart;
       }
@@ -168,26 +158,17 @@ export function parseSshCommand(raw: string): ParsedSshCommand | null {
 
   if (!hostname) return null;
 
-  if (privateKeyPath && privateKeyPath.startsWith('~/')) {
-    privateKeyPath = privateKeyPath.replace(/^~/, '');
-  }
-
-  return { username, hostname, port, password, privateKeyPath };
+  return { username, hostname, port, password: loginPassword, privateKeyPath };
 }
 
 /**
  * 从 ConnectConfig 构建 SSH 命令字符串。
- * 输出可被 `parseSshCommand` 解析，以便复制主机信息并粘贴到快速连接栏。
  */
 export function buildSshCommand(cfg: ConnectConfig): string {
-  const { username, hostname, port, password, privateKeyPath } = cfg;
-
-  if (password) {
-    return `${username || 'root'}:${password}@${hostname}:${port}`;
-  }
+  const { username, hostname, port, privateKeyPath } = cfg;
 
   const parts: string[] = ['ssh'];
-  if (privateKeyPath) {
+  if (privateKeyPath && !/^[0-9a-f-]{36}$/i.test(privateKeyPath)) {
     parts.push('-i', privateKeyPath);
   }
   if (port && port !== DEFAULT_SSH_PORT) {

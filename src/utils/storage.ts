@@ -42,20 +42,6 @@ export function useStorage<T>(key: string, defaultValue: T): [T, (value: T) => v
     defaultRef.current = defaultValue;
   }, [defaultValue]);
 
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === key && e.newValue !== null) {
-        try {
-          setValue(JSON.parse(e.newValue) as T);
-        } catch {
-          setValue(defaultRef.current);
-        }
-      }
-    };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, [key]);
-
   const setAndPersist = useCallback(
     (next: T) => {
       setValue(next);

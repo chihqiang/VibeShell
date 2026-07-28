@@ -1,10 +1,10 @@
 pub mod backup;
-pub mod store;
 pub mod fs;
 pub mod key;
 pub mod models;
 pub mod session;
 pub mod sftp;
+pub mod store;
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -26,7 +26,11 @@ pub fn format_mode(mode: u32) -> String {
     };
     macro_rules! bit {
         ($mask:expr, $ch:expr) => {
-            if mode & $mask != 0 { $ch } else { '-' }
+            if mode & $mask != 0 {
+                $ch
+            } else {
+                '-'
+            }
         };
     }
     let mut s = String::with_capacity(10);
