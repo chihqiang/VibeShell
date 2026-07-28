@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Area, AreaChart } from 'recharts';
-import { useMonitorData } from '@/hooks/use-monitor';
+import type { MonitorEvent } from '@/types/monitor';
 import { formatUptime, parsePercent, formatSize } from '@/utils';
 import {
   MONITOR_MAX_HISTORY,
@@ -73,9 +73,8 @@ function Bar({ label, value, text, history }: { label: string; value: number; te
 }
 
 /** 监控信息 — CPU、内存、Swap、网络 IO 等 */
-export function MonitorInfo() {
+export function MonitorInfo({ monitorData }: { monitorData: MonitorEvent | null }) {
   const { t } = useTranslation();
-  const monitorData = useMonitorData();
 
   const [cpuHistory, setCpuHistory] = useState<number[]>([]);
   const [memHistory, setMemHistory] = useState<number[]>([]);

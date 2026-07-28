@@ -1,97 +1,69 @@
-import { useState, useEffect, useRef } from 'react';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
+import { useEffect, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { TAURI_EVENTS } from '@/constants';
 import type { MonitorEvent } from '@/types/monitor';
 
-// Module-level singleton: a single listener shared across all components
-type ListenerEntry = {
-  tabId: string;
-  unlisten: UnlistenFn;
-  refCount: number;
-  callbacks: Set<(event: MonitorEvent) => void>;
-  /** Set to true when released — the async `listen()` then-handler checks this
-   *  to avoid a stale listener leak if `release()` runs before `listen()` resolves. */
-  cancelled: boolean;
-};
+// ── Module-level data store ──
+// 一个全局 listen() 把所有 tab 的监控数据存入 Map，组件只读不管理 listener。
 
-let activeEntry: ListenerEntry | null = null;
+const store = new Map<string, MonitorEvent>();
+const subscribers = new Map<string, Set<(event: MonitorEvent) => void>>();
+let initialized = false;
 
-function acquire(tabId: string, cb: (event: MonitorEvent) => void): () => void {
-  if (activeEntry && activeEntry.tabId === tabId) {
-    activeEntry.refCount++;
-    activeEntry.callbacks.add(cb);
-    return () => release(cb);
-  }
-
-  // If a different tabId is active, tear it down first
-  if (activeEntry) {
-    activeEntry.unlisten();
-    activeEntry = null;
-  }
-
-  const callbacks = new Set<(event: MonitorEvent) => void>();
-  callbacks.add(cb);
-
-  const entry: ListenerEntry = { tabId, unlisten: () => {}, refCount: 1, callbacks, cancelled: false };
-  activeEntry = entry;
-
+function ensureListener() {
+  if (initialized) return;
+  initialized = true;
   listen<MonitorEvent>(TAURI_EVENTS.SSH_MONITOR, (event) => {
-    if (event.payload.tab_id !== entry.tabId) return;
-    for (const fn of entry.callbacks) fn(event.payload);
-  }).then((unlisten) => {
-    // If the entry was released before listen() resolved, clean up immediately.
-    if (entry.cancelled) {
-      unlisten();
-      return;
+    const { tab_id } = event.payload;
+    store.set(tab_id, event.payload);
+    const subs = subscribers.get(tab_id);
+    if (subs) {
+      for (const fn of subs) fn(event.payload);
     }
-    entry.unlisten = unlisten;
   });
-
-  return () => release(cb);
-}
-
-function release(cb: (event: MonitorEvent) => void) {
-  if (!activeEntry) return;
-  activeEntry.callbacks.delete(cb);
-  activeEntry.refCount--;
-  if (activeEntry.refCount <= 0) {
-    activeEntry.cancelled = true;
-    activeEntry.unlisten();
-    activeEntry = null;
-  }
 }
 
 /**
- * Shared monitor listener — registers a single `ssh://monitor` listener
- * for the active connected terminal tab, regardless of how many components
- * call this hook.
+ * 监听服务器监控数据。
+ *
+ * 设计：单个全局 `listen()` 在首次调用时注册，将所有 tab 的监控数据
+ * 存入模块级 Map。组件通过 tabId 从 Map 中读取自己关心的数据。
+ *
+ * 没有 listener 创建/销毁的生命周期竞争 —— 全局 listener 只初始化一次，
+ * 组件切换 tab 时只切换读取的 key，不影响任何 Tauri IPC。
  */
-export function useMonitorData(): MonitorEvent | null {
-  const { tabs, activeTabId } = useTerminalTabs();
-  const activeTab = tabs.find((t) => t.id === activeTabId);
-  const tabId = activeTab?.type === 'terminal' && activeTab.status === 'connected' ? activeTab.id : null;
-
-  const [data, setData] = useState<MonitorEvent | null>(null);
-  const dataRef = useRef<MonitorEvent | null>(null);
+export function useMonitorListener(tabId: string | null): MonitorEvent | null {
+  const [data, setData] = useState<MonitorEvent | null>(() => {
+    return tabId ? store.get(tabId) ?? null : null;
+  });
 
   useEffect(() => {
-    // Only clear data when there's no connected terminal at all.
-    // When switching between connected tabs, keep the old data visible
-    // until new data arrives — avoids a jarring blank flash.
     if (!tabId) {
-      dataRef.current = null;
       setData(null);
       return;
     }
 
-    const cb = (event: MonitorEvent) => {
-      dataRef.current = event;
-      setData(event);
-    };
+    // 确保全局 listener 已启动
+    ensureListener();
 
-    const dispose = acquire(tabId, cb);
-    return dispose;
+    // 同步已有数据
+    const existing = store.get(tabId);
+    if (existing) setData(existing);
+
+    // 订阅新数据推送
+    let subs = subscribers.get(tabId);
+    if (!subs) {
+      subs = new Set();
+      subscribers.set(tabId, subs);
+    }
+
+    const listener = (event: MonitorEvent) => setData(event);
+    subs.add(listener);
+
+    return () => {
+      subs.delete(listener);
+      if (subs.size === 0) subscribers.delete(tabId);
+    };
   }, [tabId]);
 
   return data;

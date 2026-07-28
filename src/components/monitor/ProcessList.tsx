@@ -3,18 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { Skull } from 'lucide-react';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useNotify } from '@/hooks/use-notify';
-import { useMonitorData } from '@/hooks/use-monitor';
 import { sshWrite } from '@/services/sshService';
 import type { ProcessInfo } from '@/types';
+import type { MonitorEvent } from '@/types/monitor';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PROCESS_MAX_DISPLAY, KILL_COMMAND } from '@/constants';
 
 /** 进程列表 — 显示 TOP 进程，支持 kill */
-export function ProcessList() {
+export function ProcessList({ monitorData }: { monitorData: MonitorEvent | null }) {
   const { t } = useTranslation();
   const { activeTabId, tabs } = useTerminalTabs();
   const { notifyError, notify } = useNotify();
-  const monitorData = useMonitorData();
   const [killingPid, setKillingPid] = useState<string | null>(null);
   const [confirmKill, setConfirmKill] = useState<{ pid: string; command: string } | null>(null);
 

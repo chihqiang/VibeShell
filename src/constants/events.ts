@@ -21,3 +21,12 @@ export const TAURI_EVENTS = {
   /** SFTP 传输进度 */
   SFTP_TRANSFER_PROGRESS: 'sftp://transfer-progress',
 } as const;
+
+/**
+ * 构造 per-tab 唯一事件名。
+ * 每个 tab 使用独立的事件通道，不同 tab 之间的同名事件物理隔离，
+ * 前端不会收到不相关 tab 的事件。
+ */
+export function tabEvent(base: string, tabId: string): string {
+  return `${base}/${tabId}`;
+}

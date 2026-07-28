@@ -5,6 +5,7 @@ import { cn } from '@/utils';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useStorage } from '@/utils/storage';
+import { useMonitorListener } from '@/hooks/use-monitor';
 import { MONITOR_DRAWER_WIDTH, STORAGE_KEYS } from '@/constants';
 import { MonitorInfo } from './MonitorInfo';
 import { ProcessList } from './ProcessList';
@@ -57,6 +58,11 @@ export function MonitorDrawer() {
       ? `${activeTab.connectConfig.username}@${activeTab.connectConfig.hostname}`
       : undefined;
 
+  // ✨ 每个 MonitorDrawer 实例独立管理自己的 listener，没有模块级单例
+  // 当 activeTabId 变化时自动清理旧的、创建新的，数据只属于当前 tab
+  const tabId = isConnected ? activeTabId : null;
+  const monitorData = useMonitorListener(tabId);
+
   return (
     <aside
       className={cn(
@@ -100,14 +106,15 @@ export function MonitorDrawer() {
               icon={<Activity size={13} />}
               storageKey={STORAGE_KEYS.MONITOR_SECTION_SYSTEM}
             >
-              <MonitorInfo />
+              {/* 数据通过 props 下发，各子组件不再各自调用 useMonitorData */}
+              <MonitorInfo monitorData={monitorData} />
             </CollapsibleSection>
             <CollapsibleSection
               title={t('monitor.processes')}
               icon={<Cpu size={13} />}
               storageKey={STORAGE_KEYS.MONITOR_SECTION_PROCESSES}
             >
-              <ProcessList />
+              <ProcessList monitorData={monitorData} />
             </CollapsibleSection>
             <CollapsibleSection
               title={t('monitor.disks')}
@@ -115,7 +122,7 @@ export function MonitorDrawer() {
               storageKey={STORAGE_KEYS.MONITOR_SECTION_DISKS}
               defaultOpen={false}
             >
-              <DiskList />
+              <DiskList monitorData={monitorData} />
             </CollapsibleSection>
           </div>
         ) : (
