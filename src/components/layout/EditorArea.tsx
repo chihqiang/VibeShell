@@ -58,6 +58,9 @@ export function EditorArea() {
     activeTabIdRef.current = activeTabId;
   }, [activeTabId]);
 
+  // Flag to prevent operations after component unmount
+  const isMountedRef = useRef(true);
+
   const retryCount = useRef(new Map<string, number>());
   const reconnectTimer = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const writeToTerminal = (tabId: string, text: string) => {
@@ -167,6 +170,10 @@ export function EditorArea() {
         writeToTerminal(tab_id, msg);
 
         const timer = setTimeout(() => {
+          // Check if component is still mounted before attempting reconnection
+          if (!isMountedRef.current) {
+            return;
+          }
           reconnectTimer.current.delete(tab_id);
           if (!tabsRef.current.find((t) => t.id === tab_id)) return;
           retryCount.current.set(tab_id, retries + 1);
@@ -200,6 +207,9 @@ export function EditorArea() {
     const reconnectTimerCurrent = reconnectTimer.current;
     const currentTabs = tabsRef.current;
     return () => {
+      // Mark component as unmounted to prevent async operations
+      isMountedRef.current = false;
+
       for (const ctrl of abortRefCurrent.values()) ctrl.abort();
       for (const timer of reconnectTimerCurrent.values()) clearTimeout(timer);
       reconnectTimerCurrent.clear();

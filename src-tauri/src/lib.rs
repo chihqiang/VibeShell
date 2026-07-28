@@ -27,6 +27,9 @@ pub fn run() {
             .open(&log_file);
     }
 
+    // Rotate log file if it exceeds the size limit
+    logger::rotate_log_if_needed(&log_file);
+
     fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -38,6 +41,8 @@ pub fn run() {
         })
         .level(log::LevelFilter::Debug)
         .chain(std::io::stdout())
+        // Reduce verbosity of ssh2 library to avoid excessive logging
+        .level_for("ssh2", log::LevelFilter::Warn)
         .chain(match fern::log_file(&log_file) {
             Ok(f) => f,
             Err(e) => {
