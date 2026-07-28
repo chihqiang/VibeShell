@@ -96,6 +96,7 @@ export function parseSshCommand(raw: string): ParsedSshCommand | null {
         privateKeyPath = tokens[i + 1];
         i++;
       } else if (tok.startsWith('-')) {
+        // skip unknown flags
       } else {
         positional.push(tok);
       }

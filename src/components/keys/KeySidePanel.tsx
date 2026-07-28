@@ -8,6 +8,7 @@ import type { KeyEntry } from '@/types/key';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DeleteDialog } from '@/components/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { ImportKeyDialog } from '@/components/keys';
 import { PanelHeader } from '@/components/layout/SidePanel';
 
@@ -34,14 +35,17 @@ export function KeySidePanel() {
     loadKeys();
   }, [loadKeys]);
 
-  const initiateDelete = useCallback(async (keyId: string, keyName: string) => {
-    try {
-      const referrers = await getKeyReferrers({ keyId });
-      setDeleteTarget({ id: keyId, name: keyName, referrers });
-    } catch (e) {
-      notifyError(e);
-    }
-  }, [notifyError]);
+  const initiateDelete = useCallback(
+    async (keyId: string, keyName: string) => {
+      try {
+        const referrers = await getKeyReferrers({ keyId });
+        setDeleteTarget({ id: keyId, name: keyName, referrers });
+      } catch (e) {
+        notifyError(e);
+      }
+    },
+    [notifyError],
+  );
 
   async function confirmDelete() {
     const target = deleteTarget;
@@ -121,16 +125,28 @@ export function KeySidePanel() {
         titleKey="sidebar.confirmDeleteKey"
       />
       {deleteTarget && deleteTarget.referrers.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDeleteTarget(null)}>
-          <div className="bg-card rounded-lg shadow-xl p-6 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
-            <p className="text-sm text-destructive font-semibold mb-2">{t('sidebar.cannotDeleteKey')}</p>
-            <p className="text-xs text-muted-foreground mb-3">{t('sidebar.keyInUseBy', { count: deleteTarget.referrers.length })}</p>
-            <ul className="text-xs space-y-1 mb-4 list-disc list-inside text-foreground">
-              {deleteTarget.referrers.map((name) => (<li key={name}>{name}</li>))}
+        <Dialog open={true} onOpenChange={() => setDeleteTarget(null)}>
+          <DialogContent showCloseButton={false} className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{t('sidebar.cannotDeleteKey')}</DialogTitle>
+            </DialogHeader>
+            <p className="px-5 text-sm text-muted-foreground">
+              {t('sidebar.keyInUseBy', { count: deleteTarget.referrers.length })}
+            </p>
+            <ul className="px-5 text-xs space-y-1 list-disc list-inside text-foreground">
+              {deleteTarget.referrers.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
             </ul>
-            <button onClick={() => setDeleteTarget(null)} className="w-full px-4 py-2 text-xs font-medium rounded bg-secondary hover:bg-muted transition-colors cursor-pointer">{t('common.close')}</button>
-          </div>
-        </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline" size="sm">
+                  {t('common.close')}
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );

@@ -32,9 +32,7 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
     onChange({ ...value, [key]: v });
   };
 
-  const selectedKey = value.key_id
-    ? (allKeys.find((k) => value.key_id === k.id) ?? null)
-    : null;
+  const selectedKey = value.key_id ? (allKeys.find((k) => value.key_id === k.id) ?? null) : null;
 
   const handleSelectKey = async (entry: KeyEntry) => {
     // 一次变更所有字段，避免多次 onChange 触发 state 覆盖

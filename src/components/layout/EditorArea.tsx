@@ -99,18 +99,18 @@ export function EditorArea() {
             heartbeatIntervalSecs: defaults.heartbeatInterval,
           });
         } else {
-        await invoke('ssh_quick_connect', {
-          tabId,
-          hostname: config.hostname,
-          port: config.port,
-          username: config.username,
-          password: config.password,
-          privateKeyPath: config.privateKeyPath,
-          monitorIntervalSecs: defaults.monitorInterval,
-          heartbeatIntervalSecs: defaults.heartbeatInterval,
-        });
+          await invoke('ssh_quick_connect', {
+            tabId,
+            hostname: config.hostname,
+            port: config.port,
+            username: config.username,
+            password: config.password,
+            privateKeyPath: config.privateKeyPath,
+            monitorIntervalSecs: defaults.monitorInterval,
+            heartbeatIntervalSecs: defaults.heartbeatInterval,
+          });
         }
-       if (controller.signal.aborted) return;
+        if (controller.signal.aborted) return;
         updateStatus(tabId, 'connected');
         retryCount.current.delete(tabId);
       } catch (e) {

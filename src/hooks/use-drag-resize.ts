@@ -41,32 +41,27 @@ export function useDragResize({
   const startSizeRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const dragSizeRef = useRef(0);
-  const sizeRef = useRef(size);
-
-  // Keep a ref to the latest size for the mousedown handler
-  sizeRef.current = size;
 
   const cursor = axis === 'x' ? 'col-resize' : 'row-resize';
-  const getDelta = (e: MouseEvent) =>
-    axis === 'x' ? e.clientX - startPosRef.current : startPosRef.current - e.clientY;
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       draggingRef.current = true;
       setIsDragging(true);
       startPosRef.current = axis === 'x' ? e.clientX : e.clientY;
-      startSizeRef.current = sizeRef.current;
-      dragSizeRef.current = sizeRef.current;
+      startSizeRef.current = size;
+      dragSizeRef.current = size;
       document.body.style.cursor = cursor;
       document.body.style.userSelect = 'none';
     },
-    [cursor, axis],
+    [cursor, axis, size],
   );
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!draggingRef.current) return;
-      const newSize = Math.max(minSize, Math.min(maxSize, startSizeRef.current + getDelta(e)));
+      const delta = axis === 'x' ? e.clientX - startPosRef.current : startPosRef.current - e.clientY;
+      const newSize = Math.max(minSize, Math.min(maxSize, startSizeRef.current + delta));
       dragSizeRef.current = newSize;
       if (rafRef.current === null) {
         rafRef.current = requestAnimationFrame(() => {
@@ -98,7 +93,7 @@ export function useDragResize({
       document.removeEventListener('mouseup', onMouseUp);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [minSize, maxSize, onSizeChange]);
+  }, [minSize, maxSize, onSizeChange, axis]);
 
   return { size, isDragging, handleMouseDown };
 }

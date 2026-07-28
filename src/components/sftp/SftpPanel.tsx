@@ -176,7 +176,7 @@ export function SftpPanel() {
       cancelled = true;
       unlistenFn?.();
     };
-  }, [tabId, currentPath, loadDir, notifyError]);
+  }, [tabId, currentPath, loadDir, notifyError, start, done]);
 
   useEffect(() => {
     let cancelled = false;

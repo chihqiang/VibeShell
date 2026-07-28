@@ -13,7 +13,11 @@ export function SidePanel() {
   const { activeView } = useLayout();
   const [storedWidth, setStoredWidth] = useStorage(STORAGE_KEYS.SIDE_PANEL_WIDTH, SIDE_PANEL_DEFAULT_WIDTH);
 
-  const { size: width, isDragging, handleMouseDown } = useDragResize({
+  const {
+    size: width,
+    isDragging,
+    handleMouseDown,
+  } = useDragResize({
     axis: 'x',
     minSize: SIDE_PANEL_MIN_WIDTH,
     maxSize: SIDE_PANEL_MAX_WIDTH,

@@ -34,7 +34,7 @@ function ensureListener() {
  */
 export function useMonitorListener(tabId: string | null): MonitorEvent | null {
   const [data, setData] = useState<MonitorEvent | null>(() => {
-    return tabId ? store.get(tabId) ?? null : null;
+    return tabId ? (store.get(tabId) ?? null) : null;
   });
 
   useEffect(() => {

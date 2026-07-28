@@ -114,7 +114,18 @@ export function MonitorInfo({ monitorData }: { monitorData: MonitorEvent | null 
 
   const uptimeLabels = { day: t('common.day'), hour: t('common.hour'), minute: t('common.minute') };
 
-  const data = monitorData ?? { ip: '', hostname: '', os: '', kernel: '', uptime: '', load: '', cpu: '', memory: '', swap: '', net_io: '' };
+  const data = monitorData ?? {
+    ip: '',
+    hostname: '',
+    os: '',
+    kernel: '',
+    uptime: '',
+    load: '',
+    cpu: '',
+    memory: '',
+    swap: '',
+    net_io: '',
+  };
 
   return (
     <div className="p-3 space-y-3 text-xs">

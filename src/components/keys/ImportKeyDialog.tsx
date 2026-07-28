@@ -32,7 +32,6 @@ export function ImportKeyDialog({ open, onClose, onImported }: Props) {
       const selected = await showOpen({
         multiple: false,
         // 不设 filters 以支持无扩展名的私钥文件（如 id_rsa、id_ed25519）
-
       });
       if (selected) {
         setSelectedFile(selected);
