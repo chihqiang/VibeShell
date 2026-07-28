@@ -222,7 +222,7 @@ fn linux_monitor_script() -> String {
         r#"echo '---HOSTNAME---'"#,
         r#"(hostname 2>/dev/null || echo '')"#,
         r#"echo '---OS---'"#,
-        r#"(cat /etc/os-release 2>/dev/null | grep -E \"^PRETTY_NAME=\" | cut -d= -f2 | tr -d '\"' || lsb_release -d 2>/dev/null | cut -f2- || echo '')"#,
+        r#"(grep -m1 '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || grep -m1 '^ID=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || lsb_release -d 2>/dev/null | cut -f2- || cat /etc/*release* 2>/dev/null | head -n1 | cut -d= -f2 | tr -d '"' 2>/dev/null || uname -o 2>/dev/null || echo 'Linux')"#,
         r#"echo '---KERNEL---'"#,
         r#"(uname -r 2>/dev/null || echo '')"#,
         r#"echo '---MEM---'"#,
@@ -665,7 +665,7 @@ fn start_monitor(
 
             if let Some(data) = output {
                 let event = parse_monitor_output(&data, &tid);
-                let ok = app.emit("ssh://monitor", event).is_ok();
+                log::info!("[monitor] tab={} os={:?} hostname={:?} kernel={:?}", tid, event.os, event.hostname, event.kernel);                let ok = app.emit("ssh://monitor", event).is_ok();
                 if emit_ok(&fail_count, ok) {
                     log::warn!("[monitor] tab={}: frontend unreachable, exiting", tid);
                     cancel.store(true, Ordering::Relaxed);
