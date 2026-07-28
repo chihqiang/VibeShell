@@ -67,11 +67,9 @@ pub fn init(data_dir: &Path) -> Result<(), String> {
         .set(dir.clone())
         .map_err(|_| "already initialized".to_string())?;
 
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("failed to create data dir: {}", e))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("failed to create data dir: {}", e))?;
 
-    let conn = Connection::open(db_path(&dir))
-        .map_err(|e| format!("failed to open db: {}", e))?;
+    let conn = Connection::open(db_path(&dir)).map_err(|e| format!("failed to open db: {}", e))?;
 
     conn.execute_batch(
         "PRAGMA journal_mode=WAL;
@@ -294,11 +292,7 @@ pub fn list_keys() -> Result<Vec<KeyEntry>, String> {
 
 pub fn get_key(id: &str) -> Result<Option<KeyEntry>, String> {
     let conn = db()?;
-    let result = conn.query_row(
-        "SELECT * FROM keys WHERE id = ?1",
-        params![id],
-        row_to_key,
-    );
+    let result = conn.query_row("SELECT * FROM keys WHERE id = ?1", params![id], row_to_key);
     match result {
         Ok(entry) => Ok(Some(entry)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
@@ -351,11 +345,7 @@ pub fn delete_key(id: &str) -> Result<KeyEntry, String> {
     }
     let conn = db()?;
     let entry = conn
-        .query_row(
-            "SELECT * FROM keys WHERE id = ?1",
-            params![id],
-            row_to_key,
-        )
+        .query_row("SELECT * FROM keys WHERE id = ?1", params![id], row_to_key)
         .map_err(|e| format!("delete_key find: {}", e))?;
     conn.execute("DELETE FROM keys WHERE id = ?1", params![id])
         .map_err(|e| format!("delete_key delete: {}", e))?;
@@ -434,12 +424,18 @@ pub fn save_ssh_defaults(d: &SshDefaults) -> Result<(), String> {
     set("ssh_defaults_hostname", &d.hostname)?;
     set("ssh_defaults_username", &d.username)?;
     set("ssh_defaults_port", &d.port.to_string())?;
-    set("ssh_defaults_monitor_interval", &d.monitor_interval.to_string())?;
+    set(
+        "ssh_defaults_monitor_interval",
+        &d.monitor_interval.to_string(),
+    )?;
     set(
         "ssh_defaults_heartbeat_interval",
         &d.heartbeat_interval.to_string(),
     )?;
-    set("ssh_defaults_reconnect_enabled", &d.reconnect_enabled.to_string())?;
+    set(
+        "ssh_defaults_reconnect_enabled",
+        &d.reconnect_enabled.to_string(),
+    )?;
     set(
         "ssh_defaults_reconnect_max_retries",
         &d.reconnect_max_retries.to_string(),
@@ -551,13 +547,7 @@ fn import_keys_conn(conn: &Connection, keys: &[KeyEntry]) -> Result<(), String> 
         conn.execute(
             "INSERT OR REPLACE INTO keys (id, name, key_type, content, password)
              VALUES (?1,?2,?3,?4,?5)",
-            params![
-                key.id,
-                key.name,
-                key.key_type,
-                key.content,
-                key.password,
-            ],
+            params![key.id, key.name, key.key_type, key.content, key.password,],
         )
         .map_err(|e| format!("import key: {}", e))?;
     }

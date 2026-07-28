@@ -24,7 +24,11 @@ pub fn save_host(host: core::models::HostConfig) -> Result<core::models::HostCon
         host.hostname,
         host.port,
         host.username,
-        if host.id.is_empty() { "<new>" } else { &host.id }
+        if host.id.is_empty() {
+            "<new>"
+        } else {
+            &host.id
+        }
     );
     core::store::save_host(host)
 }

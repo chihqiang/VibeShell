@@ -143,10 +143,12 @@ pub fn upload_file(
     })?;
 
     if remote_offset > 0 {
-        local_file.seek(SeekFrom::Start(remote_offset)).map_err(|e| {
-            log::error!("Failed to seek local file: {}", e);
-            format!("Failed to seek local file: {}", e)
-        })?;
+        local_file
+            .seek(SeekFrom::Start(remote_offset))
+            .map_err(|e| {
+                log::error!("Failed to seek local file: {}", e);
+                format!("Failed to seek local file: {}", e)
+            })?;
     }
 
     ensure_remote_dir(sftp, remote_path)?;
@@ -221,32 +223,27 @@ pub fn list_local_files_recursive(path: &str) -> Result<Vec<(String, String, u64
     let mut result = Vec::new();
     match collect_files_via_readdir(dir, dir, &mut result) {
         Ok(()) => Ok(result),
-        Err(read_err) => {
-            match fs::metadata(dir) {
-                Ok(meta) if meta.is_file() => {
-                    Ok(vec![(
-                        dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown").to_string(),
-                        dir.to_string_lossy().to_string(),
-                        meta.len(),
-                    )])
-                }
-                Ok(_) => {
-                    Err(format!(
-                        "'{}' is a directory but could not be listed: {}",
-                        dir.display(),
-                        read_err
-                    ))
-                }
-                Err(stat_err) => {
-                    Err(format!(
-                        "Failed to access '{}': {} (read_dir: {})",
-                        dir.display(),
-                        stat_err,
-                        read_err
-                    ))
-                }
-            }
-        }
+        Err(read_err) => match fs::metadata(dir) {
+            Ok(meta) if meta.is_file() => Ok(vec![(
+                dir.file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown")
+                    .to_string(),
+                dir.to_string_lossy().to_string(),
+                meta.len(),
+            )]),
+            Ok(_) => Err(format!(
+                "'{}' is a directory but could not be listed: {}",
+                dir.display(),
+                read_err
+            )),
+            Err(stat_err) => Err(format!(
+                "Failed to access '{}': {} (read_dir: {})",
+                dir.display(),
+                stat_err,
+                read_err
+            )),
+        },
     }
 }
 
@@ -258,16 +255,16 @@ fn collect_files_via_readdir(
     base: &Path,
     result: &mut Vec<(String, String, u64)>,
 ) -> Result<(), String> {
-    let dir_entries =
-        fs::read_dir(dir).map_err(|e| format!("Failed to read directory '{}': {}", dir.display(), e))?;
+    let dir_entries = fs::read_dir(dir)
+        .map_err(|e| format!("Failed to read directory '{}': {}", dir.display(), e))?;
 
     for entry in dir_entries {
         let entry =
             entry.map_err(|e| format!("Failed to read entry '{}': {}", dir.display(), e))?;
         let path = entry.path();
-        let file_type = entry.file_type().map_err(|e| {
-            format!("Failed to get file type for '{}': {}", path.display(), e)
-        })?;
+        let file_type = entry
+            .file_type()
+            .map_err(|e| format!("Failed to get file type for '{}': {}", path.display(), e))?;
 
         if file_type.is_dir() {
             if fs::read_dir(&path).is_ok() {
@@ -458,7 +455,9 @@ fn load_passwd_group_data(
     uid_cache: &Mutex<HashMap<i64, String>>,
     gid_cache: &Mutex<HashMap<i64, String>>,
 ) {
-    let Ok(mut ch) = session.channel_session() else { return };
+    let Ok(mut ch) = session.channel_session() else {
+        return;
+    };
     let cmd = "getent passwd 2>/dev/null || cat /etc/passwd 2>/dev/null; echo '---GRP---'; getent group 2>/dev/null || cat /etc/group 2>/dev/null";
     if ch.exec(cmd).is_err() {
         return;
@@ -517,11 +516,21 @@ fn resolve_users_groups_cached(
         {
             let uid_map: HashMap<i64, String> = needed_uids
                 .iter()
-                .map(|uid| (*uid, uc.get(uid).cloned().unwrap_or_else(|| uid.to_string())))
+                .map(|uid| {
+                    (
+                        *uid,
+                        uc.get(uid).cloned().unwrap_or_else(|| uid.to_string()),
+                    )
+                })
                 .collect();
             let gid_map: HashMap<i64, String> = needed_gids
                 .iter()
-                .map(|gid| (*gid, gc.get(gid).cloned().unwrap_or_else(|| gid.to_string())))
+                .map(|gid| {
+                    (
+                        *gid,
+                        gc.get(gid).cloned().unwrap_or_else(|| gid.to_string()),
+                    )
+                })
                 .collect();
             return (uid_map, gid_map);
         }
@@ -535,11 +544,21 @@ fn resolve_users_groups_cached(
     let gc = gid_cache.lock().unwrap_or_else(|e| e.into_inner());
     let uid_map: HashMap<i64, String> = needed_uids
         .iter()
-        .map(|uid| (*uid, uc.get(uid).cloned().unwrap_or_else(|| uid.to_string())))
+        .map(|uid| {
+            (
+                *uid,
+                uc.get(uid).cloned().unwrap_or_else(|| uid.to_string()),
+            )
+        })
         .collect();
     let gid_map: HashMap<i64, String> = needed_gids
         .iter()
-        .map(|gid| (*gid, gc.get(gid).cloned().unwrap_or_else(|| gid.to_string())))
+        .map(|gid| {
+            (
+                *gid,
+                gc.get(gid).cloned().unwrap_or_else(|| gid.to_string()),
+            )
+        })
         .collect();
     (uid_map, gid_map)
 }
@@ -572,7 +591,15 @@ pub fn upload_file_with_session(
     }
     // Delegate to chunked implementation — avoids loading the entire file
     // into memory at once.
-    upload_file(sftp, local_path, remote_path, false, None, &noop_progress, None)?;
+    upload_file(
+        sftp,
+        local_path,
+        remote_path,
+        false,
+        None,
+        &noop_progress,
+        None,
+    )?;
     Ok(())
 }
 
@@ -629,11 +656,7 @@ pub fn read_file_with_session(sftp: &ssh2::Sftp, path: &str) -> Result<Vec<u8>, 
     Ok(content)
 }
 
-pub fn write_file_with_session(
-    sftp: &ssh2::Sftp,
-    path: &str,
-    content: &str,
-) -> Result<(), String> {
+pub fn write_file_with_session(sftp: &ssh2::Sftp, path: &str, content: &str) -> Result<(), String> {
     let mut f = sftp.create(Path::new(path)).map_err(|e| {
         log::error!("Failed to create file: {}", e);
         format!("Failed to create file: {}", e)
@@ -717,13 +740,16 @@ pub fn get_users_groups_with_session(
 /// Shell-safe single-quote: wrap `s` so it cannot break out of single quotes.
 /// POSIX sh: `'xyz'\''abc'` → literal `xyz'abc`
 fn sh_quote(s: &str) -> String {
-    let escaped: String = s.chars().flat_map(|c| {
-        if c == '\'' {
-            "'\\''".chars().collect::<Vec<_>>()
-        } else {
-            vec![c]
-        }
-    }).collect();
+    let escaped: String = s
+        .chars()
+        .flat_map(|c| {
+            if c == '\'' {
+                "'\\''".chars().collect::<Vec<_>>()
+            } else {
+                vec![c]
+            }
+        })
+        .collect();
     format!("'{}'", escaped)
 }
 
@@ -811,7 +837,11 @@ fn chmod_recursive(
             continue;
         }
         if depth >= MAX_DEPTH {
-            log::warn!("[chmod] max depth ({}) reached at {}", MAX_DEPTH, current.display());
+            log::warn!(
+                "[chmod] max depth ({}) reached at {}",
+                MAX_DEPTH,
+                current.display()
+            );
             continue;
         }
 

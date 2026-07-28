@@ -84,8 +84,6 @@ static SESSIONS: LazyLock<RwLock<HashMap<String, SessionHandle>>> =
 
 // ── do_connect (moved from core/ssh.rs) ──
 
-
-
 /// Drop guard that removes a temporary key file when the scope exits,
 /// even if the caller returns early with an error.
 struct TempKeyGuard {
@@ -117,10 +115,13 @@ fn do_connect_inner(
     private_key_path: Option<&str>,
 ) -> Result<(Session, String), String> {
     let addr = format!("{}:{}", hostname, port);
-    let sock_addrs: Vec<_> = addr.to_socket_addrs().map_err(|e| {
-        log::error!("DNS resolution failed: {}", e);
-        format!("DNS resolution failed: {}", e)
-    })?.collect();
+    let sock_addrs: Vec<_> = addr
+        .to_socket_addrs()
+        .map_err(|e| {
+            log::error!("DNS resolution failed: {}", e);
+            format!("DNS resolution failed: {}", e)
+        })?
+        .collect();
     let tcp = sock_addrs
         .iter()
         .find_map(|sa| TcpStream::connect_timeout(sa, CONNECT_TIMEOUT).ok())
@@ -153,8 +154,7 @@ fn do_connect_inner(
             .unwrap_or_else(|e| log::warn!("[connect] create tmp dir failed: {}", e));
         let key_file = tmp_dir.join(format!("key_{}", key_id));
         let _guard = TempKeyGuard::new(key_file.clone());
-        std::fs::write(&key_file, key_content)
-            .map_err(|e| format!("write temp key: {}", e))?;
+        std::fs::write(&key_file, key_content).map_err(|e| format!("write temp key: {}", e))?;
         log::info!(
             "[connect] using key content: path={} ({} bytes) has_passphrase={}",
             key_file.display(),
@@ -166,8 +166,13 @@ fn do_connect_inner(
                 log::info!("[connect] key auth succeeded: path={}", key_file.display());
             }
             Err(e) => {
-                log::error!("[connect] key auth failed: path={} has_passphrase={} error=[{}] {}", 
-                    key_file.display(), password.is_some(), e.code(), e.message());
+                log::error!(
+                    "[connect] key auth failed: path={} has_passphrase={} error=[{}] {}",
+                    key_file.display(),
+                    password.is_some(),
+                    e.code(),
+                    e.message()
+                );
                 return Err(format!("Key auth failed: {}", e.message()));
             }
         }
@@ -212,16 +217,21 @@ pub fn do_connect(
     let private_key_path = private_key_path.map(|s| s.to_string());
 
     std::thread::spawn(move || {
-        let result = do_connect_inner(&hostname, port, &username, password.as_deref(), private_key_path.as_deref());
+        let result = do_connect_inner(
+            &hostname,
+            port,
+            &username,
+            password.as_deref(),
+            private_key_path.as_deref(),
+        );
         let _ = tx.send(result);
     });
 
-    rx.recv_timeout(Duration::from_secs(30))
-        .map_err(|_| {
-            let msg = "Connection timed out".to_string();
-            log::error!("{}", msg);
-            msg
-        })?
+    rx.recv_timeout(Duration::from_secs(30)).map_err(|_| {
+        let msg = "Connection timed out".to_string();
+        log::error!("{}", msg);
+        msg
+    })?
 }
 
 /// Generate a platform-appropriate monitor script.
@@ -381,7 +391,11 @@ pub fn connect(
     monitor_interval_secs: u64,
     heartbeat_interval_secs: u64,
 ) -> Result<String, String> {
-    let auth_type = if private_key_path.is_some() { "key" } else { "password" };
+    let auth_type = if private_key_path.is_some() {
+        "key"
+    } else {
+        "password"
+    };
     log::info!(
         "[connect] tab={} connecting to {}@{}:{} auth={}",
         tab_id,
@@ -393,7 +407,11 @@ pub fn connect(
 
     let (session, banner) = do_connect(hostname, port, username, password, private_key_path)?;
 
-    log::info!("[connect] tab={} authenticated, banner={:?}", tab_id, banner);
+    log::info!(
+        "[connect] tab={} authenticated, banner={:?}",
+        tab_id,
+        banner
+    );
 
     let sftp = session.sftp().map_err(|e| {
         log::error!("SFTP init failed: {}", e);
@@ -432,7 +450,15 @@ pub fn connect(
         }
         out.trim() == "Linux"
     })();
-    log::info!("[connect] tab={} remote OS: {}", tab_id, if remote_is_linux { "Linux" } else { "macOS/BSD" });
+    log::info!(
+        "[connect] tab={} remote OS: {}",
+        tab_id,
+        if remote_is_linux {
+            "Linux"
+        } else {
+            "macOS/BSD"
+        }
+    );
 
     session.set_blocking(false);
 
@@ -572,7 +598,9 @@ pub fn disconnect(tab_id: &str) -> Result<(), String> {
 /// Blocks on the write lock — background operations holding the read lock should
 /// finish quickly (they wait on the cancel flag first).
 fn cleanup_session(tab_id: &str) {
-    let Ok(mut sessions) = SESSIONS.write() else { return };
+    let Ok(mut sessions) = SESSIONS.write() else {
+        return;
+    };
     remove_and_signal(tab_id, &mut sessions);
     log::info!("[cleanup] tab={}: session removed", tab_id);
 }
@@ -657,7 +685,7 @@ fn spawn_reader(
 #[allow(clippy::too_many_arguments)]
 fn start_monitor(
     app_handle: &tauri::AppHandle,
-    tab_id: &str, // unused, kept for API consistency
+    tab_id: &str,
     handle: SessionHandle,
     cancel: Arc<AtomicBool>,
     fail_count: Arc<AtomicU32>,
@@ -669,9 +697,46 @@ fn start_monitor(
     let app = app_handle.clone();
     let tid = tab_id.to_string();
     let script = monitor_script(remote_is_linux);
+
     thread::spawn(move || {
+        // ── 连接建立后立即推送第一条监控数据 ──
+        // 不等第一个 interval，让监控面板一打开就有数据可展示
+        let first = (|| -> Option<String> {
+            let inner = handle.try_lock().ok()?;
+            let _guard = BlockingGuard::new(&inner.session);
+            inner.session.set_timeout(15_000);
+            let mut buf = [0u8; 8192];
+            let mut ch = inner.session.channel_session().ok()?;
+            if ch.exec(&script).is_err() {
+                return None;
+            }
+            let mut out = String::new();
+            loop {
+                match ch.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => out.push_str(&String::from_utf8_lossy(&buf[..n])),
+                    Err(_) => break,
+                }
+            }
+            if let Err(e) = ch.wait_close() {
+                log::debug!("[monitor] tab={} channel wait_close: {}", tid, e);
+            }
+            Some(out)
+        })();
+        if let Some(data) = first {
+            let event = parse_monitor_output(&data, &tid);
+            log::info!("[monitor] tab={} initial push", tid);
+            let ok = app.emit("ssh://monitor", event).is_ok();
+            if emit_ok(&fail_count, ok) {
+                log::warn!(
+                    "[monitor] tab={}: frontend unreachable on initial push",
+                    tid
+                );
+                return;
+            }
+        }
+
         while !cancel.load(Ordering::Relaxed) {
-            // ── Collect monitor data (try_lock to avoid blocking terminal I/O) ──
             let output = (|| -> Option<String> {
                 let inner = handle.try_lock().ok()?;
                 let _guard = BlockingGuard::new(&inner.session);
@@ -697,7 +762,14 @@ fn start_monitor(
 
             if let Some(data) = output {
                 let event = parse_monitor_output(&data, &tid);
-                log::info!("[monitor] tab={} os={:?} hostname={:?} kernel={:?}", tid, event.os, event.hostname, event.kernel);                let ok = app.emit("ssh://monitor", event).is_ok();
+                log::info!(
+                    "[monitor] tab={} os={:?} hostname={:?} kernel={:?}",
+                    tid,
+                    event.os,
+                    event.hostname,
+                    event.kernel
+                );
+                let ok = app.emit("ssh://monitor", event).is_ok();
                 if emit_ok(&fail_count, ok) {
                     log::warn!("[monitor] tab={}: frontend unreachable, exiting", tid);
                     cancel.store(true, Ordering::Relaxed);

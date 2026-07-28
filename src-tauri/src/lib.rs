@@ -20,7 +20,11 @@ pub fn run() {
         // If creation failed, log_file may still be writable.
         // Attempt to touch it now so that fern::log_file succeeds.
         // If this also fails, we log a warning and skip file logging.
-        let _ = std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(&log_file);
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(&log_file);
     }
 
     fern::Dispatch::new()
@@ -39,9 +43,8 @@ pub fn run() {
             Err(e) => {
                 eprintln!("Warning: failed to open {}: {}", log_file.display(), e);
                 // Fallback: create the file fresh to avoid app crash
-                std::fs::File::create(&log_file)
-                    .expect("cannot create log file")
-            },
+                std::fs::File::create(&log_file).expect("cannot create log file")
+            }
         })
         .apply()
         .unwrap_or_else(|e| eprintln!("Warning: failed to initialize logger: {}", e));
@@ -61,9 +64,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_os::init())
-        .setup(|_app| {
-            Ok(())
-        })
+        .setup(|_app| Ok(()))
         .invoke_handler(tauri::generate_handler![
             // Frontend logging
             logger::log_message,

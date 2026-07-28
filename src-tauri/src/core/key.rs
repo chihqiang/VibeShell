@@ -31,8 +31,7 @@ fn is_traditional_encrypted_pem(content: &str) -> bool {
 fn validate_passphrase(content: &str, passphrase: &str) -> Result<(), String> {
     let tmp_id = Uuid::new_v4().to_string();
     let tmp_dir = super::data_dir().join("tmp");
-    std::fs::create_dir_all(&tmp_dir)
-        .map_err(|e| format!("create tmp dir: {}", e))?;
+    std::fs::create_dir_all(&tmp_dir).map_err(|e| format!("create tmp dir: {}", e))?;
     let tmp_path = tmp_dir.join(format!("keycheck_{}", tmp_id));
     std::fs::write(&tmp_path, content)
         .map_err(|e| format!("write temp key for validation: {}", e))?;
@@ -55,11 +54,14 @@ fn validate_passphrase(content: &str, passphrase: &str) -> Result<(), String> {
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 let err_msg = stderr.trim();
-                if err_msg.contains("incorrect passphrase") || err_msg.contains("wrong passphrase") {
+                if err_msg.contains("incorrect passphrase") || err_msg.contains("wrong passphrase")
+                {
                     Err("Incorrect passphrase for encrypted private key".to_string())
                 } else if err_msg.contains("no passphrase") {
                     Err("Key requires a passphrase".to_string())
-                } else if err_msg.contains("not a private key") || err_msg.contains("invalid format") {
+                } else if err_msg.contains("not a private key")
+                    || err_msg.contains("invalid format")
+                {
                     Err("Invalid or unsupported private key format".to_string())
                 } else {
                     Err(format!("Key validation failed: {}", err_msg))
@@ -67,7 +69,10 @@ fn validate_passphrase(content: &str, passphrase: &str) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log::warn!("[key] ssh-keygen not available, skipping passphrase validation: {}", e);
+            log::warn!(
+                "[key] ssh-keygen not available, skipping passphrase validation: {}",
+                e
+            );
             Ok(())
         }
     }
@@ -78,7 +83,9 @@ fn create_entry(name: String, password: Option<String>, content: &str) -> Result
     if is_traditional_encrypted_pem(content) {
         let pass = password.as_deref().unwrap_or("");
         if pass.is_empty() {
-            return Err("Key is encrypted (traditional PEM format), passphrase is required".to_string());
+            return Err(
+                "Key is encrypted (traditional PEM format), passphrase is required".to_string(),
+            );
         }
         validate_passphrase(content, pass)?;
     } else if let Some(ref pass) = password {

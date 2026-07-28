@@ -120,7 +120,6 @@ impl SshDefaults {
     pub const DEFAULT_RECONNECT_MAX_RETRIES: u32 = 10;
     pub const DEFAULT_RECONNECT_INITIAL_DELAY: u32 = 1;
     pub const DEFAULT_RECONNECT_MAX_DELAY: u32 = 30;
-
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

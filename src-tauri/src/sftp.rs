@@ -127,7 +127,12 @@ pub fn sftp_download_file(
     remote_path: String,
     local_path: String,
 ) -> Result<(), String> {
-    log::info!("[sftp] tab={}: download {} -> {}", tab_id, remote_path, local_path);
+    log::info!(
+        "[sftp] tab={}: download {} -> {}",
+        tab_id,
+        remote_path,
+        local_path
+    );
     with_session(&tab_id, |_, sftp, _| {
         core::sftp::download_file_with_session(sftp, &remote_path, &local_path)
     })
@@ -139,19 +144,25 @@ pub fn sftp_upload_file(
     local_path: String,
     remote_path: String,
 ) -> Result<(), String> {
-    log::info!("[sftp] tab={}: upload {} -> {}", tab_id, local_path, remote_path);
+    log::info!(
+        "[sftp] tab={}: upload {} -> {}",
+        tab_id,
+        local_path,
+        remote_path
+    );
     with_session(&tab_id, |_, sftp, _| {
         core::sftp::upload_file_with_session(sftp, &local_path, &remote_path)
     })
 }
 
 #[tauri::command]
-pub fn sftp_delete_file(
-    tab_id: String,
-    path: String,
-    is_directory: bool,
-) -> Result<(), String> {
-    log::info!("[sftp] tab={}: delete {} (dir={})", tab_id, path, is_directory);
+pub fn sftp_delete_file(tab_id: String, path: String, is_directory: bool) -> Result<(), String> {
+    log::info!(
+        "[sftp] tab={}: delete {} (dir={})",
+        tab_id,
+        path,
+        is_directory
+    );
     with_session(&tab_id, |_, sftp, _| {
         core::sftp::delete_file_with_session(sftp, &path, is_directory)
     })
@@ -206,7 +217,12 @@ pub fn sftp_chmod(
 ) -> Result<(), String> {
     log::info!(
         "[sftp] tab={}: chmod {} mode={} user={:?} group={:?} recursive={}",
-        tab_id, path, mode, user, group, recursive
+        tab_id,
+        path,
+        mode,
+        user,
+        group,
+        recursive
     );
     with_session(&tab_id, |session, sftp, _| {
         core::sftp::chmod_with_session(
@@ -238,7 +254,14 @@ async fn with_transfer<T>(
     transfer_id: String,
     chunk_size_kb: Option<usize>,
     action: &'static str,
-    body: impl FnOnce(&ssh2::Sftp, Option<usize>, &Arc<AtomicBool>, &core::sftp::ProgressFn) -> Result<T, String> + Send + 'static,
+    body: impl FnOnce(
+            &ssh2::Sftp,
+            Option<usize>,
+            &Arc<AtomicBool>,
+            &core::sftp::ProgressFn,
+        ) -> Result<T, String>
+        + Send
+        + 'static,
 ) -> Result<T, String>
 where
     T: Send + 'static + std::fmt::Debug,
@@ -279,12 +302,27 @@ pub async fn sftp_upload_file_progress(
     let action = if resume { "upload-resume" } else { "upload" };
     log::info!(
         "[sftp] tab={}: {action} {} -> {} (transfer_id={})",
-        tab_id, local_path, remote_path, transfer_id
+        tab_id,
+        local_path,
+        remote_path,
+        transfer_id
     );
     with_transfer(
-        app_handle, tab_id, transfer_id, chunk_size_kb, action,
+        app_handle,
+        tab_id,
+        transfer_id,
+        chunk_size_kb,
+        action,
         move |sftp, chunk_size, cancel, on_progress| {
-            core::sftp::upload_file(sftp, &local_path, &remote_path, resume, Some(cancel), on_progress, chunk_size)
+            core::sftp::upload_file(
+                sftp,
+                &local_path,
+                &remote_path,
+                resume,
+                Some(cancel),
+                on_progress,
+                chunk_size,
+            )
         },
     )
     .await
@@ -301,12 +339,26 @@ pub async fn sftp_download_file_progress(
 ) -> Result<u64, String> {
     log::info!(
         "[sftp] tab={}: download-progress {} -> {} (transfer_id={})",
-        tab_id, remote_path, local_path, transfer_id
+        tab_id,
+        remote_path,
+        local_path,
+        transfer_id
     );
     with_transfer(
-        app_handle, tab_id, transfer_id, chunk_size_kb, "download-progress",
+        app_handle,
+        tab_id,
+        transfer_id,
+        chunk_size_kb,
+        "download-progress",
         move |sftp, chunk_size, cancel, on_progress| {
-            core::sftp::download_file_chunked(sftp, &remote_path, &local_path, Some(cancel), on_progress, chunk_size)
+            core::sftp::download_file_chunked(
+                sftp,
+                &remote_path,
+                &local_path,
+                Some(cancel),
+                on_progress,
+                chunk_size,
+            )
         },
     )
     .await
