@@ -1,7 +1,6 @@
 import { memo, useEffect, useRef, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sshWrite } from '@/services/sshService';
-import { listen } from '@tauri-apps/api/event';
 import { Terminal as XtermTerminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
@@ -9,6 +8,7 @@ import type { ITheme } from '@xterm/xterm';
 import type { ConnectionStatus } from '@/types';
 import { Loader2, WifiOff, RotateCw } from 'lucide-react';
 import { cn } from '@/utils';
+import { registerOutputHandler } from '@/services/outputService';
 import { useNotify } from '@/hooks/use-notify';
 import { getStoredThemeId, getTerminalTheme } from '@/utils/terminal-themes';
 import {
@@ -18,7 +18,6 @@ import {
   TERM_FONT_FAMILY,
   STORAGE_KEYS,
   DOM_EVENTS,
-  TAURI_EVENTS,
   ANSI_YELLOW,
   ANSI_GREEN,
   ANSI_RED,
@@ -69,11 +68,6 @@ interface TerminalProps {
   active?: boolean;
   className?: string;
   onReconnect?: (tabId: string) => void;
-}
-
-interface SshOutputEvent {
-  tab_id: string;
-  data: string;
 }
 
 function getStoredFontSize(): number {
@@ -446,48 +440,33 @@ const Terminal = memo(function Terminal({
   }, [tabId, status, t]);
 
   // SSH output listener — requestAnimationFrame-batched writes to avoid jank
+  // 使用模块级全局 listener + 回调注册，消除异步 listen() 竞态
   useEffect(() => {
     if (!tabId) return;
 
-    let cancelled = false;
+    let rafId: number | null = null;
+    let pending = '';
 
-    const setup = async () => {
-      let rafId: number | null = null;
-      let pending = '';
-
-      const flush = () => {
-        rafId = null;
-        if (termRef.current) {
-          termRef.current.write(pending);
-        } else {
-          pendingRef.current.push(pending);
-        }
-        pending = '';
-      };
-
-      const unlisten = await listen<SshOutputEvent>(TAURI_EVENTS.SSH_OUTPUT, (event) => {
-        if (cancelled) return;
-        if (event.payload.tab_id === tabIdRef.current) {
-          pending += event.payload.data;
-          if (rafId === null) {
-            rafId = requestAnimationFrame(flush);
-          }
-        }
-      });
-
-      if (cancelled) {
-        unlisten();
-        return;
+    const flush = () => {
+      rafId = null;
+      if (termRef.current) {
+        termRef.current.write(pending);
+      } else {
+        pendingRef.current.push(pending);
       }
-
-      return unlisten;
+      pending = '';
     };
 
-    const unlistenPromise = setup();
+    const unregister = registerOutputHandler(tabId, (data: string) => {
+      pending += data;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(flush);
+      }
+    });
 
     return () => {
-      cancelled = true;
-      unlistenPromise.then((fn) => fn?.());
+      unregister();
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [tabId, notifyError]);
 
