@@ -7,7 +7,7 @@ import { SearchAddon } from '@xterm/addon-search';
 import type { ITheme } from '@xterm/xterm';
 import type { ConnectionStatus } from '@/types';
 import { Loader2, WifiOff, RotateCw } from 'lucide-react';
-import { cn } from '@/utils';
+import { cn, getStorage, setStorage } from '@/utils';
 import { registerOutputHandler } from '@/services/outputService';
 import { useNotify } from '@/hooks/use-notify';
 import { getStoredThemeId, getTerminalTheme } from '@/utils/terminal-themes';
@@ -71,13 +71,8 @@ interface TerminalProps {
 }
 
 function getStoredFontSize(): number {
-  try {
-    const v = localStorage.getItem(STORAGE_KEYS.TERM_FONT_SIZE);
-    const n = v ? parseInt(v, 10) : TERM_DEFAULT_FONT_SIZE;
-    return isNaN(n) ? TERM_DEFAULT_FONT_SIZE : Math.max(TERM_MIN_FONT_SIZE, Math.min(TERM_MAX_FONT_SIZE, n));
-  } catch {
-    return TERM_DEFAULT_FONT_SIZE;
-  }
+  const n = getStorage<number>(STORAGE_KEYS.TERM_FONT_SIZE, TERM_DEFAULT_FONT_SIZE);
+  return isNaN(n) ? TERM_DEFAULT_FONT_SIZE : Math.max(TERM_MIN_FONT_SIZE, Math.min(TERM_MAX_FONT_SIZE, n));
 }
 
 const Terminal = memo(function Terminal({
@@ -156,7 +151,7 @@ const Terminal = memo(function Terminal({
     const next = Math.max(TERM_MIN_FONT_SIZE, Math.min(TERM_MAX_FONT_SIZE, fontSizeRef.current + delta));
     if (next === fontSizeRef.current) return;
     fontSizeRef.current = next;
-    localStorage.setItem(STORAGE_KEYS.TERM_FONT_SIZE, String(next));
+    setStorage(STORAGE_KEYS.TERM_FONT_SIZE, next);
     term.options.fontSize = next;
     fitAddon.fit();
   }, []);

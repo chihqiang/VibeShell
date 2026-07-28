@@ -5,6 +5,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { Upload, FilePlus, FolderPlus, ListTodo, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNotify } from '@/hooks/use-notify';
+import { toError } from '@/utils/error';
 import { PromptDialog } from '@/components/ui';
 
 interface SftpToolbarProps {
@@ -56,7 +57,7 @@ export function SftpToolbar({
       setMkfileValue('');
       onRefresh();
     } catch (e) {
-      notifyError(`${t('sftp.newFileFailed')}: ${e instanceof Error ? e.message : String(e)}`);
+      notifyError(`${t('sftp.newFileFailed')}: ${toError(e)}`);
     }
   };
 
@@ -70,7 +71,7 @@ export function SftpToolbar({
       setMkdirValue('');
       onRefresh();
     } catch (e) {
-      notifyError(`${t('sftp.newFolderFailed')}: ${e instanceof Error ? e.message : String(e)}`);
+      notifyError(`${t('sftp.newFolderFailed')}: ${toError(e)}`);
     }
   };
 
