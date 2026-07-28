@@ -124,7 +124,9 @@ fn do_connect_inner(
     if let Some(key_content) = private_key_path {
         // Write key content to temp file for ssh2 auth
         let key_id = uuid::Uuid::new_v4().to_string();
-        let key_file = std::env::temp_dir().join(format!("vibeshell_key_{}", key_id));
+        let tmp_dir = super::data_dir().join("tmp");
+        std::fs::create_dir_all(&tmp_dir).ok();
+        let key_file = tmp_dir.join(format!("key_{}", key_id));
         std::fs::write(&key_file, key_content)
             .map_err(|e| format!("write temp key: {}", e))?;
         log::info!(
@@ -133,12 +135,18 @@ fn do_connect_inner(
             key_content.len(),
             password.is_some()
         );
-            log::info!(
-                "[connect] using key from DB: id={} has_passphrase={}",
-                key_id,
-                password.is_some()
-            );
-
+        match session.userauth_pubkey_file(username, None, &key_file, password) {
+            Ok(()) => {
+                log::info!("[connect] key auth succeeded: path={}", key_file.display());
+            }
+            Err(e) => {
+                log::error!("[connect] key auth failed: path={} has_passphrase={} error=[{}] {}", 
+                    key_file.display(), password.is_some(), e.code(), e.message());
+                return Err(format!("Key auth failed: {}", e.message()));
+            }
+        }
+        // Clean up temp key file
+        std::fs::remove_file(&key_file).ok();
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);

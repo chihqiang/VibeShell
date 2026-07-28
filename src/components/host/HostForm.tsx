@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listKeys } from '@/services/keyService';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,11 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
   const [allKeys, setAllKeys] = useState(keys);
   const keyRef = useRef<HTMLDivElement>(null);
 
+  // 当父组件的 keys 更新时同步到 allKeys
+  useEffect(() => {
+    setAllKeys(keys);
+  }, [keys]);
+
   const updateField = <K extends keyof HostConfig>(key: K, v: HostConfig[K]) => {
     onChange({ ...value, [key]: v });
   };
@@ -32,10 +37,13 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
     : null;
 
   const handleSelectKey = async (entry: KeyEntry) => {
-    updateField('key_id', entry.id);
-    updateField('key_passphrase', entry.password || '');
-    // 密钥的 passphrase 同步到 password 字段，供连接时传输到后端
-    updateField('password', entry.password || '');
+    // 一次变更所有字段，避免多次 onChange 触发 state 覆盖
+    onChange({
+      ...value,
+      key_id: entry.id,
+      key_passphrase: entry.password || '',
+      password: entry.password || '',
+    });
     setKeyOpen(false);
   };
 
