@@ -43,6 +43,51 @@ npm run tauri build
 3. 连接后点击右侧按钮打开 **监控面板** 查看实时服务器状态
 4. 在终端标签页底部可展开 **SFTP 面板** 管理远程文件
 
+## 常见问题
+
+### 启动报错：数据库字段与当前版本不匹配
+
+更新版本后首次启动时，如果本地缓存的数据表结构与新版本不一致，会提示数据库字段不匹配。
+
+**解决方法：**
+
+删除本地缓存数据后重新启动即可：
+
+```bash
+rm -rf ~/.vibeshell
+```
+
+重新打开 VibeShell，应用会自动重建数据库并正常运行。
+
+> **注意：** 删除 `~/.vibeshell` 会清除已保存的主机连接、密钥等本地数据，请提前确认是否需要备份。如需备份，可在设置中使用**数据备份**功能导出 JSON 文件。
+
+### macOS 提示 "VibeShell"已损坏，无法打开。你应该将它移到废纸篓。
+
+这是 macOS Gatekeeper 安全机制的常见提示，并非应用本身损坏。VibeShell 目前未通过 Apple Notarization 公证，因此首次打开时可能被系统拦截。
+
+**解决方法：**
+
+1. **通过系统设置允许打开（推荐）**
+   - 打开 **系统设置 → 隐私与安全性**
+   - 向下滚动，在"安全性"部分找到关于 VibeShell 的提示
+   - 点击 **仍要打开** 按钮
+   - 输入管理员密码确认
+
+2. **使用命令行移除隔离属性**
+   ```bash
+   # 将 .app 拖入终端，或手动指定路径
+   sudo xattr -d com.apple.quarantine /Applications/VibeShell.app
+   ```
+   执行后重新打开应用即可。
+
+3. **临时关闭 Gatekeeper（不推荐）**
+   ```bash
+   sudo spctl --master-disable
+   ```
+   操作完成后记得重新开启：`sudo spctl --master-enable`。
+
+> **注意：** 应用本身是安全的，所有源码均在 GitHub 开源。如仍有疑问，可在 [Issues](https://github.com/chihqiang/VibeShell/issues) 中反馈。
+
 ## 技术栈
 
 | 层 | 技术 |
