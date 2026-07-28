@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Plus, Trash2, FileKey, Lock, Copy, Check } from 'lucide-react';
+import { Search, Plus, Trash2, FileKey, Lock } from 'lucide-react';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useNotify } from '@/hooks/use-notify';
 import { listKeys, deleteKey } from '@/services/keyService';
@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { DeleteDialog } from '@/components/ui';
 import { ImportKeyDialog } from '@/components/keys';
 import { PanelHeader } from '@/components/layout/SidePanel';
-import { COPY_FEEDBACK_DELAY } from '@/constants';
 
 /** 密钥管理侧边栏面板 */
 export function KeySidePanel() {
@@ -50,9 +49,7 @@ export function KeySidePanel() {
   const filtered = keys.filter(
     (k) =>
       k.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      k.key_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      k.fingerprint.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      k.file_name.toLowerCase().includes(searchQuery.toLowerCase()),
+      k.key_type.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -117,34 +114,16 @@ export function KeySidePanel() {
 }
 
 function KeySideRow({ keyEntry: k, onDelete }: { keyEntry: KeyEntry; onDelete: () => void }) {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-
-  const copyFingerprint = () => {
-    navigator.clipboard.writeText(k.fingerprint).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), COPY_FEEDBACK_DELAY);
-    });
-  };
-
   return (
     <div className="group flex items-center gap-2 h-10 px-3 hover:bg-muted/60 transition-colors cursor-default">
       <FileKey size={14} className="text-muted-foreground flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-xs text-foreground truncate">{k.name}</div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
-          {k.password && <Lock size={9} className="flex-shrink-0" />}
+          {k.password && <Lock size={10} className="flex-shrink-0" />}
           <span className="uppercase">{k.key_type}</span>
-          <span className="truncate">{k.fingerprint}</span>
         </div>
       </div>
-      <button
-        onClick={copyFingerprint}
-        className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
-        title={t('common.copyFingerprint')}
-      >
-        {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-      </button>
       <button
         onClick={onDelete}
         className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all cursor-pointer"

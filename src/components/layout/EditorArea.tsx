@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@/utils/invoke';
 import { sshConnect, sshDisconnect } from '@/services/sshService';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import type { ConnectConfig } from '@/contexts/TerminalTabsContext';
@@ -83,13 +84,29 @@ export function EditorArea() {
           maxDelaySecs: defaults.reconnectMaxDelay,
         };
         if (controller.signal.aborted) return;
-        await sshConnect({
+        // 已保存主机使用 hostId 连接，快速连接直接传参
+        const tab = tabsRef.current.find((t) => t.id === tabId);
+        const hostId = tab?.type === 'terminal' ? tab.host?.id : undefined;
+        if (hostId) {
+          await sshConnect({
+            tabId,
+            hostId,
+            monitorIntervalSecs: defaults.monitorInterval,
+            heartbeatIntervalSecs: defaults.heartbeatInterval,
+          });
+        } else {
+        await invoke('ssh_quick_connect', {
           tabId,
-          ...config,
+          hostname: config.hostname,
+          port: config.port,
+          username: config.username,
+          password: config.password,
+          privateKeyPath: config.privateKeyPath,
           monitorIntervalSecs: defaults.monitorInterval,
           heartbeatIntervalSecs: defaults.heartbeatInterval,
         });
-        if (controller.signal.aborted) return;
+        }
+       if (controller.signal.aborted) return;
         updateStatus(tabId, 'connected');
         retryCount.current.delete(tabId);
       } catch (e) {

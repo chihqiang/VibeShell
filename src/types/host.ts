@@ -2,7 +2,7 @@
 
 import type { AuthMethod } from './common';
 
-/** 主机配置（后端数据结构） */
+/** 主机配置（创建/编辑/表单共用，映射后端数据结构） */
 export interface HostConfig {
   id: string;
   name: string;
@@ -10,34 +10,16 @@ export interface HostConfig {
   port: number;
   username: string;
   auth_method: AuthMethod;
-  password?: string | null;
-  private_key_path?: string | null;
-  tags?: string[];
+  password: string;
+  key_id: string;
+  key_passphrase: string;
+  tags: string[];
   created_at: number;
   updated_at: number;
-  last_connected_at?: number | null;
+  last_connected_at: number | null;
 }
 
-/**
- * 统一的主机表单数据。
- * 用于：
- * - 主机编辑弹窗（含标签）
- * - 快速连接弹窗（标签默认为 []）
- * - SFTP 连接传递
- */
-export interface HostFormState {
-  name: string;
-  hostname: string;
-  port: number;
-  username: string;
-  authMethod: AuthMethod;
-  password: string;
-  privateKeyPath: string;
-  keyPassphrase: string;
-  tags: string[];
-}
-
-/** SSH 连接配置（运行时参数） */
+/** 快速连接参数（未保存的主机） */
 export interface ConnectConfig {
   hostname: string;
   port: number;
@@ -46,22 +28,18 @@ export interface ConnectConfig {
   privateKeyPath: string | null;
 }
 
+/** SSH 连接参数（已保存主机，后端查 DB） */
+export interface SshConnectParams {
+  tabId: string;
+  hostId: string;
+  monitorIntervalSecs?: number;
+  heartbeatIntervalSecs?: number;
+}
+
 /** SSH 连接结果 */
 export interface SshConnectResult {
   id: string;
   banner: string;
-}
-
-/** SSH 连接参数 */
-export interface SshConnectParams {
-  tabId: string;
-  hostname: string;
-  port: number;
-  username: string;
-  password: string | null;
-  privateKeyPath: string | null;
-  monitorIntervalSecs?: number;
-  heartbeatIntervalSecs?: number;
 }
 
 /** 解析后的 SSH 命令 */

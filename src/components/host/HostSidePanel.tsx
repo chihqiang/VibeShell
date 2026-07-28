@@ -12,7 +12,7 @@ import {
   MoreVertical,
   Copy,
 } from 'lucide-react';
-import { cn, hostToConnectConfig, buildSshCommand } from '@/utils';
+import { cn, buildSshCommand } from '@/utils';
 import { DOM_EVENTS } from '@/constants';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useLayout } from '@/contexts/LayoutContext';
@@ -140,7 +140,7 @@ export function HostSidePanel() {
       port: host.port,
       username: host.username,
       password: host.password ?? null,
-      privateKeyPath: host.private_key_path ?? null,
+      privateKeyPath: host.key_id ?? null,
     });
     navigator.clipboard.writeText(cmd).then(() => notify(t('common.copied')));
     setMenuOpenId(null);
@@ -165,7 +165,14 @@ export function HostSidePanel() {
     setConnectingId(host.id);
     setMenuOpenId(null);
     try {
-      const config = await hostToConnectConfig(host, keys);
+      // 使用 hostId 创建 ConnectConfig，EditorArea 将根据 hostId 调用新的 sshConnect API
+      const config: import('@/types/host').ConnectConfig = {
+        hostname: host.hostname,
+        port: host.port,
+        username: host.username,
+        password: host.password || null,
+        privateKeyPath: host.key_id || null,
+      };
       addTerminalTab(config, host);
       const now = Date.now();
       await saveHost({ host: { ...host, last_connected_at: now } });

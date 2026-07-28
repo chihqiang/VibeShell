@@ -32,7 +32,7 @@ pub fn save_host(host: core::models::HostConfig) -> Result<core::models::HostCon
 #[tauri::command]
 pub fn delete_host(id: String) -> Result<(), String> {
     log::info!("[host] delete host: id={}", id);
-    core::store::delete_host(id)
+    core::store::delete_host(&id)
 }
 
 #[tauri::command]

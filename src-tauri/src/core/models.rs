@@ -12,7 +12,11 @@ where
     }
     Ok(match OneOrMany::deserialize(deserializer)? {
         OneOrMany::Single(s) => {
-            if s.is_empty() { vec![] } else { vec![s] }
+            if s.is_empty() {
+                vec![]
+            } else {
+                vec![s]
+            }
         }
         OneOrMany::Many(v) => v,
     })
@@ -34,8 +38,8 @@ pub struct HostConfig {
     pub username: String,
     pub auth_method: String,
     pub password: Option<String>,
-    pub private_key_path: Option<String>,
-    #[serde(default, alias = "group", alias = "groups", deserialize_with = "deserialize_tags")]
+    pub key_id: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_tags")]
     pub tags: Vec<String>,
     pub created_at: i64,
     pub updated_at: i64,
@@ -47,16 +51,10 @@ pub struct HostConfig {
 pub struct KeyEntry {
     pub id: String,
     pub name: String,
-    pub file_name: String,
     pub key_type: String,
-    pub fingerprint: String,
-    pub imported_at: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
-    /// PEM 密钥原文。正常 list_keys() 返回时跳过前端不需要看到内容，
-    /// 仅在备份导出和内部认证时使用。
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
+    pub content: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -132,6 +130,9 @@ pub struct DiskInfo {
 pub struct MonitorEvent {
     pub tab_id: String,
     pub ip: String,
+    pub hostname: String,
+    pub os: String,
+    pub kernel: String,
     pub uptime: String,
     pub load: String,
     pub cpu: String,

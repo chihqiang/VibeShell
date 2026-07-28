@@ -19,6 +19,9 @@ export interface DiskInfo {
 export interface MonitorEvent {
   tab_id: string;
   ip: string;
+  hostname: string;
+  os: string;
+  kernel: string;
   uptime: string;
   load: string;
   cpu: string;

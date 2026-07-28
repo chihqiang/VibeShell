@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
-use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Condvar, LazyLock, Mutex, RwLock};
 use std::thread;
@@ -85,31 +84,6 @@ static SESSIONS: LazyLock<RwLock<HashMap<String, SessionHandle>>> =
 
 // ── do_connect (moved from core/ssh.rs) ──
 
-/// RAII guard that removes a temporary key file on drop, even on panic.
-/// Used when extracting a key from the database to a temp file for ssh2 auth.
-struct TempKeyGuard(Option<PathBuf>);
-
-impl TempKeyGuard {
-    fn new(path: PathBuf) -> Self {
-        Self(Some(path))
-    }
-}
-
-impl Drop for TempKeyGuard {
-    fn drop(&mut self) {
-        if let Some(path) = self.0.take() {
-            std::fs::remove_file(&path).ok();
-        }
-    }
-}
-
-fn expand_path(path: &str) -> PathBuf {
-    if path.starts_with('~') {
-        core::home_dir().join(&path[2..])
-    } else {
-        Path::new(path).to_path_buf()
-    }
-}
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -147,35 +121,24 @@ fn do_connect_inner(
         format!("SSH handshake failed: {}", e)
     })?;
 
-    if let Some(key_path) = private_key_path {
-        // Support vibeshell://key/<uuid> -- read key content from SQLite
-        if let Some(key_id) = key_path.strip_prefix("vibeshell://key/") {
-            let content = super::store::get_key_content(key_id)?
-                .ok_or_else(|| format!("Key not found: {}", key_id))?;
-            let tmp_dir = std::env::temp_dir().join("vibeshell_keys");
-            std::fs::create_dir_all(&tmp_dir)
-                .map_err(|e| format!("create temp key dir: {}", e))?;
-            let tmp_path = tmp_dir.join(key_id).to_path_buf();
-            std::fs::write(&tmp_path, &content)
-                .map_err(|e| format!("write temp key: {}", e))?;
-            let _guard = TempKeyGuard::new(tmp_path.clone());
-            let result = session
-                .userauth_pubkey_file(username, None, &tmp_path, password)
-                .map_err(|e| {
-                    log::error!("Key auth failed: {}", e);
-                    format!("Key auth failed: {}", e)
-                });
-            // _guard drops here, removing the temp file
-            result?;
-        } else {
-            let key_file = expand_path(key_path);
-            session
-                .userauth_pubkey_file(username, None, &key_file, password)
-                .map_err(|e| {
-                    log::error!("Key auth failed: {}", e);
-                    format!("Key auth failed: {}", e)
-                })?;
-        };
+    if let Some(key_content) = private_key_path {
+        // Write key content to temp file for ssh2 auth
+        let key_id = uuid::Uuid::new_v4().to_string();
+        let key_file = std::env::temp_dir().join(format!("vibeshell_key_{}", key_id));
+        std::fs::write(&key_file, key_content)
+            .map_err(|e| format!("write temp key: {}", e))?;
+        log::info!(
+            "[connect] using key content: path={} ({} bytes) has_passphrase={}",
+            key_file.display(),
+            key_content.len(),
+            password.is_some()
+        );
+            log::info!(
+                "[connect] using key from DB: id={} has_passphrase={}",
+                key_id,
+                password.is_some()
+            );
+
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);
@@ -189,8 +152,13 @@ fn do_connect_inner(
     }
 
     if !session.authenticated() {
-        log::error!("Authentication failed: not authenticated");
-        return Err("Authentication failed: not authenticated".to_string());
+        let msg = format!(
+            "Authentication succeeded but session not authenticated (username={} has_key={})",
+            username,
+            private_key_path.is_some()
+        );
+        log::error!("[connect] {}", msg);
+        return Err(msg);
     }
 
     let banner = session.banner().unwrap_or("").to_string();
@@ -243,6 +211,12 @@ fn linux_monitor_script() -> String {
         r#"(cat /proc/loadavg 2>/dev/null | awk '{print $1, $2, $3}' || echo '')"#,
         r#"echo '---CPU---'"#,
         r#"(top -bn1 2>/dev/null | grep -i 'Cpu(s)' | awk '{print $2+$4}' || cat /proc/stat 2>/dev/null | head -1 | awk '{print 100-($5*100/($2+$3+$4+$5+$6+$7+$8))}' || echo '')"#,
+        r#"echo '---HOSTNAME---'"#,
+        r#"(hostname 2>/dev/null || echo '')"#,
+        r#"echo '---OS---'"#,
+        r#"(cat /etc/os-release 2>/dev/null | grep -E \"^PRETTY_NAME=\" | cut -d= -f2 | tr -d '\"' || lsb_release -d 2>/dev/null | cut -f2- || echo '')"#,
+        r#"echo '---KERNEL---'"#,
+        r#"(uname -r 2>/dev/null || echo '')"#,
         r#"echo '---MEM---'"#,
         r#"(free -m 2>/dev/null | awk 'NR==2{printf "%dMB / %dMB (%.1f%%)\n", $3, $2, $3/$2*100}' || echo '')"#,
         r#"echo '---SWAP---'"#,
@@ -261,6 +235,12 @@ fn macos_monitor_script() -> String {
     vec![
         r#"echo '---IP---'"#,
         r#"(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || ifconfig 2>/dev/null | grep 'inet ' | grep -v 127.0.0.1 | awk '{print $2}' | head -1 || echo '')"#,
+        r#"echo '---HOSTNAME---'"#,
+        r#"(hostname 2>/dev/null || echo '')"#,
+        r#"echo '---OS---'"#,
+        r#"(sw_vers -productName 2>/dev/null | tr -d '\n'; echo -n ' '; sw_vers -productVersion 2>/dev/null || echo '')"#,
+        r#"echo '---KERNEL---'"#,
+        r#"(uname -r 2>/dev/null || echo '')"#,
         r#"echo '---UPTIME---'"#,
         r#"(uptime 2>/dev/null | sed 's/.*up //' | sed 's/,.*//' || echo '')"#,
         r#"echo '---LOAD---'"#,
@@ -285,6 +265,9 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
     let mut uptime = String::new();
     let mut load = String::new();
     let mut cpu = String::new();
+    let mut hostname = String::new();
+    let mut os = String::new();
+    let mut kernel = String::new();
     let mut memory = String::new();
     let mut swap = String::new();
     let mut net_io = String::new();
@@ -303,6 +286,9 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
             "UPTIME" => uptime = trimmed.to_string(),
             "LOAD" => load = trimmed.to_string(),
             "CPU" => cpu = trimmed.to_string(),
+            "HOSTNAME" => hostname = trimmed.to_string(),
+            "OS" => os = trimmed.to_string(),
+            "KERNEL" => kernel = trimmed.to_string(),
             "MEM" => memory = trimmed.to_string(),
             "SWAP" => swap = trimmed.to_string(),
             "NET" => net_io = trimmed.to_string(),
@@ -334,6 +320,9 @@ fn parse_monitor_output(output: &str, tab_id: &str) -> core::models::MonitorEven
     core::models::MonitorEvent {
         tab_id: tab_id.to_string(),
         ip,
+        hostname,
+        os,
+        kernel,
         uptime,
         load,
         cpu,
@@ -359,12 +348,14 @@ pub fn connect(
     monitor_interval_secs: u64,
     heartbeat_interval_secs: u64,
 ) -> Result<String, String> {
+    let auth_type = if private_key_path.is_some() { "key" } else { "password" };
     log::info!(
-        "[connect] tab={} connecting to {}@{}:{}",
+        "[connect] tab={} connecting to {}@{}:{} auth={}",
         tab_id,
         username,
         hostname,
-        port
+        port,
+        auth_type
     );
 
     let (session, banner) = do_connect(hostname, port, username, password, private_key_path)?;

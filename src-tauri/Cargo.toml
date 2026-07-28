@@ -32,7 +32,4 @@ log = "0.4"
 fern = "0.7"
 tauri-plugin-os = "2.3.2"
 rusqlite = { version = "0.34", features = ["bundled"] }
-base64 = "0.22"
-sha2 = "0.10"
-ssh-key = { version = "0.6.7", features = ["encryption", "rsa", "ed25519", "ecdsa"] }
 

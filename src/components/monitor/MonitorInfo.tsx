@@ -115,7 +115,7 @@ export function MonitorInfo() {
 
   const uptimeLabels = { day: t('common.day'), hour: t('common.hour'), minute: t('common.minute') };
 
-  const data = monitorData ?? { ip: '', uptime: '', load: '', cpu: '', memory: '', swap: '', net_io: '' };
+  const data = monitorData ?? { ip: '', hostname: '', os: '', kernel: '', uptime: '', load: '', cpu: '', memory: '', swap: '', net_io: '' };
 
   return (
     <div className="p-3 space-y-3 text-xs">
@@ -124,6 +124,21 @@ export function MonitorInfo() {
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-[11px]">IP</span>
           <span className="text-foreground font-mono text-xs">{data.ip || '—'}</span>
+        </div>
+        <div className="h-px bg-border/30" />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">{t('monitor.hostname')}</span>
+          <span className="text-foreground font-mono text-xs">{data.hostname || '—'}</span>
+        </div>
+        <div className="h-px bg-border/30" />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">{t('monitor.os')}</span>
+          <span className="text-foreground font-mono text-xs">{data.os || '—'}</span>
+        </div>
+        <div className="h-px bg-border/30" />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[11px]">{t('monitor.kernel')}</span>
+          <span className="text-foreground font-mono text-xs">{data.kernel || '—'}</span>
         </div>
         <div className="h-px bg-border/30" />
         <div className="flex items-center justify-between">

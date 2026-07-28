@@ -74,6 +74,7 @@ pub fn run() {
             storage::list_tags,
             // SSH commands
             ssh::ssh_connect,
+            ssh::ssh_quick_connect,
             ssh::ssh_test_connect,
             ssh::ssh_execute,
             ssh::ssh_disconnect,

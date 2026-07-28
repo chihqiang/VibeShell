@@ -4,10 +4,8 @@
 export interface KeyEntry {
   id: string;
   name: string;
-  file_name: string;
   key_type: string;
-  fingerprint: string;
-  imported_at: number;
+  content: string;
   password?: string | null;
 }
 

@@ -1,7 +1,6 @@
 import { invoke } from '@/utils/invoke';
 import { listKeys } from './keyService';
 import type { HostConfig } from '@/types/host';
-import type { HostFormState } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
 
 // ── API 调用 ──
@@ -45,38 +44,4 @@ export async function fetchHostsAndKeys(): Promise<{
 }> {
   const [hosts, keys] = await Promise.all([listHosts(), listKeys()]);
   return { hosts, keys };
-}
-
-// ── 类型转换 ──
-
-/** HostConfig 转换为 HostFormState */
-export function hostConfigToFormState(host: HostConfig): HostFormState {
-  return {
-    name: host.name,
-    hostname: host.hostname,
-    port: host.port,
-    username: host.username,
-    authMethod: host.auth_method,
-    password: host.password || '',
-    privateKeyPath: host.private_key_path || '',
-    keyPassphrase: host.auth_method === 'key' ? host.password || '' : '',
-    tags: host.tags || [],
-  };
-}
-
-/** HostFormState 转换为 HostConfig */
-export function formStateToHostPayload(form: HostFormState, existing?: HostConfig | null): HostConfig {
-  return {
-    id: existing?.id || '',
-    name: form.name,
-    hostname: form.hostname,
-    port: form.port || 22,
-    username: form.username,
-    auth_method: form.authMethod,
-    password: form.password,
-    private_key_path: existing?.private_key_path || '',
-    tags: form.tags,
-    created_at: existing?.created_at || 0,
-    updated_at: Date.now(),
-  };
 }

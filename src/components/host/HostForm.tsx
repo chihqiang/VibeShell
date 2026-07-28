@@ -3,15 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { listKeys } from '@/services/keyService';
 import { Input } from '@/components/ui/input';
 import { ImportKeyDialog } from '@/components/keys';
-import type { HostFormState } from '@/types';
+import type { HostConfig } from '@/types';
 import type { KeyEntry } from '@/types/key';
 import { AuthToggle, KeySelector } from '@/components/host';
 import { Field, NumberInput } from '@/components/ui';
 import { DEFAULT_SSH_PORT } from '@/constants';
 
 interface HostFormProps {
-  value: HostFormState;
-  onChange: (data: HostFormState) => void;
+  value: HostConfig;
+  onChange: (data: HostConfig) => void;
   keys: KeyEntry[];
   compact?: boolean;
 }
@@ -23,18 +23,19 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
   const [allKeys, setAllKeys] = useState(keys);
   const keyRef = useRef<HTMLDivElement>(null);
 
-  const updateField = <K extends keyof HostFormState>(key: K, v: HostFormState[K]) => {
+  const updateField = <K extends keyof HostConfig>(key: K, v: HostConfig[K]) => {
     onChange({ ...value, [key]: v });
   };
 
-  const selectedKey = value.privateKeyPath
-    ? (allKeys.find((k) => value.privateKeyPath.endsWith(k.file_name)) ?? null)
+  const selectedKey = value.key_id
+    ? (allKeys.find((k) => value.key_id === k.id) ?? null)
     : null;
 
   const handleSelectKey = async (entry: KeyEntry) => {
-    const { getKeysPath } = await import('@/services/configService');
-    updateField('privateKeyPath', `${getKeysPath()}/${entry.file_name}`);
-    updateField('keyPassphrase', entry.password || '');
+    updateField('key_id', entry.id);
+    updateField('key_passphrase', entry.password || '');
+    // 密钥的 passphrase 同步到 password 字段，供连接时传输到后端
+    updateField('password', entry.password || '');
     setKeyOpen(false);
   };
 
@@ -55,10 +56,10 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
         selectedKey={selectedKey}
         allKeys={allKeys}
         keyOpen={keyOpen}
-        keyPassphrase={value.keyPassphrase}
+        keyPassphrase={value.key_passphrase || ''}
         onToggle={() => setKeyOpen(!keyOpen)}
         onSelect={handleSelectKey}
-        onPassphraseChange={(v) => updateField('keyPassphrase', v)}
+        onPassphraseChange={(v) => updateField('key_passphrase', v)}
         onImport={() => {
           setKeyOpen(false);
           setImportDialogOpen(true);
@@ -98,10 +99,10 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
           </Field>
 
           <div className="flex flex-col h-[52px] justify-end">
-            <AuthToggle value={value.authMethod} onChange={(v) => updateField('authMethod', v)} compact />
+            <AuthToggle value={value.auth_method} onChange={(v) => updateField('auth_method', v)} compact />
           </div>
 
-          {value.authMethod === 'password' ? (
+          {value.auth_method === 'password' ? (
             <Field label={t('quickConnect.password')} compact>
               <Input
                 type="password"
@@ -144,10 +145,10 @@ export function HostForm({ value, onChange, keys, compact }: HostFormProps) {
       </Field>
 
       <Field label={t('connection.authMethod')}>
-        <AuthToggle value={value.authMethod} onChange={(v) => updateField('authMethod', v)} />
+        <AuthToggle value={value.auth_method} onChange={(v) => updateField('auth_method', v)} />
       </Field>
 
-      {value.authMethod === 'password' ? (
+      {value.auth_method === 'password' ? (
         <Field label={t('connection.password')}>
           <Input type="password" value={value.password} onChange={(e) => updateField('password', e.target.value)} />
         </Field>
