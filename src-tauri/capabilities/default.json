@@ -9,6 +9,7 @@
     "shell:default",
     "shell:allow-open",
     "dialog:default",
+    "os:default",
     "core:window:allow-close",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
