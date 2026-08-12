@@ -3,14 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { saveHost } from '@/services/hostService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import TagSelect from '@/components/ui/tag-select';
 import { HostForm } from '@/components/host';
 import type { HostConfig } from '@/types/host';
 import type { KeyEntry } from '@/types/key';
-import { getSshDefaults } from '@/services/configService';
+import { getSshDefaults, getProxyConfig } from '@/services/configService';
 import { useNotify } from '@/hooks/use-notify';
 import { sshTestConnect } from '@/services/sshService';
 
@@ -19,13 +17,12 @@ interface HostDialogProps {
   open: boolean;
   onClose: () => void;
   host?: HostConfig | null;
-  tags: string[];
   keys: KeyEntry[];
 }
 
 export { type HostConfig };
 
-export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDialogProps) {
+export function HostDialog({ open, onClose, host, keys }: HostDialogProps) {
   const { t } = useTranslation();
   const { notify, notifyError } = useNotify();
   const editing = !!host;
@@ -42,26 +39,26 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
           password: '',
           key_id: '',
           key_passphrase: '',
-          tags: [],
           created_at: 0,
           updated_at: 0,
           last_connected_at: null,
         },
   );
   const [saving, setSaving] = useState(false);
-  const [tagDialogOpen, setTagDialogOpen] = useState(false);
   const [testing, setTesting] = useState(false);
   const portValid = form.port >= 1 && form.port <= 65535;
 
   async function handleTestConnect() {
     setTesting(true);
     try {
+      const proxy = await getProxyConfig();
       const banner = await sshTestConnect({
         hostname: form.hostname,
         port: form.port || DEFAULT_SSH_PORT,
         username: form.username,
         password: form.auth_method === 'password' ? form.password || null : null,
         privateKeyPath: form.auth_method === 'key' ? form.key_id || null : null,
+        proxy,
       });
       notify(`${t('connection.testConnectionSuccess')}: ${banner}`);
     } catch (e) {
@@ -85,7 +82,6 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
           password: '',
           key_id: '',
           key_passphrase: '',
-          tags: [],
           created_at: 0,
           updated_at: 0,
           last_connected_at: null,
@@ -121,14 +117,6 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
     }
   }
 
-  function openTagDialog() {
-    setTagDialogOpen(true);
-  }
-
-  function handleConfirmTags(tags: string[]) {
-    setForm((prev) => ({ ...prev, tags }));
-  }
-
   return (
     <>
       <Dialog
@@ -154,25 +142,6 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
             </div>
 
             <HostForm value={form} onChange={handleFormChange} keys={keys} />
-
-            <div>
-              <Label>{t('sidebar.selectTag')}</Label>
-              <button
-                type="button"
-                onClick={openTagDialog}
-                className="flex items-center gap-1 flex-wrap w-full min-h-8 rounded-lg border border-input bg-background px-2.5 py-1 text-sm transition-colors hover:border-muted-foreground cursor-pointer"
-              >
-                {form.tags && form.tags.length > 0 ? (
-                  form.tags.map((t) => (
-                    <Badge key={t} variant="secondary" className="h-5 text-[11px]">
-                      {t}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-muted-foreground">{t('sidebar.noTag')}</span>
-                )}
-              </button>
-            </div>
           </div>
 
           <DialogFooter>
@@ -201,19 +170,6 @@ export function HostDialog({ open, onClose, host, tags: allTags, keys }: HostDia
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <TagSelect
-        open={tagDialogOpen}
-        onClose={() => setTagDialogOpen(false)}
-        availableTags={allTags}
-        selectedTags={form.tags || []}
-        onConfirm={handleConfirmTags}
-        title={t('sidebar.selectTag')}
-        placeholder={t('sidebar.tagName')}
-        cancelLabel={t('connection.cancel')}
-        confirmLabel={t('common.confirm')}
-        emptyLabel={t('sidebar.noTag')}
-      />
     </>
   );
 }

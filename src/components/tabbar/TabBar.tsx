@@ -12,7 +12,7 @@ export function TabBar({ onReconnect }: { onReconnect?: (tabId: string) => void 
 
   return (
     <>
-      <div className="flex-shrink-0 flex items-center h-9 bg-secondary/50 border-b border-border overflow-x-auto scrollbar-none">
+      <div className="shrink-0 flex items-center h-9 bg-secondary/50 border-b border-border overflow-x-auto scrollbar-none">
         {tabs.map((tab) => (
           <TabBarItem
             key={tab.id}

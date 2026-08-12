@@ -40,7 +40,7 @@ export function KeySelector({
         <span className={cn(selectedKey ? 'text-foreground' : 'text-muted-foreground', compact && 'truncate')}>
           {selectedKey ? selectedKey.name : t('sidebar.selectKey')}
         </span>
-        <ChevronDown size={compact ? 12 : 14} className="text-muted-foreground flex-shrink-0 ml-1" />
+        <ChevronDown size={compact ? 12 : 14} className="text-muted-foreground shrink-0 ml-1" />
       </button>
 
       {keyOpen && (
@@ -63,7 +63,7 @@ export function KeySelector({
                       compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
                     )}
                   >
-                    <FileKey size={compact ? 12 : 14} className="text-muted-foreground flex-shrink-0" />
+                    <FileKey size={compact ? 12 : 14} className="text-muted-foreground shrink-0" />
                     {compact ? (
                       <span className="truncate">{k.name}</span>
                     ) : (

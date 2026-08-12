@@ -66,14 +66,14 @@ export function PathBreadcrumb({ path, onNavigate, className }: PathBreadcrumbPr
     <div className={cn('flex-1 ml-1 flex items-center min-w-0 group', className)}>
       <button
         onClick={() => onNavigate('/')}
-        className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors cursor-pointer px-0.5 flex-shrink-0"
+        className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors cursor-pointer px-0.5 shrink-0"
         title="/"
       >
         /
       </button>
       {segments.map((seg, i) => (
         <div key={i} className="flex items-center min-w-0">
-          <ChevronRight size={11} className="text-muted-foreground/50 flex-shrink-0" />
+          <ChevronRight size={11} className="text-muted-foreground/50 shrink-0" />
           <button
             onClick={() => onNavigate(buildPath(i))}
             className="text-xs font-mono text-muted-foreground hover:text-primary hover:bg-muted/50 transition-all duration-150 cursor-pointer px-1 py-0.5 rounded truncate"
@@ -85,7 +85,7 @@ export function PathBreadcrumb({ path, onNavigate, className }: PathBreadcrumbPr
       ))}
       <button
         onClick={() => setEditing(true)}
-        className="ml-1 p-0.5 text-muted-foreground/0 group-hover:text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded flex-shrink-0"
+        className="ml-1 p-0.5 text-muted-foreground/0 group-hover:text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded shrink-0"
         title={t('sftp.editPath')}
       >
         <Pencil size={10} />

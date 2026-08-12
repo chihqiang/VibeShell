@@ -45,7 +45,7 @@ export function ActivityBar() {
 
   return (
     <div
-      className="flex-shrink-0 flex flex-col items-center py-2 bg-secondary border-r border-border/60 select-none"
+      className="shrink-0 flex flex-col items-center py-2 bg-secondary border-r border-border/60 select-none"
       style={{ width: ACTIVITY_BAR_WIDTH }}
     >
       <div className="flex flex-col gap-1">{topItems.map(renderItem)}</div>

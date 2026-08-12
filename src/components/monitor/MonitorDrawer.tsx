@@ -66,13 +66,13 @@ export function MonitorDrawer() {
   return (
     <aside
       className={cn(
-        'flex-shrink-0 bg-secondary/80 backdrop-blur-sm border-l border-border/60 flex flex-col overflow-hidden relative',
+        'shrink-0 bg-secondary/80 backdrop-blur-sm border-l border-border/60 flex flex-col overflow-hidden relative',
         'transition-[width] duration-200',
       )}
       style={{ width: monitorOpen ? MONITOR_DRAWER_WIDTH : 0 }}
     >
       <div className="h-full flex flex-col" style={{ width: MONITOR_DRAWER_WIDTH }}>
-        <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between flex-shrink-0">
+        <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between shrink-0">
           <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{t('monitor.title')}</h3>
           <button
             onClick={() => setMonitorOpen(false)}
@@ -84,8 +84,8 @@ export function MonitorDrawer() {
         </div>
 
         {isConnected && (
-          <div className="px-4 py-2.5 border-b border-border/60 flex items-center gap-2.5 bg-gradient-to-r from-primary/5 to-transparent flex-shrink-0">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 flex-shrink-0">
+          <div className="px-4 py-2.5 border-b border-border/60 flex items-center gap-2.5 bg-linear-to-r from-primary/5 to-transparent shrink-0">
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 shrink-0">
               <Server size={14} className="text-primary" />
             </div>
             <div className="min-w-0 flex-1">
@@ -93,7 +93,7 @@ export function MonitorDrawer() {
               {hostName && <div className="text-[11px] text-muted-foreground truncate font-mono">{hostAddr}</div>}
             </div>
             <span
-              className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 animate-pulse"
+              className="w-2 h-2 rounded-full bg-green-500 shrink-0 animate-pulse"
               style={{ boxShadow: '0 0 6px #22c55e' }}
             />
           </div>

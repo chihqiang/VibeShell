@@ -108,7 +108,7 @@ export function GeneralSettings({ onSaved }: GeneralSettingsProps) {
                 )}
               >
                 <span
-                  className="w-3 h-3 rounded-full flex-shrink-0 border border-border/50"
+                  className="w-3 h-3 rounded-full shrink-0 border border-border/50"
                   style={{ backgroundColor: tt.colors.background }}
                 />
                 {tt.name}

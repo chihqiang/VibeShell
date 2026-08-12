@@ -58,9 +58,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ toast, dismissToast }), [toast, dismissToast]);
 
   const typeStyles = {
-    success: 'bg-gradient-to-r from-emerald-600 to-emerald-700 shadow-[0_4px_12px_-2px_rgba(16,185,129,0.4)]',
-    error: 'bg-gradient-to-r from-red-600 to-red-700 shadow-[0_4px_12px_-2px_rgba(239,68,68,0.4)]',
-    info: 'bg-gradient-to-r from-blue-600 to-blue-700 shadow-[0_4px_12px_-2px_rgba(59,130,246,0.4)]',
+    success: 'bg-linear-to-r from-emerald-600 to-emerald-700 shadow-[0_4px_12px_-2px_rgba(16,185,129,0.4)]',
+    error: 'bg-linear-to-r from-red-600 to-red-700 shadow-[0_4px_12px_-2px_rgba(239,68,68,0.4)]',
+    info: 'bg-linear-to-r from-blue-600 to-blue-700 shadow-[0_4px_12px_-2px_rgba(59,130,246,0.4)]',
   };
 
   return (
@@ -70,11 +70,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map((t) => {
           const icon =
             t.type === 'success' ? (
-              <CheckCircle2 size={15} className="text-green-300 flex-shrink-0" />
+              <CheckCircle2 size={15} className="text-green-300 shrink-0" />
             ) : t.type === 'error' ? (
-              <AlertCircle size={15} className="text-red-300 flex-shrink-0" />
+              <AlertCircle size={15} className="text-red-300 shrink-0" />
             ) : (
-              <Info size={15} className="text-blue-300 flex-shrink-0" />
+              <Info size={15} className="text-blue-300 shrink-0" />
             );
           return (
             <div

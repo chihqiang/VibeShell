@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { getVersion } from '@tauri-apps/api/app';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import * as os from '@tauri-apps/plugin-os';
 import { ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -133,15 +134,13 @@ export function AboutSettings() {
               {APP_NAME} v{info.appVersion || '...'}
             </span>
             <div className="flex items-center gap-2">
-              <a
-                href={GITHUB_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 h-7 px-3 text-xs rounded-md border border-input bg-background text-foreground hover:bg-muted transition-colors"
+              <button
+                onClick={() => openUrl(GITHUB_URL)}
+                className="inline-flex items-center gap-1.5 h-7 px-3 text-xs rounded-md border border-input bg-background text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 <ExternalLink size={14} />
                 GitHub
-              </a>
+              </button>
               <button
                 onClick={handleCheckUpdate}
                 disabled={updating}

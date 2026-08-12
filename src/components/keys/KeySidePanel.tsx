@@ -85,7 +85,7 @@ export function KeySidePanel() {
         <Button
           variant="outline"
           size="icon-sm"
-          className="flex-shrink-0"
+          className="shrink-0"
           onClick={() => setImportOpen(true)}
           title={t('sidebar.importKey')}
         >
@@ -155,11 +155,11 @@ export function KeySidePanel() {
 function KeySideRow({ keyEntry: k, onDelete }: { keyEntry: KeyEntry; onDelete: () => void }) {
   return (
     <div className="group flex items-center gap-2 h-10 px-3 hover:bg-muted/60 transition-colors cursor-default">
-      <FileKey size={14} className="text-muted-foreground flex-shrink-0" />
+      <FileKey size={14} className="text-muted-foreground shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-xs text-foreground truncate">{k.name}</div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
-          {k.password && <Lock size={10} className="flex-shrink-0" />}
+          {k.password && <Lock size={10} className="shrink-0" />}
           <span className="uppercase">{k.key_type}</span>
         </div>
       </div>

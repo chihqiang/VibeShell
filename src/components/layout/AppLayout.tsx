@@ -24,7 +24,7 @@ export function AppLayout() {
       <RouteProgress />
 
       {/* 顶部导航栏 */}
-      <header className="flex-shrink-0 h-9 flex items-center bg-secondary border-b border-border select-none">
+      <header className="shrink-0 h-9 flex items-center bg-secondary border-b border-border select-none">
         <TopBar />
       </header>
 
@@ -41,7 +41,7 @@ export function AppLayout() {
         {showMonitorToggle && (
           <button
             onClick={() => setMonitorOpen(true)}
-            className="flex-shrink-0 w-7 flex flex-col items-center justify-center gap-1 bg-secondary border-l border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group"
+            className="shrink-0 w-7 flex flex-col items-center justify-center gap-1 bg-secondary border-l border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer group"
             title={t('monitor.title')}
           >
             <PanelRightOpen size={16} className="group-hover:scale-110 transition-transform" />

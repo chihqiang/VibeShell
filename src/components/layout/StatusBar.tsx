@@ -1,18 +1,20 @@
 import { useMemo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Server, Wifi, WifiOff, Activity, Folder } from 'lucide-react';
+import { Server, Wifi, WifiOff, Activity, Folder, ShieldCheck, ShieldOff } from 'lucide-react';
 import { cn } from '@/utils';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useLayout } from '@/contexts/LayoutContext';
 import { countHosts } from '@/services/hostService';
+import { getProxyConfig } from '@/services/configService';
 import { DOM_EVENTS, APP_NAME, SFTP_LABEL } from '@/constants';
 
-/** 底部状态栏 — 显示主机数、连接数等信息 */
+/** 底部状态栏 — 显示主机数、连接数、代理状态等信息 */
 export function StatusBar() {
   const { t } = useTranslation();
   const { tabs, activeTabId } = useTerminalTabs();
   const { toggleSftp, sftpOpen, toggleMonitor, monitorOpen, setActiveView } = useLayout();
   const [hostCount, setHostCount] = useState(0);
+  const [proxyEnabled, setProxyEnabled] = useState(false);
 
   useEffect(() => {
     const reload = () =>
@@ -22,6 +24,17 @@ export function StatusBar() {
     reload();
     window.addEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
     return () => window.removeEventListener(DOM_EVENTS.HOSTS_CHANGED, reload);
+  }, []);
+
+  // 代理状态：加载 + 监听保存后的变更事件
+  useEffect(() => {
+    const reload = () =>
+      getProxyConfig()
+        .then((p) => setProxyEnabled(p.enabled))
+        .catch(() => {});
+    reload();
+    window.addEventListener(DOM_EVENTS.PROXY_CHANGED, reload);
+    return () => window.removeEventListener(DOM_EVENTS.PROXY_CHANGED, reload);
   }, []);
 
   const connectedCount = useMemo(
@@ -51,7 +64,7 @@ export function StatusBar() {
         : APP_NAME;
 
   return (
-    <footer className="flex-shrink-0 h-7 flex items-center px-2 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[11px] select-none gap-1 shadow-[0_-1px_3px_-1px_rgba(0,0,0,0.15)]">
+    <footer className="shrink-0 h-7 flex items-center px-2 bg-linear-to-r from-primary to-primary/80 text-primary-foreground text-[11px] select-none gap-1 shadow-[0_-1px_3px_-1px_rgba(0,0,0,0.15)]">
       {/* 左侧：连接状态 */}
       <div className="flex items-center gap-1.5 px-1.5 h-full">
         <span
@@ -90,6 +103,23 @@ export function StatusBar() {
         {connectedCount > 0 ? <Wifi size={11} /> : <WifiOff size={11} />}
         <span>{t('statusbar.connected', { count: connectedCount })}</span>
       </button>
+
+      <div className="w-px h-3 bg-primary-foreground/15" />
+
+      {/* 代理状态 */}
+      <div
+        className="flex items-center gap-1.5 px-1.5 h-full"
+        title={proxyEnabled ? t('statusbar.proxyOn') : t('statusbar.proxyOff')}
+      >
+        {proxyEnabled ? (
+          <ShieldCheck size={11} className="text-green-300" />
+        ) : (
+          <ShieldOff size={11} className="opacity-60" />
+        )}
+        <span className={cn(proxyEnabled && 'text-green-100 font-medium')}>
+          {proxyEnabled ? t('statusbar.proxyOn') : t('statusbar.proxyOff')}
+        </span>
+      </div>
 
       <div className="flex-1" />
 

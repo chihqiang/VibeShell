@@ -2,22 +2,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { useNProgress } from '@/hooks/use-nprogress';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
-import {
-  Folder,
-  File,
-  Home,
-  LoaderCircle,
-  ArrowUp,
-  RefreshCw,
-  ListTodo,
-  Upload,
-  ArrowUp as ArrowUpIcon,
-  ArrowDown,
-} from 'lucide-react';
+import { Folder, File, Home, LoaderCircle, ArrowUp, RefreshCw, ListTodo, Upload, ArrowDown } from 'lucide-react';
 import { PathBreadcrumb, ContextMenu, TransferDialog, SftpToolbar } from '@/components/sftp';
 import { Button } from '@/components/ui/button';
 import { FileType } from '@/types/sftp';
@@ -28,12 +16,13 @@ import {
   sftpUploadFileProgress,
   sftpDownloadFileProgress,
   sftpCancelTransfer,
+  onSftpTransferProgress,
 } from '@/services/sftpService';
 import type { FileEntry } from '@/types/sftp';
 import type { TransferItem } from '@/types';
 import { formatSize } from '@/utils';
 import { useNotify } from '@/hooks/use-notify';
-import { TAURI_EVENTS, SFTP_ROW_HEIGHT, SFTP_GRID_COLS, SFTP_FALLBACK_FOLDER_NAME } from '@/constants';
+import { SFTP_ROW_HEIGHT, SFTP_GRID_COLS, SFTP_FALLBACK_FOLDER_NAME } from '@/constants';
 
 export function SftpPanel() {
   const { t } = useTranslation();
@@ -180,15 +169,7 @@ export function SftpPanel() {
   }, [tabId, currentPath, loadDir, notifyError, start, done]);
 
   useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-
-    const promise = listen<{
-      transferId: string;
-      current: number;
-      total: number;
-      phase: string;
-    }>(TAURI_EVENTS.SFTP_TRANSFER_PROGRESS, (event) => {
-      const { transferId, current, total, phase } = event.payload;
+    const off = onSftpTransferProgress(({ transferId, current, total, phase }) => {
       setTransfers((prev) =>
         prev.map((x) =>
           x.id === transferId
@@ -202,21 +183,7 @@ export function SftpPanel() {
         ),
       );
     });
-
-    promise
-      .then((fn) => {
-        unlisten = fn;
-      })
-      .catch((e) => notifyError(e));
-
-    return () => {
-      if (unlisten) {
-        unlisten();
-      } else {
-        // If the promise hasn't resolved yet, wait for it and then unlisten
-        promise.then((fn) => fn());
-      }
-    };
+    return off;
   }, [notifyError]);
 
   const navigateUp = () => {
@@ -461,7 +428,7 @@ export function SftpPanel() {
         </div>
       )}
 
-      <div className="flex items-center gap-1 px-3 py-1 bg-secondary/20 border-b border-border flex-shrink-0">
+      <div className="flex items-center gap-1 px-3 py-1 bg-secondary/20 border-b border-border shrink-0">
         <Button variant="ghost" size="icon-xs" onClick={() => loadDir('.')}>
           <Home size={12} />
         </Button>
@@ -491,7 +458,7 @@ export function SftpPanel() {
         <Button variant="ghost" size="icon-xs" onClick={() => loadDir(currentPath)} title={t('sftp.refresh')}>
           <RefreshCw size={12} />
         </Button>
-        {loading && <LoaderCircle size={12} className="text-primary animate-spin flex-shrink-0 ml-1" />}
+        {loading && <LoaderCircle size={12} className="text-primary animate-spin shrink-0 ml-1" />}
       </div>
 
       <SftpToolbar
@@ -517,7 +484,7 @@ export function SftpPanel() {
 
       <div className="flex-1 flex flex-col min-h-0 text-xs">
         <div
-          className="grid bg-secondary/20 border-b-2 border-b-border/50 flex-shrink-0"
+          className="grid bg-secondary/20 border-b-2 border-b-border/50 shrink-0"
           style={{ gridTemplateColumns: SFTP_GRID_COLS }}
         >
           <button
@@ -525,14 +492,14 @@ export function SftpPanel() {
             className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer"
           >
             {t('sftp.name')}
-            {sortKey === 'name' && (sortDir === 'asc' ? <ArrowUpIcon size={9} /> : <ArrowDown size={9} />)}
+            {sortKey === 'name' && (sortDir === 'asc' ? <ArrowUp size={9} /> : <ArrowDown size={9} />)}
           </button>
           <button
             onClick={() => toggleSort('size')}
             className="text-right font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center justify-end gap-1 cursor-pointer"
           >
             {t('sftp.size')}
-            {sortKey === 'size' && (sortDir === 'asc' ? <ArrowUpIcon size={9} /> : <ArrowDown size={9} />)}
+            {sortKey === 'size' && (sortDir === 'asc' ? <ArrowUp size={9} /> : <ArrowDown size={9} />)}
           </button>
           <div className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px]">
             {t('sftp.permissions')}
@@ -545,7 +512,7 @@ export function SftpPanel() {
             className="text-left font-medium text-muted-foreground px-3 py-1 text-[11px] hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer"
           >
             {t('sftp.modified')}
-            {sortKey === 'modified' && (sortDir === 'asc' ? <ArrowUpIcon size={9} /> : <ArrowDown size={9} />)}
+            {sortKey === 'modified' && (sortDir === 'asc' ? <ArrowUp size={9} /> : <ArrowDown size={9} />)}
           </button>
         </div>
 
@@ -577,9 +544,9 @@ export function SftpPanel() {
                   >
                     <div className="px-3 flex items-center gap-1.5 truncate">
                       {entry.file_type === FileType.Directory ? (
-                        <Folder size={14} className="text-primary flex-shrink-0" />
+                        <Folder size={14} className="text-primary shrink-0" />
                       ) : (
-                        <File size={14} className="text-muted-foreground flex-shrink-0" />
+                        <File size={14} className="text-muted-foreground shrink-0" />
                       )}
                       <span className="text-foreground truncate">{entry.name}</span>
                     </div>
