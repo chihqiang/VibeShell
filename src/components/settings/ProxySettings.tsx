@@ -145,20 +145,24 @@ export function ProxySettings({ defaults, onSave }: ProxySettingsProps) {
                 />
               </div>
             </div>
-
-            <div className="flex gap-2 justify-end border-t border-border pt-4">
-              <Button variant="outline" size="sm" onClick={handleTest} disabled={testing || !form.host || !form.port}>
-                {testing ? t('settings.proxyTesting') : t('settings.proxyTest')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasChanges}>
-                {t('settings.reset')}
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={!hasChanges}>
-                {t('settings.saveSettings')}
-              </Button>
-            </div>
           </>
         )}
+
+        {/* 底部按钮：始终显示（未启用时也要能保存“关闭”状态）。
+            测试按钮仅在启用代理时才有意义。 */}
+        <div className="flex gap-2 justify-end border-t border-border pt-4">
+          {enabled && (
+            <Button variant="outline" size="sm" onClick={handleTest} disabled={testing || !form.host || !form.port}>
+              {testing ? t('settings.proxyTesting') : t('settings.proxyTest')}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasChanges}>
+            {t('settings.reset')}
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={!hasChanges}>
+            {t('settings.saveSettings')}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
