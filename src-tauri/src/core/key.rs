@@ -1,10 +1,9 @@
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
-use std::process::Command;
 use uuid::Uuid;
 
+use openssl::pkey::PKey;
+
 use super::models::KeyEntry;
-use super::store;
 
 fn detect_key_type(content: &str) -> String {
     if content.contains("BEGIN RSA PRIVATE KEY") {
@@ -27,53 +26,23 @@ fn is_traditional_encrypted_pem(content: &str) -> bool {
     content.contains("Proc-Type: 4,ENCRYPTED") || content.contains("DEK-Info:")
 }
 
-/// 通过 ssh-keygen 验证密钥 passphrase 是否正确
+/// 纯内存验证密钥 passphrase（不写任何临时文件）。
+/// - OpenSSH 格式（BEGIN OPENSSH PRIVATE KEY）：openssl 无法解析，跳过导入期
+///   校验，改由连接时 libssh2 内存认证校验 passphrase。
+/// - 其他 PEM 格式：用 openssl 在内存中解密验证。
 fn validate_passphrase(content: &str, passphrase: &str) -> Result<(), String> {
-    let tmp_id = Uuid::new_v4().to_string();
-    let tmp_dir = super::data_dir().join("tmp");
-    std::fs::create_dir_all(&tmp_dir).map_err(|e| format!("create tmp dir: {}", e))?;
-    let tmp_path = tmp_dir.join(format!("keycheck_{}", tmp_id));
-    std::fs::write(&tmp_path, content)
-        .map_err(|e| format!("write temp key for validation: {}", e))?;
-    // ssh-keygen 要求私钥文件权限为 0600
-    std::fs::set_permissions(&tmp_path, std::fs::Permissions::from_mode(0o600))
-        .map_err(|e| format!("set key file permissions: {}", e))?;
-
-    let result = Command::new("ssh-keygen")
-        .args(["-y", "-f"])
-        .arg(&tmp_path)
-        .args(["-P", passphrase])
-        .output();
-
-    std::fs::remove_file(&tmp_path).ok();
-
-    match result {
-        Ok(output) => {
-            if output.status.success() {
-                Ok(())
-            } else {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                let err_msg = stderr.trim();
-                if err_msg.contains("incorrect passphrase") || err_msg.contains("wrong passphrase")
-                {
-                    Err("Incorrect passphrase for encrypted private key".to_string())
-                } else if err_msg.contains("no passphrase") {
-                    Err("Key requires a passphrase".to_string())
-                } else if err_msg.contains("not a private key")
-                    || err_msg.contains("invalid format")
-                {
-                    Err("Invalid or unsupported private key format".to_string())
-                } else {
-                    Err(format!("Key validation failed: {}", err_msg))
-                }
-            }
-        }
+    if content.contains("BEGIN OPENSSH PRIVATE KEY") {
+        return Ok(());
+    }
+    match PKey::private_key_from_pem_passphrase(content.as_bytes(), passphrase.as_bytes()) {
+        Ok(_) => Ok(()),
         Err(e) => {
-            log::warn!(
-                "[key] ssh-keygen not available, skipping passphrase validation: {}",
-                e
-            );
-            Ok(())
+            let msg = e.to_string().to_lowercase();
+            if msg.contains("bad decrypt") || msg.contains("bad password") {
+                Err("Incorrect passphrase for encrypted private key".to_string())
+            } else {
+                Err(format!("Invalid or unsupported private key format: {}", e))
+            }
         }
     }
 }
@@ -96,19 +65,14 @@ fn create_entry(name: String, password: Option<String>, content: &str) -> Result
     }
 
     let key_type = detect_key_type(content);
-    let entry = KeyEntry {
+    // 仅生成条目并返回，由前端负责持久化到 plugin-store。
+    Ok(KeyEntry {
         id: Uuid::new_v4().to_string(),
         name,
         key_type,
         password,
         content: content.to_string(),
-    };
-    store::insert_key(&entry)?;
-    Ok(entry)
-}
-
-pub fn list_keys() -> Result<Vec<KeyEntry>, String> {
-    store::list_keys()
+    })
 }
 
 pub fn import_key(
@@ -149,9 +113,4 @@ pub fn import_key_content(
     password: Option<String>,
 ) -> Result<KeyEntry, String> {
     create_entry(name, password, &content)
-}
-
-pub fn delete_key(id: String) -> Result<(), String> {
-    let _entry = store::delete_key(&id)?;
-    Ok(())
 }

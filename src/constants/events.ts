@@ -2,6 +2,8 @@
 export const DOM_EVENTS = {
   /** 主机列表变更（增删改） */
   HOSTS_CHANGED: 'vibeshell:hosts-changed',
+  /** 代理配置变更 */
+  PROXY_CHANGED: 'vibeshell:proxy-changed',
   /** 终端写入（外部向特定 tab 写入文本） */
   TERM_WRITE: 'vibeshell:term-write',
   /** 终端主题变更 */
@@ -18,8 +20,6 @@ export const TAURI_EVENTS = {
   SSH_HEARTBEAT: 'ssh://heartbeat',
   /** SSH 服务器监控数据 */
   SSH_MONITOR: 'ssh://monitor',
-  /** SFTP 传输进度 */
-  SFTP_TRANSFER_PROGRESS: 'sftp://transfer-progress',
 } as const;
 
 /**

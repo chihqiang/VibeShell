@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { backupData, restoreData } from '@/services/backupService';
+import { clearConfigCache } from '@/services/configService';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNotify } from '@/hooks/use-notify';
+import { DOM_EVENTS } from '@/constants';
 
 export function BackupSettings() {
   const { t } = useTranslation();
@@ -48,6 +50,9 @@ export function BackupSettings() {
         return;
       }
       await restoreData({ source: path });
+      // 恢复后清空 SSH 默认配置缓存，并通知各面板重新加载数据
+      clearConfigCache();
+      window.dispatchEvent(new CustomEvent(DOM_EVENTS.HOSTS_CHANGED));
       setStatus(t('settings.restoreSuccess'));
     } catch (e) {
       notifyError(e);

@@ -1,17 +1,6 @@
 use crate::core;
 
 #[tauri::command]
-pub fn get_key_referrers(key_id: String) -> Result<Vec<String>, String> {
-    log::info!("[key] get referrers: key_id={}", key_id);
-    core::store::get_key_referrers(&key_id)
-}
-
-#[tauri::command]
-pub fn list_keys() -> Result<Vec<core::models::KeyEntry>, String> {
-    core::key::list_keys()
-}
-
-#[tauri::command]
 pub fn import_key(
     source_path: String,
     name: Option<String>,
@@ -39,10 +28,4 @@ pub fn import_key_content(
         password.is_some()
     );
     core::key::import_key_content(content, name, password)
-}
-
-#[tauri::command]
-pub fn delete_key(id: String) -> Result<(), String> {
-    log::info!("[key] delete key: id={}", id);
-    core::key::delete_key(id)
 }

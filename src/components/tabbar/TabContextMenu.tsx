@@ -3,6 +3,7 @@ import { Copy } from 'lucide-react';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import { useNotify } from '@/hooks/use-notify';
 import { buildSshCommand } from '@/utils';
+import { copyText } from '@/utils/clipboard';
 
 interface TabContextMenuProps {
   tabId: string | null;
@@ -48,7 +49,7 @@ export function TabContextMenu({ tabId, position, onClose, onReconnect }: TabCon
             <button
               onClick={() => {
                 const cmd = buildSshCommand(tab.connectConfig);
-                navigator.clipboard.writeText(cmd).then(() => notify(t('common.copied')));
+                copyText(cmd).then(() => notify(t('common.copied')));
                 onClose();
               }}
               className="flex items-center gap-2 w-full h-8 px-3 text-sm text-left hover:bg-muted transition-colors cursor-pointer"

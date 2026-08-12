@@ -1,50 +1,27 @@
 use serde::{Deserialize, Serialize};
 
-fn deserialize_tags<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum OneOrMany {
-        Single(String),
-        Many(Vec<String>),
-    }
-    Ok(match OneOrMany::deserialize(deserializer)? {
-        OneOrMany::Single(s) => {
-            if s.is_empty() {
-                vec![]
-            } else {
-                vec![s]
-            }
-        }
-        OneOrMany::Many(v) => v,
-    })
+/// 代理类型。当前仅支持 SOCKS5；前端已不提供类型选择，
+/// 默认值即为 Socks5，None 保留用于将来扩展/显式禁用。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ProxyType {
+    None,
+    #[default]
+    Socks5,
 }
 
+/// 代理配置（来自前端 store）
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AppConfig {
-    pub data_path: String,
-    pub keys_path: String,
-    pub ssh_defaults: SshDefaults,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HostConfig {
-    pub id: String,
-    pub name: String,
-    pub hostname: String,
-    pub port: u16,
-    pub username: String,
-    pub auth_method: String,
-    pub password: Option<String>,
-    pub key_id: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_tags")]
-    pub tags: Vec<String>,
-    pub created_at: i64,
-    pub updated_at: i64,
+pub struct ProxyConfig {
+    pub enabled: bool,
     #[serde(default)]
-    pub last_connected_at: Option<i64>,
+    pub r#type: ProxyType,
+    pub host: String,
+    pub port: u16,
+    #[serde(default)]
+    pub username: String,
+    #[serde(default)]
+    pub password: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -71,7 +48,6 @@ pub struct FileEntry {
     pub user: String,
     pub group: String,
 }
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SftpListResult {
     pub path: String,
@@ -82,6 +58,8 @@ pub struct SftpListResult {
 pub struct SshConnectResult {
     pub id: String,
     pub banner: String,
+    /// 实际连接通道：走代理时为 "host:port"，直连为 None
+    pub via_proxy: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -109,17 +87,15 @@ pub struct SshDefaults {
     pub reconnect_max_retries: u32,
     pub reconnect_initial_delay: u32,
     pub reconnect_max_delay: u32,
+    pub idle_timeout: u32,
 }
 
-/// SSOT：所有 SSH 默认值在此定义，store.rs 和 ssh.rs 统一引用。
+/// SSOT：所有 SSH 默认值在此定义，ssh.rs 统一引用。
 impl SshDefaults {
-    pub const DEFAULT_PORT: u16 = 22;
     pub const DEFAULT_MONITOR_INTERVAL: u32 = 4;
     pub const DEFAULT_HEARTBEAT_INTERVAL: u32 = 10;
-    pub const DEFAULT_RECONNECT_ENABLED: bool = true;
-    pub const DEFAULT_RECONNECT_MAX_RETRIES: u32 = 10;
-    pub const DEFAULT_RECONNECT_INITIAL_DELAY: u32 = 1;
-    pub const DEFAULT_RECONNECT_MAX_DELAY: u32 = 30;
+    /// 闲置自动断连时间（秒）。0 表示禁用自动断连。
+    pub const DEFAULT_IDLE_TIMEOUT: u32 = 300;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,14 +129,4 @@ pub struct MonitorEvent {
     pub net_io: String,
     pub processes: Vec<ProcessInfo>,
     pub disks: Vec<DiskInfo>,
-}
-
-/// 备份/还原用的顶层 JSON 结构
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BackupPayload {
-    pub version: u32,
-    pub exported_at: i64,
-    pub hosts: Vec<HostConfig>,
-    pub keys: Vec<KeyEntry>,
-    pub config: std::collections::HashMap<String, String>,
 }

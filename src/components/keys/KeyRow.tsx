@@ -12,11 +12,11 @@ export function KeyRow({ keyEntry: k, onDelete }: KeyRowProps) {
 
   return (
     <div className="group flex items-center gap-3 h-14 px-3 rounded-lg hover:bg-muted transition-colors relative">
-      <FileKey size={18} className="text-muted-foreground flex-shrink-0" />
+      <FileKey size={18} className="text-muted-foreground shrink-0" />
       <div className="flex flex-col min-w-0 flex-1">
         <span className="text-sm text-foreground truncate">{k.name}</span>
         <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-          {k.password && <Lock size={12} className="flex-shrink-0" />}
+          {k.password && <Lock size={12} className="shrink-0" />}
           <span className="uppercase">{k.key_type}</span>
         </div>
       </div>

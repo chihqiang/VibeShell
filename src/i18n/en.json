@@ -20,9 +20,6 @@
     "keyPassphrase": "Passphrase (optional)",
     "keyPassphrasePlaceholder": "Enter passphrase",
     "confirmDeleteKey": "Delete this key?",
-    "noTag": "No tags",
-    "selectTag": "Select tags",
-    "tagName": "Tag name",
     "selectKey": "Select key",
     "hostManagement": "Host Management",
     "keyManagement": "Key Management",
@@ -52,7 +49,9 @@
     "namePlaceholder": "My Server",
     "connecting": "Connecting...",
     "testConnection": "Test Connection",
-    "testConnectionSuccess": "Connection successful"
+    "testConnectionSuccess": "Connection successful",
+    "viaProxy": "Connected via proxy {{proxy}}",
+    "viaDirect": "Connected directly (no proxy)"
   },
   "sftp": {
     "upload": "Upload",
@@ -159,6 +158,19 @@
     "auto": "Auto",
     "general": "General",
     "ssh": "SSH Settings",
+    "proxy": "Proxy",
+    "proxyDesc": "Establish SSH connections through a SOCKS5 proxy. Anonymous or username/password authentication supported.",
+    "proxyEnabled": "Enable Proxy",
+    "proxyTypeFixed": "Only SOCKS5 proxy type is supported. Connections will automatically use the SOCKS5 protocol.",
+    "proxyHost": "Proxy Host",
+    "proxyPort": "Port",
+    "proxyAuth": "Authentication",
+    "proxyAuthNone": "Anonymous",
+    "proxyUsername": "Username",
+    "proxyPassword": "Password",
+    "proxyAuthOptional": "Optional, leave blank for anonymous authentication",
+    "proxyTest": "Test",
+    "proxyTesting": "Testing...",
     "defaultPort": "Default Port",
     "defaultHostname": "Default Hostname",
     "defaultUsername": "Default Username",
@@ -169,6 +181,8 @@
     "monitorIntervalHint": "How often to refresh server stats. Min 1, default 4.",
     "heartbeatInterval": "Heartbeat Interval (sec)",
     "heartbeatIntervalHint": "Connection keepalive check interval. Min 3, default 10.",
+    "idleTimeout": "Idle Disconnect (sec)",
+    "idleTimeoutHint": "Auto-disconnect after terminal idle. 0 to disable. Default 300.",
     "reconnectTitle": "Auto Reconnect",
     "reconnectEnabled": "Enable auto reconnect",
     "reconnectMaxRetries": "Max Retries",
@@ -268,10 +282,11 @@
   },
   "statusbar": {
     "hosts": "{{count}} hosts",
-    "connected": "{{count}} connected"
+    "connected": "{{count}} connected",
+    "proxyOn": "Proxy enabled",
+    "proxyOff": "Proxy disabled"
   },
   "topbar": {
-    "searchPlaceholder": "Search hosts...",
     "close": "Close",
     "minimize": "Minimize",
     "maximize": "Maximize"

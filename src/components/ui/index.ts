@@ -32,7 +32,6 @@ export { Switch } from './switch';
 export { Separator } from './separator';
 export { Toast } from './toast';
 export { default as Autocomplete } from './autocomplete';
-export { default as TagSelect } from './tag-select';
 export { ConfirmDialog } from './confirm-dialog';
 export { DeleteDialog } from './delete-dialog';
 export { PromptDialog } from './prompt-dialog';

@@ -3,7 +3,6 @@
 /** 应用配置 */
 export interface AppConfig {
   data_path: string;
-  keys_path: string;
   ssh_defaults: SshDefaultsData;
 }
 
@@ -18,4 +17,14 @@ export interface SshDefaultsData {
   reconnectMaxRetries: number;
   reconnectInitialDelay: number;
   reconnectMaxDelay: number;
+  idleTimeout: number;
+}
+
+/** 代理配置（固定 SOCKS5） */
+export interface ProxyConfig {
+  enabled: boolean;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
 }

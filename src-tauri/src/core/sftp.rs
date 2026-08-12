@@ -1,102 +1,13 @@
 use std::collections::{HashMap, HashSet};
-use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
 use super::models::FileEntry;
-use super::CHUNK_SIZE;
-
-pub type ProgressFn = dyn Fn(u64, u64, &str) + Send + Sync;
-
-/// Generic chunked transfer loop, shared by upload and download.
-/// Reads from `reader`, writes to `writer`, calls `on_progress` after each chunk.
-/// Returns total bytes transferred.
-#[allow(clippy::too_many_arguments)]
-fn transfer_loop(
-    reader: &mut dyn Read,
-    writer: &mut dyn Write,
-    total_size: u64,
-    cancel: Option<&AtomicBool>,
-    on_progress: &ProgressFn,
-    phase: &'static str,
-    buf_size: usize,
-    read_error_label: &'static str,
-    write_error_label: &'static str,
-) -> Result<u64, String> {
-    let mut buf = vec![0u8; buf_size];
-    let mut transferred: u64 = 0;
-
-    loop {
-        if let Some(c) = cancel {
-            if c.load(Ordering::Relaxed) {
-                return Ok(transferred);
-            }
-        }
-
-        let n = reader.read(&mut buf).map_err(|e| {
-            log::error!("Failed to read {}: {}", read_error_label, e);
-            format!("Failed to read {}: {}", read_error_label, e)
-        })?;
-        if n == 0 {
-            break;
-        }
-
-        writer.write_all(&buf[..n]).map_err(|e| {
-            log::error!("Failed to write {}: {}", write_error_label, e);
-            format!("Failed to write {}: {}", write_error_label, e)
-        })?;
-
-        transferred += n as u64;
-        on_progress(transferred, total_size, phase);
-    }
-
-    Ok(transferred)
-}
-
-fn open_remote(
-    sftp: &ssh2::Sftp,
-    remote_path: &str,
-    resume: bool,
-    offset: u64,
-) -> Result<ssh2::File, String> {
-    if resume {
-        let mut f = sftp
-            .open_mode(
-                Path::new(remote_path),
-                ssh2::OpenFlags::CREATE | ssh2::OpenFlags::WRITE,
-                0o644,
-                ssh2::OpenType::File,
-            )
-            .map_err(|e| {
-                log::error!("Failed to open remote file: {}", e);
-                format!("Failed to open remote file: {}", e)
-            })?;
-        if offset > 0 {
-            f.seek(SeekFrom::Start(offset)).map_err(|e| {
-                log::error!("Failed to seek remote file: {}", e);
-                format!("Failed to seek remote file: {}", e)
-            })?;
-        }
-        Ok(f)
-    } else {
-        sftp.open_mode(
-            Path::new(remote_path),
-            ssh2::OpenFlags::TRUNCATE | ssh2::OpenFlags::WRITE,
-            0o644,
-            ssh2::OpenType::File,
-        )
-        .map_err(|e| {
-            log::error!("Failed to create remote file: {}", e);
-            format!("Failed to create remote file: {}", e)
-        })
-    }
-}
 
 /// Ensure the parent directory of `remote_path` exists on the remote.
 /// Creates intermediate directories as needed, ignoring errors if they already exist.
-fn ensure_remote_dir(sftp: &ssh2::Sftp, remote_path: &str) -> Result<(), String> {
+pub fn ensure_remote_dir(sftp: &ssh2::Sftp, remote_path: &str) -> Result<(), String> {
     let parent = Path::new(remote_path).parent();
     let Some(parent) = parent else { return Ok(()) };
     let mut dir = PathBuf::new();
@@ -107,189 +18,77 @@ fn ensure_remote_dir(sftp: &ssh2::Sftp, remote_path: &str) -> Result<(), String>
     Ok(())
 }
 
-/// Upload a file in chunks, calling `on_progress` after each chunk.
-/// If `resume` is true, appends to an existing remote file (resume support).
-/// If `cancel` is provided and becomes true, the upload stops early.
-pub fn upload_file(
-    sftp: &ssh2::Sftp,
-    local_path: &str,
-    remote_path: &str,
-    resume: bool,
-    cancel: Option<&AtomicBool>,
-    on_progress: &ProgressFn,
-    chunk_size: Option<usize>,
-) -> Result<u64, String> {
-    let meta = fs::metadata(local_path).map_err(|e| {
-        log::error!("Failed to stat local file: {}", e);
-        format!("Failed to stat local file: {}", e)
-    })?;
-    if meta.is_dir() {
-        return Err(format!("Cannot upload '{}': is a directory", local_path));
-    }
-    let local_file_size = meta.len();
-
-    let remote_offset = if resume {
-        sftp.stat(Path::new(remote_path))
-            .ok()
-            .and_then(|s| s.size)
-            .unwrap_or(0)
-    } else {
-        0
-    };
-
-    let mut local_file = fs::File::open(local_path).map_err(|e| {
-        log::error!("Failed to open local file: {}", e);
-        format!("Failed to open local file: {}", e)
-    })?;
-
-    if remote_offset > 0 {
-        local_file
-            .seek(SeekFrom::Start(remote_offset))
-            .map_err(|e| {
-                log::error!("Failed to seek local file: {}", e);
-                format!("Failed to seek local file: {}", e)
-            })?;
-    }
-
-    ensure_remote_dir(sftp, remote_path)?;
-    let mut remote_file = open_remote(sftp, remote_path, resume, remote_offset)?;
-
-    let bytes = transfer_loop(
-        &mut local_file,
-        &mut remote_file,
-        local_file_size,
-        cancel,
-        on_progress,
-        "uploading",
-        chunk_size.unwrap_or(CHUNK_SIZE),
-        "local file",
-        "remote file",
-    )?;
-
-    Ok(remote_offset + bytes)
-}
-
-/// Download a file in chunks, calling `on_progress` after each chunk.
-pub fn download_file_chunked(
-    sftp: &ssh2::Sftp,
-    remote_path: &str,
-    local_path: &str,
-    cancel: Option<&AtomicBool>,
-    on_progress: &ProgressFn,
-    chunk_size: Option<usize>,
-) -> Result<u64, String> {
-    let remote_size = sftp
-        .stat(Path::new(remote_path))
-        .map_err(|e| {
-            log::error!("Failed to stat remote file: {}", e);
-            format!("Failed to stat remote file: {}", e)
-        })?
+/// 读取远端文件大小（用于进度与断点续传）。
+pub fn stat_remote(sftp: &ssh2::Sftp, remote_path: &str) -> Result<u64, String> {
+    sftp.stat(Path::new(remote_path))
+        .map_err(|e| format!("Failed to stat remote file '{}': {}", remote_path, e))?
         .size
-        .unwrap_or(0);
-
-    let mut remote_file = sftp.open(Path::new(remote_path)).map_err(|e| {
-        log::error!("Failed to open remote file: {}", e);
-        format!("Failed to open remote file: {}", e)
-    })?;
-
-    if let Some(parent) = Path::new(local_path).parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-
-    let mut local_file = fs::File::create(local_path).map_err(|e| {
-        log::error!("Failed to create local file: {}", e);
-        format!("Failed to create local file: {}", e)
-    })?;
-
-    transfer_loop(
-        &mut remote_file,
-        &mut local_file,
-        remote_size,
-        cancel,
-        on_progress,
-        "downloading",
-        chunk_size.unwrap_or(CHUNK_SIZE),
-        "remote file",
-        "local file",
-    )
+        .ok_or_else(|| format!("Remote file '{}' has no size", remote_path))
 }
 
-/// Recursively list all files (not directories) under a path.
-/// Uses `read_dir` to determine if something is a directory (never calls stat/is_dir).
-pub fn list_local_files_recursive(path: &str) -> Result<Vec<(String, String, u64)>, String> {
-    let dir = Path::new(path);
-
-    // Try to read as a directory first
-    let mut result = Vec::new();
-    match collect_files_via_readdir(dir, dir, &mut result) {
-        Ok(()) => Ok(result),
-        Err(read_err) => match fs::metadata(dir) {
-            Ok(meta) if meta.is_file() => Ok(vec![(
-                dir.file_name()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("unknown")
-                    .to_string(),
-                dir.to_string_lossy().to_string(),
-                meta.len(),
-            )]),
-            Ok(_) => Err(format!(
-                "'{}' is a directory but could not be listed: {}",
-                dir.display(),
-                read_err
-            )),
-            Err(stat_err) => Err(format!(
-                "Failed to access '{}': {} (read_dir: {})",
-                dir.display(),
-                stat_err,
-                read_err
-            )),
-        },
+/// 向远端文件指定偏移写入一块数据（本地文件由前端 plugin-fs 读取）。
+/// - `!resume && offset == 0`：截断重建（新上传）。
+/// - 否则：CREATE|WRITE 打开并从 offset 续写（断点续传）。
+pub fn write_chunk(
+    sftp: &ssh2::Sftp,
+    remote_path: &str,
+    offset: u64,
+    data: &[u8],
+    resume: bool,
+) -> Result<u64, String> {
+    ensure_remote_dir(sftp, remote_path)?;
+    let flags = if !resume && offset == 0 {
+        ssh2::OpenFlags::TRUNCATE | ssh2::OpenFlags::WRITE
+    } else {
+        ssh2::OpenFlags::CREATE | ssh2::OpenFlags::WRITE
+    };
+    let mut f = sftp
+        .open_mode(Path::new(remote_path), flags, 0o644, ssh2::OpenType::File)
+        .map_err(|e| format!("Failed to open remote file '{}': {}", remote_path, e))?;
+    if offset > 0 {
+        f.seek(SeekFrom::Start(offset)).map_err(|e| {
+            format!(
+                "Failed to seek remote file '{}' to {}: {}",
+                remote_path, offset, e
+            )
+        })?;
     }
+    f.write_all(data)
+        .map_err(|e| format!("Failed to write remote file '{}': {}", remote_path, e))?;
+    Ok(data.len() as u64)
 }
 
-/// Collect files recursively, using `metadata().is_dir()` to determine
-/// directories (one stat syscall per entry) instead of trying `read_dir`
-/// first (which opens and scans a directory handle just for probing).
-fn collect_files_via_readdir(
-    dir: &Path,
-    base: &Path,
-    result: &mut Vec<(String, String, u64)>,
-) -> Result<(), String> {
-    let dir_entries = fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory '{}': {}", dir.display(), e))?;
-
-    for entry in dir_entries {
-        let entry =
-            entry.map_err(|e| format!("Failed to read entry '{}': {}", dir.display(), e))?;
-        let path = entry.path();
-        let file_type = entry
-            .file_type()
-            .map_err(|e| format!("Failed to get file type for '{}': {}", path.display(), e))?;
-
-        if file_type.is_dir() {
-            if fs::read_dir(&path).is_ok() {
-                collect_files_via_readdir(&path, base, result)?;
-            } else {
-                // Directory exists but cannot be read — skip contents
-                log::warn!(
-                    "Warning: cannot read directory '{}', skipping files inside",
-                    path.display()
-                );
-            }
-        } else if file_type.is_file() {
-            if let Ok(meta) = fs::metadata(&path) {
-                let relative = path
-                    .strip_prefix(base)
-                    .unwrap_or(&path)
-                    .to_string_lossy()
-                    .to_string();
-                result.push((relative, path.to_string_lossy().to_string(), meta.len()));
-            }
-        } else {
-            // Symlink, socket, etc. — skip (metadata follows the link, not useful here)
+/// 从远端文件指定偏移读取一块数据（本地文件由前端 plugin-fs 写入）。
+pub fn read_chunk(
+    sftp: &ssh2::Sftp,
+    remote_path: &str,
+    offset: u64,
+    length: usize,
+) -> Result<Vec<u8>, String> {
+    let mut f = sftp
+        .open(Path::new(remote_path))
+        .map_err(|e| format!("Failed to open remote file '{}': {}", remote_path, e))?;
+    if offset > 0 {
+        f.seek(SeekFrom::Start(offset)).map_err(|e| {
+            format!(
+                "Failed to seek remote file '{}' to {}: {}",
+                remote_path, offset, e
+            )
+        })?;
+    }
+    let mut buf = vec![0u8; length];
+    let mut read_total = 0;
+    while read_total < length {
+        let n = f
+            .read(&mut buf[read_total..])
+            .map_err(|e| format!("Failed to read remote file '{}': {}", remote_path, e))?;
+        if n == 0 {
+            break;
         }
+        read_total += n;
     }
-    Ok(())
+    buf.truncate(read_total);
+    Ok(buf)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -561,46 +360,6 @@ fn resolve_users_groups_cached(
         })
         .collect();
     (uid_map, gid_map)
-}
-
-/// No-op progress reporter for simple (non-progress-tracked) transfers.
-fn noop_progress(_current: u64, _total: u64, _phase: &str) {}
-
-pub fn download_file_with_session(
-    sftp: &ssh2::Sftp,
-    remote_path: &str,
-    local_path: &str,
-) -> Result<(), String> {
-    // Delegate to chunked implementation — avoids loading the entire file
-    // into memory at once.
-    download_file_chunked(sftp, remote_path, local_path, None, &noop_progress, None)?;
-    Ok(())
-}
-
-pub fn upload_file_with_session(
-    sftp: &ssh2::Sftp,
-    local_path: &str,
-    remote_path: &str,
-) -> Result<(), String> {
-    let meta = fs::metadata(local_path).map_err(|e| {
-        log::error!("Failed to stat local file: {}", e);
-        format!("Failed to stat local file: {}", e)
-    })?;
-    if meta.is_dir() {
-        return Err(format!("Cannot upload '{}': is a directory", local_path));
-    }
-    // Delegate to chunked implementation — avoids loading the entire file
-    // into memory at once.
-    upload_file(
-        sftp,
-        local_path,
-        remote_path,
-        false,
-        None,
-        &noop_progress,
-        None,
-    )?;
-    Ok(())
 }
 
 pub fn delete_file_with_session(

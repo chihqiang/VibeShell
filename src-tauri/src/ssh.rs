@@ -1,27 +1,52 @@
 use crate::core;
 
+/// 测试代理连通性。async + spawn_blocking：阻塞逻辑放到线程池，
+/// 避免同步命令阻塞主线程导致 UI 冻结。
 #[tauri::command]
-pub fn ssh_test_connect(
+pub async fn proxy_test_connect(
+    hostname: String,
+    port: u16,
+    username: String,
+    password: String,
+) -> Result<String, String> {
+    log::info!("[proxy] test-connect {}:{}", hostname, port);
+    tauri::async_runtime::spawn_blocking(move || {
+        core::session::test_proxy(&hostname, port, &username, &password)
+    })
+    .await
+    .map_err(|e| format!("代理测试任务异常: {}", e))?
+}
+
+/// 测试 SSH 连接。async + spawn_blocking：握手等阻塞操作不占主线程。
+#[tauri::command]
+pub async fn ssh_test_connect(
     hostname: String,
     port: u16,
     username: String,
     password: Option<String>,
     private_key_path: Option<String>,
+    proxy: Option<core::models::ProxyConfig>,
 ) -> Result<String, String> {
     log::info!("[ssh] test-connect to {}@{}:{}", username, hostname, port);
-    let (_, banner) = core::session::do_connect(
-        &hostname,
-        port,
-        &username,
-        password.as_deref(),
-        private_key_path.as_deref(),
-    )?;
+    let handle = tauri::async_runtime::spawn_blocking(move || {
+        core::session::do_connect(
+            &hostname,
+            port,
+            &username,
+            password.as_deref(),
+            private_key_path.as_deref(),
+            proxy.as_ref(),
+        )
+    });
+    let (_, banner) = handle
+        .await
+        .map_err(|e| format!("SSH 测试任务异常: {}", e))??;
     log::info!("[ssh] test-connect succeeded, banner={:?}", banner);
     Ok(banner)
 }
 
 #[tauri::command]
-pub fn ssh_quick_connect(
+pub async fn ssh_quick_connect(
     app_handle: tauri::AppHandle,
     tab_id: String,
     hostname: String,
@@ -31,74 +56,49 @@ pub fn ssh_quick_connect(
     private_key_path: Option<String>,
     monitor_interval_secs: Option<u64>,
     heartbeat_interval_secs: Option<u64>,
+    idle_timeout_secs: Option<u64>,
+    proxy: Option<core::models::ProxyConfig>,
 ) -> Result<core::models::SshConnectResult, String> {
-    let banner = core::session::connect(
-        &app_handle,
-        &tab_id,
-        &hostname,
-        port,
-        &username,
-        password.as_deref(),
-        private_key_path.as_deref(),
-        monitor_interval_secs.unwrap_or(core::models::SshDefaults::DEFAULT_MONITOR_INTERVAL as u64),
-        heartbeat_interval_secs
-            .unwrap_or(core::models::SshDefaults::DEFAULT_HEARTBEAT_INTERVAL as u64),
-    )?;
-    Ok(core::models::SshConnectResult { id: tab_id, banner })
-}
-
-#[tauri::command]
-pub fn ssh_connect(
-    app_handle: tauri::AppHandle,
-    tab_id: String,
-    host_id: String,
-    monitor_interval_secs: Option<u64>,
-    heartbeat_interval_secs: Option<u64>,
-) -> Result<core::models::SshConnectResult, String> {
-    log::info!("[ssh] connect tab={} host_id={}", tab_id, host_id);
-
-    // 从 DB 查询主机配置
-    let host = core::store::get_host(&host_id)?;
-
-    // 密钥认证：一次性查出 key，复用 password 和 content
-    let key_entry = host
-        .key_id
+    // 建连包含 TCP 握手 + SSH 握手 + OS 检测等阻塞操作，可能耗时数秒；
+    // async + spawn_blocking 避免阻塞主线程导致 UI 冻结。
+    let tab_id_for_connect = tab_id.clone();
+    let proxy_for_connect = proxy.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        core::session::connect(
+            &app_handle,
+            &tab_id_for_connect,
+            &hostname,
+            port,
+            &username,
+            password.as_deref(),
+            private_key_path.as_deref(),
+            monitor_interval_secs
+                .unwrap_or(core::models::SshDefaults::DEFAULT_MONITOR_INTERVAL as u64),
+            heartbeat_interval_secs
+                .unwrap_or(core::models::SshDefaults::DEFAULT_HEARTBEAT_INTERVAL as u64),
+            idle_timeout_secs
+                .unwrap_or(core::models::SshDefaults::DEFAULT_IDLE_TIMEOUT as u64),
+            proxy_for_connect.as_ref(),
+        )
+    })
+    .await
+    .map_err(|e| format!("SSH 连接任务异常: {}", e))??;
+    let banner = result;
+    // 与 session.rs 内部 use_proxy 判断保持一致，计算实际连接通道
+    let via_proxy = proxy
         .as_ref()
-        .and_then(|kid| core::store::get_key(kid).ok())
-        .flatten();
-
-    // 决定连接密码：密钥认证用密钥短语，密码认证用主机密码
-    let auth_password: Option<String> = if host.auth_method == "key" {
-        key_entry.as_ref().and_then(|k| k.password.clone())
-    } else {
-        host.password.clone()
-    };
-
-    // 密钥认证时，private_key_path 用密钥内容（直接作为临时文件写入）
-    let private_key_content: Option<String> = if host.auth_method == "key" {
-        key_entry.map(|k| k.content)
-    } else {
-        None
-    };
-
-    let monitor_interval =
-        monitor_interval_secs.unwrap_or(core::models::SshDefaults::DEFAULT_MONITOR_INTERVAL as u64);
-    let heartbeat_interval = heartbeat_interval_secs
-        .unwrap_or(core::models::SshDefaults::DEFAULT_HEARTBEAT_INTERVAL as u64);
-
-    let banner = core::session::connect(
-        &app_handle,
-        &tab_id,
-        &host.hostname,
-        host.port,
-        &host.username,
-        auth_password.as_deref(),
-        private_key_content.as_deref(),
-        monitor_interval,
-        heartbeat_interval,
-    )?;
-
-    Ok(core::models::SshConnectResult { id: tab_id, banner })
+        .filter(|p| p.enabled && p.r#type != core::models::ProxyType::None && !p.host.is_empty())
+        .map(|p| format!("{}:{}", p.host, p.port));
+    log::info!(
+        "[ssh] connected tab={} via {}",
+        tab_id,
+        via_proxy.as_deref().unwrap_or("direct")
+    );
+    Ok(core::models::SshConnectResult {
+        id: tab_id,
+        banner,
+        via_proxy,
+    })
 }
 
 #[tauri::command]

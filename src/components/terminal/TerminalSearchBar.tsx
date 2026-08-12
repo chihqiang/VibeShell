@@ -43,7 +43,7 @@ export function TerminalSearchBar({ searchAddon, onClose }: TerminalSearchBarPro
 
   return (
     <div className="absolute top-2 right-3 z-20 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-popover/90 backdrop-blur-md border border-border shadow-xl">
-      <Search size={13} className="text-muted-foreground flex-shrink-0" />
+      <Search size={13} className="text-muted-foreground shrink-0" />
       <input
         ref={inputRef}
         value={query}

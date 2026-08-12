@@ -20,9 +20,6 @@
     "keyPassphrase": "密码短语（可选）",
     "keyPassphrasePlaceholder": "输入密码短语",
     "confirmDeleteKey": "确认删除此密钥？",
-    "noTag": "无标签",
-    "selectTag": "选择标签",
-    "tagName": "标签名称",
     "selectKey": "选择密钥",
     "hostManagement": "主机管理",
     "keyManagement": "密钥管理",
@@ -52,7 +49,9 @@
     "namePlaceholder": "我的服务器",
     "connecting": "连接中...",
     "testConnection": "测试连接",
-    "testConnectionSuccess": "连接成功"
+    "testConnectionSuccess": "连接成功",
+    "viaProxy": "已通过代理 {{proxy}} 连接",
+    "viaDirect": "已直连（未使用代理）"
   },
   "sftp": {
     "upload": "上传",
@@ -159,6 +158,19 @@
     "auto": "自动",
     "general": "通用",
     "ssh": "SSH 设置",
+    "proxy": "代理",
+    "proxyDesc": "通过 SOCKS5 代理建立 SSH 连接。支持匿名或用户名密码认证。",
+    "proxyEnabled": "启用代理",
+    "proxyTypeFixed": "当前仅支持 SOCKS5 代理类型，连接时将自动使用 SOCKS5 协议。",
+    "proxyHost": "代理地址",
+    "proxyPort": "端口",
+    "proxyAuth": "认证",
+    "proxyAuthNone": "匿名",
+    "proxyUsername": "用户名",
+    "proxyPassword": "密码",
+    "proxyAuthOptional": "可选，留空则使用匿名认证",
+    "proxyTest": "测试",
+    "proxyTesting": "测试中...",
     "defaultPort": "默认端口",
     "defaultHostname": "默认主机地址",
     "defaultUsername": "默认用户名",
@@ -169,6 +181,8 @@
     "monitorIntervalHint": "服务器状态刷新频率。最小 1，默认 4。",
     "heartbeatInterval": "心跳间隔（秒）",
     "heartbeatIntervalHint": "连接保活检测频率。最小 3，默认 10。",
+    "idleTimeout": "闲置自动断连（秒）",
+    "idleTimeoutHint": "终端无操作后自动断开连接。填 0 禁用，默认 300。",
     "reconnectTitle": "自动重连",
     "reconnectEnabled": "启用自动重连",
     "reconnectMaxRetries": "最大重试次数",
@@ -268,10 +282,11 @@
   },
   "statusbar": {
     "hosts": "{{count}} 台主机",
-    "connected": "已连接 {{count}} 台"
+    "connected": "已连接 {{count}} 台",
+    "proxyOn": "代理已开启",
+    "proxyOff": "代理未开启"
   },
   "topbar": {
-    "searchPlaceholder": "搜索主机...",
     "close": "关闭",
     "minimize": "最小化",
     "maximize": "最大化"

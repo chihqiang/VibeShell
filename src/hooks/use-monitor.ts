@@ -62,7 +62,12 @@ export function useMonitorListener(tabId: string | null): MonitorEvent | null {
 
     return () => {
       subs.delete(listener);
-      if (subs.size === 0) subscribers.delete(tabId);
+      if (subs.size === 0) {
+        subscribers.delete(tabId);
+        // 不再有组件监听该 tab 时，同步清理缓存数据，避免旧标签数据常驻内存。
+        // 后台 monitor 线程仍在持续推送，重新订阅会很快拿到新数据。
+        store.delete(tabId);
+      }
     };
   }, [tabId]);
 

@@ -29,6 +29,13 @@ export interface SftpListFilesResult {
   files: FileEntry[];
 }
 
+/** 本地文件信息（上传前的本地文件展开） */
+export interface LocalFileInfo {
+  name: string;
+  path: string;
+  size: number;
+}
+
 /** SFTP Chmod 参数 */
 export interface SftpChmodParams {
   tabId: string;

@@ -5,8 +5,9 @@
 ## 功能特性
 
 - **SSH 终端** — 支持密码认证、密钥认证（OpenSSH / PEM 格式）和 ssh-agent 连接远程服务器
+- **SOCKS5 代理** — 支持通过本地/远程 SOCKS5 代理建立 SSH 连接，可匿名或用户名密码认证，带连通性测试
 - **多标签页** — 多会话标签页管理，支持快速切换和标签排序
-- **主机管理** — 标签系统管理服务器，保存连接凭据，支持搜索和快速连接
+- **主机管理** — 保存连接凭据，支持搜索和快速连接
 - **SFTP 文件管理** — 浏览、上传、下载、拖拽上传、在线编辑、重命名、权限修改和递归操作
 - **服务器监控** — 实时 CPU、内存、磁盘占用和进程概览，带历史趋势折线图
 - **密钥链** — 导入和管理 SSH 私钥，支持密码短语验证
@@ -42,26 +43,35 @@ npm run tauri build
 2. 双击主机或回车即可打开终端会话
 3. 连接后点击右侧按钮打开 **监控面板** 查看实时服务器状态
 4. 在终端标签页底部可展开 **SFTP 面板** 管理远程文件
+5. 如需通过代理访问内网/境外服务器，在 **设置 → 代理** 中开启 SOCKS5 代理（可先点 **测试** 验证连通性）
 
 ## 常见问题
 
-### 启动报错：数据库字段与当前版本不匹配
+### 数据存储在哪里？
 
-更新版本后首次启动时，如果本地缓存的数据表结构与新版本不一致，会提示数据库字段不匹配。
+VibeShell 的业务数据（主机连接、密钥、SSH 配置、代理配置）通过 `@tauri-apps/plugin-store` 以 JSON 文件形式存储在系统应用数据目录：
 
-**解决方法：**
+| 平台 | 路径 |
+|------|------|
+| macOS | `~/Library/Application Support/com.chihqiang.vibeshell/vibeshell.json` |
+| Windows | `%APPDATA%\com.chihqiang.vibeshell\vibeshell.json` |
+| Linux | `~/.local/share/com.chihqiang.vibeshell/vibeshell.json` |
 
-删除本地缓存数据后重新启动即可：
+应用日志（由 `tauri-plugin-log` 统一管理，10MB 轮转保留全部历史）保存在系统日志目录：
 
-```bash
-rm -rf ~/.vibeshell
-```
+| 平台 | 路径 |
+|------|------|
+| macOS | `~/Library/Logs/com.chihqiang.vibeshell/` |
+| Windows | `%LOCALAPPDATA%\com.chihqiang.vibeshell\logs\` |
+| Linux | `~/.local/share/com.chihqiang.vibeshell/logs/` |
 
-重新打开 VibeShell，应用会自动重建数据库并正常运行。
+### 如何重置 / 清空数据？
 
-> **注意：** 删除 `~/.vibeshell` 会清除已保存的主机连接、密钥等本地数据，请提前确认是否需要备份。如需备份，可在设置中使用**数据备份**功能导出 JSON 文件。
+如需清空全部已保存的主机、密钥和配置，删除上述 `vibeshell.json` 文件后重新启动即可，应用会自动重建空数据。
 
-### macOS 提示 "VibeShell"已损坏，无法打开。你应该将它移到废纸篓。
+> **注意：** 删除数据文件会清除已保存的主机连接、密钥等本地数据，请提前确认是否需要备份。如需备份，可在设置中使用**数据备份**功能导出 JSON 文件。
+
+### macOS 提示 "VibeShell"已损坏，无法打开。你应该将它移到废纸篓
 
 这是 macOS Gatekeeper 安全机制的常见提示，并非应用本身损坏。VibeShell 目前未通过 Apple Notarization 公证，因此首次打开时可能被系统拦截。
 
@@ -74,16 +84,20 @@ rm -rf ~/.vibeshell
    - 输入管理员密码确认
 
 2. **使用命令行移除隔离属性**
+
    ```bash
    # 将 .app 拖入终端，或手动指定路径
    sudo xattr -d com.apple.quarantine /Applications/VibeShell.app
    ```
+
    执行后重新打开应用即可。
 
 3. **临时关闭 Gatekeeper（不推荐）**
+
    ```bash
    sudo spctl --master-disable
    ```
+
    操作完成后记得重新开启：`sudo spctl --master-enable`。
 
 > **注意：** 应用本身是安全的，所有源码均在 GitHub 开源。如仍有疑问，可在 [Issues](https://github.com/chihqiang/VibeShell/issues) 中反馈。
@@ -93,7 +107,7 @@ rm -rf ~/.vibeshell
 | 层 | 技术 |
 |---|---|
 | 桌面框架 | [Tauri 2](https://v2.tauri.app) |
-| 前端框架 | React 19 + TypeScript 5.8 |
+| 前端框架 | React 19 + TypeScript 5.9 |
 | 构建工具 | Vite 7 + Tailwind CSS 4 |
 | 终端 | [xterm.js](https://xtermjs.org/) |
 | 图表 | [Recharts](https://recharts.org/) |
@@ -101,7 +115,8 @@ rm -rf ~/.vibeshell
 | 国际化 | i18next |
 | 后端语言 | Rust (edition 2021) |
 | SSH 库 | [ssh2](https://github.com/alexcrichton/ssh2-rs) (libssh2) |
-| 数据库 | SQLite (rusqlite) |
+| 代理库 | [socks](https://crates.io/crates/socks) (SOCKS5 客户端) |
+| 数据存储 | [@tauri-apps/plugin-store](https://v2.tauri.app/plugin/store/)（JSON）|
 
 ## 贡献指南
 

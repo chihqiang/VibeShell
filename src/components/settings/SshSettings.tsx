@@ -12,6 +12,7 @@ import {
   DEFAULT_RECONNECT_MAX_RETRIES,
   DEFAULT_RECONNECT_INITIAL_DELAY,
   DEFAULT_RECONNECT_MAX_DELAY,
+  DEFAULT_IDLE_TIMEOUT,
 } from '@/constants';
 
 interface SshSettingsProps {
@@ -126,6 +127,23 @@ export function SshSettings({ defaults, onSave }: SshSettingsProps) {
             className="mt-1"
           />
           <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.heartbeatIntervalHint')}</p>
+        </div>
+
+        <div>
+          <Label>{t('settings.idleTimeout')}</Label>
+          <Input
+            type="text"
+            inputMode="numeric"
+            value={form.idleTimeout || ''}
+            onChange={(e) => {
+              const v = e.target.value.replace(/\D/g, '');
+              const num = parseInt(v, 10);
+              updateField('idleTimeout', isNaN(num) ? '' : String(num));
+            }}
+            placeholder={String(DEFAULT_IDLE_TIMEOUT)}
+            className="mt-1"
+          />
+          <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.idleTimeoutHint')}</p>
         </div>
 
         <div className="border-t border-border pt-4">

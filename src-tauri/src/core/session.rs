@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
-use std::os::unix::fs::PermissionsExt;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Condvar, LazyLock, Mutex, RwLock};
 use std::thread;
@@ -18,10 +17,6 @@ use crate::core;
 /// Max consecutive emit failures before the session is considered orphaned
 /// (frontend window closed or crashed) and auto-cleanup triggers.
 const MAX_EMIT_FAILURES: u32 = 3;
-
-/// If the frontend hasn't sent any `ssh_write` for this duration, the session
-/// is considered idle and will be cleaned up.
-const SESSION_IDLE_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// Maximum number of concurrent SSH sessions to prevent resource exhaustion.
 const MAX_SESSIONS: usize = 50;
@@ -88,37 +83,85 @@ static SESSIONS: LazyLock<RwLock<HashMap<String, SessionHandle>>> =
 
 // ── do_connect (moved from core/ssh.rs) ──
 
-/// Drop guard that removes a temporary key file when the scope exits,
-/// even if the caller returns early with an error.
-struct TempKeyGuard {
-    path: Option<std::path::PathBuf>,
-}
-
-impl TempKeyGuard {
-    fn new(path: std::path::PathBuf) -> Self {
-        Self { path: Some(path) }
-    }
-}
-
-impl Drop for TempKeyGuard {
-    fn drop(&mut self) {
-        if let Some(path) = &self.path {
-            std::fs::remove_file(path)
-                .unwrap_or_else(|e| log::warn!("[connect] remove temp key file failed: {}", e));
-        }
-    }
-}
-
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 
-fn do_connect_inner(
+/// 建立到目标的 TCP 连接。若提供了启用的代理，则先连代理再建立 SOCKS5 隧道。
+fn connect_tcp(
     hostname: &str,
     port: u16,
-    username: &str,
-    password: Option<&str>,
-    private_key_path: Option<&str>,
-) -> Result<(Session, String), String> {
+    proxy: Option<&core::models::ProxyConfig>,
+) -> Result<TcpStream, String> {
     let addr = format!("{}:{}", hostname, port);
+
+    let use_proxy = proxy
+        .map(|p| p.enabled && p.r#type != core::models::ProxyType::None && !p.host.is_empty())
+        .unwrap_or(false);
+
+    if use_proxy {
+        let p = proxy.expect("proxy checked above");
+        log::info!(
+            "[connect] using SOCKS5 proxy {}:{} -> {}",
+            p.host,
+            p.port,
+            addr
+        );
+        let deadline = Instant::now() + CONNECT_TIMEOUT;
+
+        let paddr = format!("{}:{}", p.host, p.port);
+        let psock_addrs: Vec<_> = paddr
+            .to_socket_addrs()
+            .map_err(|e| format!("Proxy DNS resolution failed: {}", e))?
+            .collect();
+        let mut proxy_stream = psock_addrs
+            .iter()
+            .find_map(|sa| {
+                let now = Instant::now();
+                if now >= deadline {
+                    return None;
+                }
+                TcpStream::connect_timeout(sa, deadline - now).ok()
+            })
+            .ok_or_else(|| format!("Proxy TCP connection failed to {}", paddr))?;
+        proxy_stream
+            .set_read_timeout(Some(Duration::from_secs(30)))
+            .unwrap_or_else(|e| log::warn!("[connect] proxy set_read_timeout failed: {}", e));
+        proxy_stream
+            .set_write_timeout(Some(Duration::from_secs(30)))
+            .unwrap_or_else(|e| log::warn!("[connect] proxy set_write_timeout failed: {}", e));
+
+        match p.r#type {
+            core::models::ProxyType::Socks5 => {
+                // 用成熟的 socks crate 完成 SOCKS5 握手（方法协商 + RFC1929 认证 + CONNECT），
+                // 避免手写协议。target 使用 (hostname, port)，socks 会按需以 IP 或域名形式请求。
+                let proxy_addr = paddr.as_str();
+                let target = (hostname, port);
+                let stream = if p.username.is_empty() {
+                    socks::Socks5Stream::connect(proxy_addr, target)
+                        .map_err(|e| format!("SOCKS5 connect failed: {}", e))?
+                } else {
+                    socks::Socks5Stream::connect_with_password(
+                        proxy_addr,
+                        target,
+                        &p.username,
+                        &p.password,
+                    )
+                    .map_err(|e| format!("SOCKS5 connect failed: {}", e))?
+                };
+                // 取出底层 TcpStream（ssh2 只接受具体 TcpStream）
+                proxy_stream = stream.into_inner();
+                proxy_stream
+                    .set_read_timeout(Some(Duration::from_secs(30)))
+                    .unwrap_or_else(|e| log::warn!("[connect] proxy set_read_timeout failed: {}", e));
+                proxy_stream
+                    .set_write_timeout(Some(Duration::from_secs(30)))
+                    .unwrap_or_else(|e| log::warn!("[connect] proxy set_write_timeout failed: {}", e));
+            }
+            core::models::ProxyType::None => unreachable!(),
+        }
+        return Ok(proxy_stream);
+    }
+
+    // 直连
     let sock_addrs: Vec<_> = addr
         .to_socket_addrs()
         .map_err(|e| {
@@ -126,14 +169,103 @@ fn do_connect_inner(
             format!("DNS resolution failed: {}", e)
         })?
         .collect();
+    let deadline = Instant::now() + CONNECT_TIMEOUT;
     let tcp = sock_addrs
         .iter()
-        .find_map(|sa| TcpStream::connect_timeout(sa, CONNECT_TIMEOUT).ok())
+        .find_map(|sa| {
+            let now = Instant::now();
+            if now >= deadline {
+                return None;
+            }
+            TcpStream::connect_timeout(sa, deadline - now).ok()
+        })
         .ok_or_else(|| {
             let msg = format!("TCP connection failed to {}", addr);
             log::error!("{}", msg);
             msg
         })?;
+    tcp.set_read_timeout(Some(Duration::from_secs(30)))
+        .unwrap_or_else(|e| log::warn!("[connect] set_read_timeout failed: {}", e));
+    tcp.set_write_timeout(Some(Duration::from_secs(30)))
+        .unwrap_or_else(|e| log::warn!("[connect] set_write_timeout failed: {}", e));
+    Ok(tcp)
+}
+
+/// 测试代理连通性：先快速验证代理 TCP 可达，再通过代理完成一次 SOCKS5
+/// 握手连接公共目标（1.1.1.1:80），以验证协议与认证是否有效。
+///
+/// 注意：socks crate 内部的握手 read 没有超时，若代理「接受连接却不响应」
+/// 会无限阻塞。因此整个握手放到子线程执行，主线程用 recv_timeout 限时等待，
+/// 确保任何情况下都能在 CONNECT_TIMEOUT 内返回、不卡住 UI。
+pub fn test_proxy(
+    hostname: &str,
+    port: u16,
+    username: &str,
+    password: &str,
+) -> Result<String, String> {
+    let proxy_addr = format!("{}:{}", hostname, port);
+    let deadline = Instant::now() + CONNECT_TIMEOUT;
+
+    // 1) 快速 TCP 可达性预检（带超时，覆盖「端口不可达/黑洞路由」场景）
+    let sock_addrs: Vec<_> = proxy_addr
+        .to_socket_addrs()
+        .map_err(|e| format!("代理地址解析失败: {}", e))?
+        .collect();
+    let tcp = sock_addrs
+        .iter()
+        .find_map(|sa| {
+            let now = Instant::now();
+            if now >= deadline {
+                return None;
+            }
+            TcpStream::connect_timeout(sa, deadline - now).ok()
+        })
+        .ok_or_else(|| format!("无法连接到代理 {}（请检查地址和端口）", proxy_addr))?;
+    drop(tcp); // 预检通过，进入 SOCKS5 握手验证
+
+    // 2) 子线程中完成 SOCKS5 握手 + 连接公共目标（socks crate），主线程限时等待
+    let target: (&str, u16) = ("1.1.1.1", 80);
+    let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
+    let proxy_addr = proxy_addr.clone();
+    let username = username.to_string();
+    let password = password.to_string();
+    std::thread::spawn(move || {
+        let result = if username.is_empty() {
+            socks::Socks5Stream::connect(proxy_addr.as_str(), target)
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+        } else {
+            socks::Socks5Stream::connect_with_password(
+                proxy_addr.as_str(),
+                target,
+                &username,
+                &password,
+            )
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+        };
+        // 线程结束后若接收端已放弃，发送失败也无妨（连接最终由 OS 回收）
+        let _ = tx.send(result);
+    });
+
+    match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+        Ok(Ok(())) => {
+            Ok(format!("代理可用（通过 SOCKS5 成功连接 {}:{}）", target.0, target.1))
+        }
+        Ok(Err(e)) => Err(format!("SOCKS5 代理连接失败（请检查代理类型与认证信息）: {}", e)),
+        Err(_) => Err("代理连接超时（服务器无响应，请检查代理是否正常）".to_string()),
+    }
+}
+
+fn do_connect_inner(
+    hostname: &str,
+    port: u16,
+    username: &str,
+    password: Option<&str>,
+    private_key_path: Option<&str>,
+    proxy: Option<&core::models::ProxyConfig>,
+) -> Result<(Session, String), String> {
+    let tcp = connect_tcp(hostname, port, proxy)?;
     tcp.set_read_timeout(Some(Duration::from_secs(30)))
         .unwrap_or_else(|e| log::warn!("[connect] set_read_timeout failed: {}", e));
     tcp.set_write_timeout(Some(Duration::from_secs(30)))
@@ -151,34 +283,20 @@ fn do_connect_inner(
     })?;
 
     if let Some(key_content) = private_key_path {
-        // Write key content to temp file for ssh2 auth
-        let key_id = uuid::Uuid::new_v4().to_string();
-        let tmp_dir = super::data_dir().join("tmp");
-        std::fs::create_dir_all(&tmp_dir)
-            .unwrap_or_else(|e| log::warn!("[connect] create tmp dir failed: {}", e));
-        let key_file = tmp_dir.join(format!("key_{}", key_id));
-        // Write first, then set strict permissions, then create the RAII guard.
-        // This order ensures the guard only cleans up a file that was fully
-        // written and had correct permissions set.
-        std::fs::write(&key_file, key_content).map_err(|e| format!("write temp key: {}", e))?;
-        // Set strict permissions (0600) so other users cannot read the temp key file
-        std::fs::set_permissions(&key_file, std::fs::Permissions::from_mode(0o600))
-            .map_err(|e| format!("set temp key permissions: {}", e))?;
-        let _guard = TempKeyGuard::new(key_file.clone());
+        // 纯内存公钥认证 —— 无需写任何临时私钥文件（磁盘零文件存储）。
+        // pubkeydata 传 None，公钥由私钥内容自动推导。
         log::info!(
-            "[connect] using key content: path={} ({} bytes) has_passphrase={}",
-            key_file.display(),
+            "[connect] using in-memory key auth ({} bytes) has_passphrase={}",
             key_content.len(),
             password.is_some()
         );
-        match session.userauth_pubkey_file(username, None, &key_file, password) {
+        match session.userauth_pubkey_memory(username, None, key_content, password) {
             Ok(()) => {
-                log::info!("[connect] key auth succeeded: path={}", key_file.display());
+                log::info!("[connect] key auth succeeded (in-memory)");
             }
             Err(e) => {
                 log::error!(
-                    "[connect] key auth failed: path={} has_passphrase={} error=[{}] {}",
-                    key_file.display(),
+                    "[connect] key auth failed: has_passphrase={} error=[{}] {}",
                     password.is_some(),
                     e.code(),
                     e.message()
@@ -186,7 +304,6 @@ fn do_connect_inner(
                 return Err(format!("Key auth failed: {}", e.message()));
             }
         }
-        // Temp key file is cleaned up by TempKeyGuard::drop();
     } else if let Some(pwd) = password {
         session.userauth_password(username, pwd).map_err(|e| {
             log::error!("Password auth failed: {}", e);
@@ -219,12 +336,14 @@ pub fn do_connect(
     username: &str,
     password: Option<&str>,
     private_key_path: Option<&str>,
+    proxy: Option<&core::models::ProxyConfig>,
 ) -> Result<(Session, String), String> {
     let (tx, rx) = std::sync::mpsc::channel();
     let hostname = hostname.to_string();
     let username = username.to_string();
     let password = password.map(|s| s.to_string());
     let private_key_path = private_key_path.map(|s| s.to_string());
+    let proxy = proxy.cloned();
 
     std::thread::spawn(move || {
         let result = do_connect_inner(
@@ -233,6 +352,7 @@ pub fn do_connect(
             &username,
             password.as_deref(),
             private_key_path.as_deref(),
+            proxy.as_ref(),
         );
         let _ = tx.send(result);
     });
@@ -283,7 +403,7 @@ fn linux_monitor_script() -> String {
         r#"echo '---KERNEL---'"#,
         r#"(uname -r 2>/dev/null || echo '')"#,
         r#"echo '---MEM---'"#,
-        r#"(free -m 2>/dev/null | awk 'NR==2{printf "%dMB / %dMB (%.1f%%)\n", $3, $2, $3/$2*100}' || echo '')"#,
+        r#"(free -m 2>/dev/null | awk 'NR==2{printf "%dMB / %dMB (%.1f%%)\n", $3, $2, ($2>0?$3/$2*100:0)}' || echo '')"#,
         r#"echo '---SWAP---'"#,
         r#"(free -m 2>/dev/null | awk 'NR==3{printf "%dMB / %dMB (%.1f%%)\n", $3, $2, $2>0?$3/$2*100:0}' || echo '')"#,
         r#"echo '---PS---'"#,
@@ -412,6 +532,8 @@ pub fn connect(
     private_key_path: Option<&str>,
     monitor_interval_secs: u64,
     heartbeat_interval_secs: u64,
+    idle_timeout_secs: u64,
+    proxy: Option<&core::models::ProxyConfig>,
 ) -> Result<String, String> {
     let auth_type = if private_key_path.is_some() {
         "key"
@@ -427,7 +549,7 @@ pub fn connect(
         auth_type
     );
 
-    let (session, banner) = do_connect(hostname, port, username, password, private_key_path)?;
+    let (session, banner) = do_connect(hostname, port, username, password, private_key_path, proxy)?;
 
     log::info!(
         "[connect] tab={} authenticated, banner={:?}",
@@ -491,7 +613,11 @@ pub fn connect(
 
     let cancel = Arc::new(AtomicBool::new(false));
     let buffer = Arc::new(Mutex::new(String::new()));
-    let fail_count = Arc::new(AtomicU32::new(0));
+    // 每个后台线程独立的连续失败计数，避免 reader 的高频成功清零掩盖
+    // monitor/heartbeat 的持续 emit 失败。
+    let reader_fail_count = Arc::new(AtomicU32::new(0));
+    let monitor_fail_count = Arc::new(AtomicU32::new(0));
+    let heartbeat_fail_count = Arc::new(AtomicU32::new(0));
     // Three independent wake channels — one per background thread.
     let reader_mutex = Arc::new(Mutex::new(()));
     let reader_cvar = Arc::new(Condvar::new());
@@ -517,45 +643,9 @@ pub fn connect(
         gid_cache: gid_cache.clone(),
     }));
 
-    // Start reader thread immediately so the SSH transport gets processed
-    spawn_reader(
-        app_handle.clone(),
-        tab_id.to_string(),
-        handle.clone(),
-        buffer.clone(),
-        cancel.clone(),
-        fail_count.clone(),
-        reader_mutex.clone(),
-        reader_cvar.clone(),
-    );
-
-    // Start monitor thread
-    start_monitor(
-        app_handle,
-        tab_id,
-        handle.clone(),
-        cancel.clone(),
-        fail_count.clone(),
-        monitor_mutex.clone(),
-        monitor_cvar.clone(),
-        monitor_interval_secs,
-        remote_is_linux,
-    );
-
-    // Start heartbeat thread
-    start_heartbeat(
-        app_handle,
-        tab_id,
-        handle.clone(),
-        cancel.clone(),
-        fail_count,
-        heartbeat_mutex,
-        heartbeat_cvar,
-        heartbeat_interval_secs,
-    );
-
-    // Cancel any existing session with this tabId (e.g. stale reconnect session)
-    // and enforce the maximum concurrent session limit.
+    // 在启动后台线程之前完成会话注册与上限检查。
+    // 顺序很重要：若先启动线程再检查上限，超限提前返回时会话 handle 未进入
+    // SESSIONS，三个后台线程持有的 Arc 使 SSH 连接永不关闭、线程永久驻留。
     {
         let mut sessions = SESSIONS.write().map_err(|e| e.to_string())?;
         // Remove any existing session for this tab_id first
@@ -574,13 +664,53 @@ pub fn connect(
                 tab_id,
                 MAX_SESSIONS
             );
+            // 线程尚未启动、handle 未插入 SESSIONS，drop 后 SSH 连接自动关闭，
+            // 无资源泄漏。
             return Err(format!(
                 "Maximum number of concurrent connections ({}) reached. Close some tabs and try again.",
                 MAX_SESSIONS
             ));
         }
-        sessions.insert(tab_id.to_string(), handle);
+        sessions.insert(tab_id.to_string(), handle.clone());
     }
+
+    // Start reader thread immediately so the SSH transport gets processed
+    spawn_reader(
+        app_handle.clone(),
+        tab_id.to_string(),
+        handle.clone(),
+        buffer.clone(),
+        cancel.clone(),
+        reader_fail_count,
+        reader_mutex.clone(),
+        reader_cvar.clone(),
+    );
+
+    // Start monitor thread
+    start_monitor(
+        app_handle,
+        tab_id,
+        handle.clone(),
+        cancel.clone(),
+        monitor_fail_count,
+        monitor_mutex.clone(),
+        monitor_cvar.clone(),
+        monitor_interval_secs,
+        remote_is_linux,
+    );
+
+    // Start heartbeat thread
+    start_heartbeat(
+        app_handle,
+        tab_id,
+        handle.clone(),
+        cancel.clone(),
+        heartbeat_fail_count,
+        heartbeat_mutex,
+        heartbeat_cvar,
+        heartbeat_interval_secs,
+        idle_timeout_secs,
+    );
 
     log::info!(
         "[connect] tab={} ready (active sessions: {})",
@@ -667,17 +797,41 @@ fn spawn_reader(
                 break;
             }
 
+            // 用 try_lock + 短等待替代阻塞锁：SFTP 大文件传输会长时间持有 session
+            // 锁，若这里硬阻塞，reader 线程将永久卡死，终端输出与会话清理都会失去
+            // 响应。
             let output = {
-                let Ok(mut inner) = handle.lock() else { break };
-                match inner.channel.read(&mut buf) {
-                    Ok(0) => break,
+                let mut inner = loop {
+                    if cancel.load(Ordering::Relaxed) {
+                        return;
+                    }
+                    match handle.try_lock() {
+                        Ok(guard) => break guard,
+                        Err(_) => thread::sleep(Duration::from_millis(10)),
+                    }
+                };
+                let out = match inner.channel.read(&mut buf) {
+                    // 远端关闭连接——先释放锁再清理，避免对同一 Mutex 重复加锁造成死锁
+                    Ok(0) => {
+                        drop(inner);
+                        log::info!(
+                            "[reader] tab={}: channel closed by remote, cleaning up",
+                            tab_id
+                        );
+                        cancel.store(true, Ordering::Relaxed);
+                        cleanup_session(&tab_id);
+                        return;
+                    }
                     Ok(n) => Some(String::from_utf8_lossy(&buf[..n]).to_string()),
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => None,
                     Err(e) => {
                         log::debug!("[reader] tab={}: read error, exiting: {}", tab_id, e);
-                        break;
+                        drop(inner);
+                        return;
                     }
-                }
+                };
+                drop(inner);
+                out
             };
 
             if let Some(data) = output {
@@ -844,6 +998,7 @@ fn start_heartbeat(
     wake_mutex: Arc<Mutex<()>>,
     wake_cvar: Arc<Condvar>,
     interval_secs: u64,
+    idle_timeout_secs: u64,
 ) {
     let app = app_handle.clone();
     let tid = tab_id.to_string();
@@ -865,16 +1020,19 @@ fn start_heartbeat(
             }
 
             // Check idle timeout via try_lock (never blocks terminal I/O)
-            if let Ok(inner) = handle.try_lock() {
-                if inner.last_activity.elapsed() >= SESSION_IDLE_TIMEOUT {
-                    log::info!(
-                        "[heartbeat] tab={}: idle {:?}, auto-cleanup",
-                        tid,
-                        SESSION_IDLE_TIMEOUT
-                    );
-                    cancel.store(true, Ordering::Relaxed);
-                    cleanup_session(&tid);
-                    return;
+            // idle_timeout_secs == 0 表示禁用自动断连。
+            if idle_timeout_secs > 0 {
+                if let Ok(inner) = handle.try_lock() {
+                    if inner.last_activity.elapsed() >= Duration::from_secs(idle_timeout_secs) {
+                        log::info!(
+                            "[heartbeat] tab={}: idle {}s, auto-cleanup",
+                            tid,
+                            idle_timeout_secs
+                        );
+                        cancel.store(true, Ordering::Relaxed);
+                        cleanup_session(&tid);
+                        return;
+                    }
                 }
             }
 
@@ -929,6 +1087,8 @@ pub fn write(tab_id: &str, data: &str) -> Result<(), String> {
     inner.last_activity = Instant::now();
     // Switch to blocking mode with a short timeout so write_all completes
     // fully without returning WouldBlock (session is non-blocking by default).
+    // 注意：不能在此处使用 BlockingGuard —— inner 是 MutexGuard（经 Deref 访问），
+    // guard 对 session 的不可变借用会阻止对 channel 的可变借用。手动切换并恢复即可。
     inner.session.set_blocking(true);
     inner.session.set_timeout(5_000);
     let result = inner.channel.write_all(data.as_bytes());

@@ -242,7 +242,7 @@ export function WelcomePage() {
                         >
                           <div
                             className={cn(
-                              'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-colors',
+                              'flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors',
                               isConnected ? 'bg-green-500/15' : 'bg-muted group-hover:bg-primary/10',
                             )}
                           >
@@ -256,16 +256,16 @@ export function WelcomePage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-medium text-foreground truncate">{host.name}</span>
-                              {isConnected && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />}
+                              {isConnected && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />}
                             </div>
                             <span className="text-[10px] text-muted-foreground/70 truncate block font-mono">
                               {host.username}@{host.hostname}:{host.port}
                             </span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground/50 flex-shrink-0">
+                          <span className="text-[10px] text-muted-foreground/50 shrink-0">
                             {formatRelativeTime(host.last_connected_at, t)}
                           </span>
-                          <div className="flex items-center justify-center w-7 h-7 rounded-lg text-primary bg-primary/10 opacity-50 group-hover:opacity-100 group-hover:bg-primary/15 transition-all flex-shrink-0">
+                          <div className="flex items-center justify-center w-7 h-7 rounded-lg text-primary bg-primary/10 opacity-50 group-hover:opacity-100 group-hover:bg-primary/15 transition-all shrink-0">
                             <Terminal size={13} />
                           </div>
                         </div>
@@ -294,7 +294,7 @@ export function WelcomePage() {
             </div>
 
             {/* 右侧：系统信息 */}
-            <div className="w-64 flex-shrink-0 space-y-3">
+            <div className="w-64 shrink-0 space-y-3">
               <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Info size={13} />
@@ -348,7 +348,7 @@ function ParsedChip({ icon, label, highlight }: { icon: React.ReactNode; label: 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="text-muted-foreground flex-shrink-0">{icon}</span>
+      <span className="text-muted-foreground shrink-0">{icon}</span>
       <span className="text-muted-foreground flex-1">{label}</span>
       <span className="font-medium text-foreground text-right truncate">{value || '...'}</span>
     </div>

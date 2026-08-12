@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@/utils/invoke';
-import { sshConnect, sshDisconnect } from '@/services/sshService';
+import { sshQuickConnect, sshDisconnect } from '@/services/sshService';
+import { getHost, getKey } from '@/services/dataStore';
 import { useTerminalTabs } from '@/contexts/TerminalTabsContext';
 import type { ConnectConfig } from '@/contexts/TerminalTabsContext';
 import { Terminal as TerminalComp } from '@/components/terminal';
@@ -11,7 +11,7 @@ import { WelcomePage } from '@/pages/WelcomePage';
 import { TabBar } from '@/components/tabbar';
 import { SftpBottomPanel } from '@/components/sftp';
 import { useNotify } from '@/hooks/use-notify';
-import { getSshDefaults } from '@/services/configService';
+import { getSshDefaults, getProxyConfig } from '@/services/configService';
 import {
   BOTTOM_PANEL_MIN_HEIGHT,
   BOTTOM_PANEL_DEFAULT_HEIGHT,
@@ -34,7 +34,7 @@ export function EditorArea() {
   const { t } = useTranslation();
   const { tabs, activeTabId, updateStatus, terminalTabVersion } = useTerminalTabs();
   const { sftpOpen } = useLayout();
-  const { notifyError } = useNotify();
+  const { notify, notifyError } = useNotify();
   const prevSftpOpen = useRef(sftpOpen);
   const connectedTabs = useRef(new Set<string>());
   const abortRef = useRef(new Map<string, AbortController>());
@@ -60,6 +60,9 @@ export function EditorArea() {
 
   // Flag to prevent operations after component unmount
   const isMountedRef = useRef(true);
+  // 已由“新增标签自动连接”effect 发起过连接的标签，避免新增其他标签时
+  // 误重连旧的 disconnected 标签。
+  const autoConnectStartedRef = useRef(new Set<string>());
 
   const retryCount = useRef(new Map<string, number>());
   const reconnectTimer = useRef(new Map<string, ReturnType<typeof setTimeout>>());
@@ -83,7 +86,7 @@ export function EditorArea() {
       abortRef.current.set(tabId, controller);
 
       try {
-        const defaults = await getSshDefaults();
+        const [defaults, proxy] = await Promise.all([getSshDefaults(), getProxyConfig()]);
         reconnectConfig.current = {
           enabled: defaults.reconnectEnabled,
           maxRetries: defaults.reconnectMaxRetries,
@@ -91,31 +94,50 @@ export function EditorArea() {
           maxDelaySecs: defaults.reconnectMaxDelay,
         };
         if (controller.signal.aborted) return;
-        // 已保存主机使用 hostId 连接，快速连接直接传参
+
+        // 组装连接参数：已保存主机从前端 store 读取最新主机+密钥，快速连接直接用表单参数
         const tab = tabsRef.current.find((t) => t.id === tabId);
         const hostId = tab?.type === 'terminal' ? tab.host?.id : undefined;
+
+        let { hostname, port, username, password, privateKeyPath } = config;
         if (hostId) {
-          await sshConnect({
-            tabId,
-            hostId,
-            monitorIntervalSecs: defaults.monitorInterval,
-            heartbeatIntervalSecs: defaults.heartbeatInterval,
-          });
-        } else {
-          await invoke('ssh_quick_connect', {
-            tabId,
-            hostname: config.hostname,
-            port: config.port,
-            username: config.username,
-            password: config.password,
-            privateKeyPath: config.privateKeyPath,
-            monitorIntervalSecs: defaults.monitorInterval,
-            heartbeatIntervalSecs: defaults.heartbeatInterval,
-          });
+          const host = await getHost(hostId);
+          if (host) {
+            hostname = host.hostname;
+            port = host.port;
+            username = host.username;
+            if (host.auth_method === 'key') {
+              const key = host.key_id ? await getKey(host.key_id) : undefined;
+              privateKeyPath = key?.content ?? null;
+              password = key?.password ?? null;
+            } else {
+              password = host.password || null;
+              privateKeyPath = null;
+            }
+          }
         }
+
+        const result = await sshQuickConnect({
+          tabId,
+          hostname,
+          port,
+          username,
+          password,
+          privateKeyPath,
+          monitorIntervalSecs: defaults.monitorInterval,
+          heartbeatIntervalSecs: defaults.heartbeatInterval,
+          idleTimeoutSecs: defaults.idleTimeout,
+          proxy,
+        });
         if (controller.signal.aborted) return;
         updateStatus(tabId, 'connected');
         retryCount.current.delete(tabId);
+        // 提示实际连接通道：走代理时明确告知代理地址，直连时提示直连
+        if (result?.via_proxy) {
+          notify(t('connection.viaProxy', { proxy: result.via_proxy }));
+        } else {
+          notify(t('connection.viaDirect'));
+        }
       } catch (e) {
         if (controller.signal.aborted) return;
         notifyError(e);
@@ -125,17 +147,24 @@ export function EditorArea() {
         abortRef.current.delete(tabId);
       }
     },
-    [updateStatus, notifyError],
+    [updateStatus, notify, notifyError, t],
   );
 
   useEffect(() => {
     const tabIds = new Set(tabs.map((t) => t.id));
+    for (const id of autoConnectStartedRef.current) {
+      if (!tabIds.has(id)) autoConnectStartedRef.current.delete(id);
+    }
     for (const id of connectedTabs.current) {
       if (!tabIds.has(id)) connectedTabs.current.delete(id);
     }
     for (const tab of tabs) {
       if (tab.type !== 'terminal') continue;
+      // 只自动连接“本次新增”的标签，已尝试过自动连接的标签（含连接失败
+      // 后停留在 disconnected 的）不再由无关的新增标签操作触发重连。
+      if (autoConnectStartedRef.current.has(tab.id)) continue;
       if (tab.status !== 'disconnected' || connectedTabs.current.has(tab.id)) continue;
+      autoConnectStartedRef.current.add(tab.id);
       connectTab(tab.id, tab.connectConfig);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

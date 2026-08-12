@@ -8,6 +8,7 @@ import type { ITheme } from '@xterm/xterm';
 import type { ConnectionStatus } from '@/types';
 import { Loader2, WifiOff, RotateCw } from 'lucide-react';
 import { cn, getStorage, setStorage } from '@/utils';
+import { copyText, pasteText } from '@/utils/clipboard';
 import { registerOutputHandler } from '@/services/outputService';
 import { useNotify } from '@/hooks/use-notify';
 import { getStoredThemeId, getTerminalTheme } from '@/utils/terminal-themes';
@@ -175,7 +176,7 @@ const Terminal = memo(function Terminal({
       if (term && term.hasSelection()) {
         e.preventDefault();
         const text = term.getSelection();
-        navigator.clipboard.writeText(text).catch(() => {});
+        copyText(text).catch(() => {});
       }
     }
   }, []);
@@ -188,13 +189,13 @@ const Terminal = memo(function Terminal({
       // If there's a selection, copy it to clipboard and clear selection
       if (term && term.hasSelection()) {
         const text = term.getSelection();
-        navigator.clipboard.writeText(text).catch(() => {});
+        copyText(text).catch(() => {});
         term.clearSelection();
         return;
       }
       // No selection — paste from clipboard
       try {
-        const text = await navigator.clipboard.readText();
+        const text = await pasteText();
         if (text && tabIdRef.current) {
           sshWrite({ tabId: tabIdRef.current, data: text }).catch((err) => notifyError(err));
         }
@@ -504,7 +505,7 @@ const Terminal = memo(function Terminal({
           {onReconnect && tabId && (
             <button
               onClick={() => onReconnect(tabId)}
-              className="flex items-center gap-1.5 mt-1 px-4 py-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-primary text-primary-foreground text-xs font-medium shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
+              className="flex items-center gap-1.5 mt-1 px-4 py-1.5 rounded-lg bg-linear-to-r from-primary to-primary/80 hover:from-primary hover:to-primary text-primary-foreground text-xs font-medium shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
             >
               <RotateCw size={13} />
               {t('tab.reconnect')}

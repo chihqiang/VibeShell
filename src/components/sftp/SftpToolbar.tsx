@@ -77,7 +77,7 @@ export function SftpToolbar({
 
   return (
     <>
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-border bg-secondary/10 flex-shrink-0">
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-border bg-secondary/10 shrink-0">
         <Button variant="ghost" size="xs" onClick={doUpload}>
           <Upload size={13} /> {t('sftp.upload')}
         </Button>

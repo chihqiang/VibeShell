@@ -39,6 +39,9 @@ export const DEFAULT_RECONNECT_INITIAL_DELAY = 1;
 /** 默认重连最大延迟（秒） */
 export const DEFAULT_RECONNECT_MAX_DELAY = 30;
 
+/** 默认闲置自动断连时间（秒），0 表示禁用 */
+export const DEFAULT_IDLE_TIMEOUT = 300;
+
 /** 传输并发数 */
 export const TRANSFER_CONCURRENCY = 4;
 

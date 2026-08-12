@@ -1,16 +1,10 @@
-pub mod backup;
-pub mod fs;
 pub mod key;
 pub mod models;
 pub mod session;
 pub mod sftp;
-pub mod store;
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-
-/// Shared I/O buffer/chunk size used by sftp transfers and backup zip streaming.
-pub const CHUNK_SIZE: usize = 256 * 1024;
 
 /// Shared permission mode formatter (avoids duplication between sftp.rs and fs.rs).
 pub fn format_mode(mode: u32) -> String {
@@ -50,12 +44,6 @@ pub fn format_mode(mode: u32) -> String {
 /// Shared data directory for all vibeshell persistence.
 pub fn data_dir() -> PathBuf {
     home_dir().join(".vibeshell")
-}
-
-/// Daily-rotated log file path: `$DATA_DIR/log/YYYY-MM-DD.log`
-pub fn log_path() -> PathBuf {
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    data_dir().join("log").join(format!("{}.log", today))
 }
 
 static HOME_DIR: OnceLock<PathBuf> = OnceLock::new();
